@@ -29,7 +29,7 @@ void taur_shutdown() {
 
 git_repository *taur_clone_git(char *url, char *out_path) {
 	git_repository *out = NULL;
-	git_clone(&out, url, out_path, git_opt);
+	git_clone(&out, url, out_path, &git_opt);
 	
 	// If an error were to happen, it would just return NULL.
 	return out;
