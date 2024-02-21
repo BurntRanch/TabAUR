@@ -1,1 +1,1 @@
-gcc main.c -o tabaur
+gcc main.c -o taur
