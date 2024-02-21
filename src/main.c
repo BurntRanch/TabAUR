@@ -11,7 +11,7 @@ bool verify_arguments(int c, char **args) {
 
 void print_help() {
 	printf("TabAUR Launch Options:\n");
-	printf("\ttaur <clone URL>\n");
+	printf("\ttaur <clone URL> <clone directory>\n");
 }
 
 // main
