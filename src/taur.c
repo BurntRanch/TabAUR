@@ -1,6 +1,7 @@
 // Functions for TabAUR, These include printing stuff and others.
 // main.c simply pieces each function together to make the program work.
 #include <git2.h>
+#include <stdbool.h>
 
 // git2 options & variables
 git_clone_options git_opt;
