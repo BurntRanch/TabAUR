@@ -1,5 +1,6 @@
 #TabAUR - description
 
+CC:=g++
 SRC:=$(wildcard src/*.c)
 OBJ = ${SRC:.c=.o}
 LIBS = -lgit2
