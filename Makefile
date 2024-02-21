@@ -2,7 +2,7 @@
 
 SRC:=$(wildcard src/*.c)
 OBJ = ${SRC:.c=.o}
-LIBS = -Llib -lgit2
+LIBS = -lgit2
 LDFLAGS  = ${LIBS}
 
 all: taur
