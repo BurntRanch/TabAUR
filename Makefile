@@ -1,8 +1,11 @@
 #TabAUR - description
 
 SRC:=$(wildcard src/*.c)
+OBJ = ${SRC:.c=.o}
+LIBS = -Llib -lgit2
+LDFLAGS  = ${LIBS}
 
 all: taur
 
-taur:
-	${CC} -o $@ ${SRC}
+taur: ${OBJ}
+	${CC} -o $@ ${OBJ} ${LDFLAGS}
