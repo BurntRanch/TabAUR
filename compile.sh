@@ -1,1 +1,1 @@
-gcc main.c -o taur
+gcc src/main.c -o taur
