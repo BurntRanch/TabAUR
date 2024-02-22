@@ -1,12 +1,19 @@
 #TabAUR - description
 
-CC:=g++
-SRC:=$(wildcard src/*.c)
-OBJ = ${SRC:.c=.o}
-LIBS = -lgit2
+CXX	?= g++
+SRC 	 = $(sort $(wildcard src/*.cpp))
+OBJ 	 = $(SRC:.cpp=.o)
+LIBS 	?= -lgit2 -lcpr
 LDFLAGS  = ${LIBS}
+TARGET   = taur
+CPPFLAGS = -Iinclude
 
-all: taur
+all: $(TARGET)
 
-taur: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFLAGS}
+$(TARGET): ${OBJ}
+	${CXX} $(OBJ) $(CPPFLAGS) -o $@ $(LDFLAGS)
+
+clean:
+	rm -f taur src/*.o
+
+.PHONY: taur clean all
