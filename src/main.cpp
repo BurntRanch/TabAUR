@@ -39,8 +39,7 @@ int main(int argc, char *argv[]) {
 	TaurBackend backend;
 
 	int status = 0;
-	//backend.taur_clone_git(argv[1], argv[2], &status);
-	std::string url = backend.taur_search_aur(string(argv[1]), &status);
+	string url = backend.taur_search_aur(string(argv[1]), &status);
 	
 	if (status != 0) {
 		cout << "An error has occurred: " << url << endl;
@@ -50,7 +49,7 @@ int main(int argc, char *argv[]) {
 	if (hasEnding(url, ".git")) {
 		status = 0;
 		// get the end of the URL, in the function we also remove the ".git" at the end.
-		std::string filename = url.substr(url.rfind("/") + 1);
+		string filename = url.substr(url.rfind("/") + 1);
 		backend.taur_clone_git(url, filename.substr(0, filename.find(".git")), &status);
 
 		if (status != 0) {
@@ -59,6 +58,9 @@ int main(int argc, char *argv[]) {
 		}
 
 		return 0;
+	} else {
+		cout << "This AUR repository uses tar.gz, which is not supported yet by TabAUR." << endl;
+		return -1;
 	}
 
 	return 0;
