@@ -4,7 +4,7 @@ OBJ 	 = $(SRC:.cpp=.o)
 LIBS 	?= -lgit2 -lcpr
 LDFLAGS  = ${LIBS}
 TARGET   = taur
-CPPFLAGS = -Iinclude
+CPPFLAGS = -isystem include
 
 all: $(TARGET)
 
