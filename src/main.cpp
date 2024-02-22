@@ -6,19 +6,27 @@ using namespace std;
 
 // Verifies the argument count and validity.
 bool verify_arguments(int c, char **args) {
-	if (c < 3)
+	if (c < 2)
 		return false;
 	return true;
 }
 
 void print_help() {
 	cout << "TabAUR Launch Options:" << endl;
-	cout << "\ttaur <clone URL> <clone directory>" << endl;
+	cout << "\ttaur <AUR Search Query>" << endl;
 }
 
 void print_error(const git_error *error) {
 	cout << "Got an error: " << error->message << endl;
 }
+
+// https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
+bool hasEnding (std::string const &fullString, std::string const &ending) {
+    if (ending.length() > fullString.length())
+	    return false;
+    return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+}
+
 
 // main
 int main(int argc, char *argv[]) {
@@ -30,13 +38,28 @@ int main(int argc, char *argv[]) {
 	
 	TaurBackend backend;
 
-	cout << "Cloning from " << argv[1] << " to " << argv[2] << "!" << endl;
+	int status = 0;
+	//backend.taur_clone_git(argv[1], argv[2], &status);
+	std::string url = backend.taur_search_aur(string(argv[1]), &status);
 	
-	int status;
-	backend.taur_clone_git(argv[1], argv[2], &status);
-	
-	if (status != 0)
-		print_error(git_error_last());
+	if (status != 0) {
+		cout << "An error has occurred: " << url << endl;
+		return -1;
+	}
 
-	return status;
+	if (hasEnding(url, ".git")) {
+		status = 0;
+		// get the end of the URL, in the function we also remove the ".git" at the end.
+		std::string filename = url.substr(url.rfind("/") + 1);
+		backend.taur_clone_git(url, filename.substr(0, filename.find(".git")), &status);
+
+		if (status != 0) {
+			print_error(git_error_last());
+			return -1;
+		}
+
+		return 0;
+	}
+
+	return 0;
 }
