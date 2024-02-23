@@ -1,15 +1,18 @@
 # TabAUR
 
-TabAUR is an AUR Helper written with C++, It supports downloading AUR Repositories only through git (for now)
+TabAUR is an AUR Helper that actually makes releases and it's written with C++, It supports downloading AUR Repositories only through git (for now)
 
 ## Compilation
-Just run `make`, to clean, run `make clean`.
+Just run `make`. 
+
+If the compilation time is too slow, use `make -j$(nproc)` and it will use 100% of your CPU, making the compilation way faster.
+### Cleaning
+To clean, run `make clean`.
 
 ## Dependencies
-This software relies on 3 open-source dependencies, which are:
+you need to install some library dependencies, which you can by this command
 ```
-rapidjson
-libcpr
-libgit2
+sudo pacman -S libgit2 libcpr 
 ```
-rapidjson is pre-included in the source files, you need to download libcpr and libgit2 or compile [libcpr from source](https://github.com/libcpr/cpr) and [libgit2 from source](https://github.com/libgit2/libgit2).
+
+rapidjson is pre-included in the source files and doesn't need to be installed 
