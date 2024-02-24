@@ -1,6 +1,8 @@
 #include <iostream>
+#include <ostream>
 #include <stdbool.h>
 #include <git.hpp>
+#include <config.hpp>
 
 using namespace std;
 
@@ -35,16 +37,19 @@ int main(int argc, char *argv[]) {
 		print_help();
 		return -1;
 	}
-	
+
+  Config config;	
 	TaurBackend backend;
 
 	int status = 0;
-	string url = backend.taur_search_aur(string(argv[1]), &status);
+	string url = backend.taur_search_aur(string(argv[1]), &status), cacheDir = config.getCacheDir();
 	
 	if (status != 0) {
 		cout << "An error has occurred: " << url << endl;
 		return -1;
 	}
+  
+  cout << "Cache dir located at " << cacheDir << endl;
 
 	if (hasEnding(url, ".git")) {
 		status = 0;
