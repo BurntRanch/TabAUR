@@ -10,7 +10,7 @@ Config::Config(){
 
 char* Config::getCacheDir() {
   char* dir = std::getenv("XDG_CACHE_HOME");
-  if(dir == "")
+  if(!strcmp(dir, ""))
     return dir;
   else
     return (char *)"$HOME/.cache";
