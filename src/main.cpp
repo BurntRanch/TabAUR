@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <git.hpp>
 #include <config.hpp>
+#include <strutil.hpp>
 
 using namespace std;
 
@@ -21,14 +22,6 @@ void print_help() {
 void print_error(const git_error *error) {
 	cout << "Got an error: " << error->message << endl;
 }
-
-// https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
-bool hasEnding (std::string const &fullString, std::string const &ending) {
-    if (ending.length() > fullString.length())
-	    return false;
-    return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
-}
-
 
 // main
 int main(int argc, char *argv[]) {
@@ -49,9 +42,7 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
   
-  cout << "Cache dir located at " << cacheDir << endl;
-
-	string filename = url.substr(url.rfind("/") + 1);
+	string filename = cacheDir + "/" + url.substr(url.rfind("/") + 1);
 
 	/*if (hasEnding(url, ".git")) {
 		status = 0;
@@ -71,7 +62,7 @@ int main(int argc, char *argv[]) {
 		}		
 	//}
 	
-	stat = backend.taur_install_pkg(filename.substr(0, filename.find('.')));
+	stat = backend.taur_install_pkg(filename.substr(0, filename.rfind(".tar.gz")));
 
 	if (!stat) {
 		cout << "Building/Installing your package has failed." << endl;

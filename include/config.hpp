@@ -2,14 +2,15 @@
 #define CONFIG_HPP
 
 #include <string>
-#define TOML_HEADER_ONLY 0
-#include <toml++/toml.hpp>
+#define TOML_HEADER_ONLY 1
+#include <toml.hpp>
 
 class Config {
 public:
   Config();
   std::string getConfigDir();
-  char* getCacheDir();
+  std::string getSystemCacheDir();
+  std::string getCacheDir();
 private:
 
 };

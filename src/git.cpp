@@ -167,7 +167,9 @@ bool TaurBackend::taur_download_tar(std::string url, std::string out_path) {
 
 	out.close();
 
-	system(("tar -xf " + out_path).c_str());
+	bool isNested = out_path.find("/") != -1;
+
+	system(("cd " + (isNested ? out_path.substr(0, out_path.rfind("/")) : out_path) + "/ && tar -xf " + (isNested ? out_path.substr(out_path.rfind("/") + 1) : out_path)).c_str());
 
 	/*TAR *tar;
 
