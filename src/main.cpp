@@ -5,7 +5,10 @@
 #include <config.hpp>
 #include <strutil.hpp>
 
-using namespace std;
+using std::cout;
+using std::cin;
+using std::endl;
+using std::string;
 
 // Verifies the argument count and validity.
 bool verify_arguments(int c, char **args) {
