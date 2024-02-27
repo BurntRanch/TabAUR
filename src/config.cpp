@@ -1,3 +1,4 @@
+#include <string>
 #define TOML_IMPLEMENTATION
 //#include <iterator>
 #include <cstdlib>
@@ -13,7 +14,7 @@ Config::Config(){
 	}
 }
 
-std::string Config::getSystemCacheDir() {
+string Config::getSystemCacheDir() {
   char *dir = std::getenv("XDG_CACHE_HOME");
   if(dir != NULL && std::filesystem::exists(std::string(dir))) {
     std::string str_dir(dir);
@@ -22,12 +23,40 @@ std::string Config::getSystemCacheDir() {
     return std::string(std::getenv("HOME")) + "/.cache";
 }
 
-std::string Config::getCacheDir() {
+string Config::getCacheDir() {
 	// insert config lookup here
 	
 	// if no custom cache dir found, make it up
 	
 	return this->getSystemCacheDir() + "/TabAUR";
+}
+
+string Config::getSystemConfDir() {
+  char *dir = std::getenv("XDG_CONFIG_HOME");
+  if(dir != NULL && std::filesystem::exists(std::string(dir))) {
+    std::string str_dir(dir);
+    return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
+  } else
+    return std::string(std::getenv("HOME")) + "/.config";
+}
+
+string Config::getConfDir() {
+	// insert config lookup here
+	
+	// if no custom cache dir found, make it up
+	
+	return this->getSystemConfDir() + "/TabAUR";
+}
+
+void Config::parseConf() {
+  string config = "config.toml";
+  toml::table tbl;
+  try {
+        tbl = toml::parse_file(config);
+  }
+  catch (const toml::parse_error& err) {
+        std::cerr << "Parsing failed:\n" << err << "\n";
+  }
 }
 
 int main_conf(void) {

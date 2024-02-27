@@ -5,12 +5,16 @@
 #define TOML_HEADER_ONLY 1
 #include <toml.hpp>
 
+using std::string;
+
 class Config {
 public:
   Config();
-  std::string getConfigDir();
-  std::string getSystemCacheDir();
-  std::string getCacheDir();
+  string getSystemCacheDir();
+  string getCacheDir();
+  string getSystemConfDir();
+  string getConfDir();
+  void   parseConf();
 private:
 
 };
