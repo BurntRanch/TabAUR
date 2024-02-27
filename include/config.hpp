@@ -12,9 +12,9 @@ public:
   Config();
   string getSystemCacheDir();
   string getCacheDir();
-  string getSystemConfDir();
-  string getConfDir();
-  void   parseConf();
+  string getSystemConfigDir();
+  string getConfigDir();
+  void   loadConfigFile(string filename);
 private:
 
 };

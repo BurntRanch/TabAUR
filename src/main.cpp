@@ -38,7 +38,8 @@ int main(int argc, char *argv[]) {
 	TaurBackend backend;
 
 	int status = 0;
-	string url = backend.taur_search_aur(string(argv[1]), &status), cacheDir = config.getCacheDir();
+	string url = backend.taur_search_aur(string(argv[1]), &status);
+  string cacheDir = config.getCacheDir();
 	
 	if (status != 0) {
 		cout << "An error has occurred: " << url << endl;
