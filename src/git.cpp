@@ -193,7 +193,7 @@ bool TaurBackend::taur_download_tar(std::string url, std::string out_path) {
 
 // this relies on main.cpp sanitizing the path itself
 bool TaurBackend::taur_install_pkg(std::string path) {
-	return system(("cd " + path + " && makepkg -i").c_str()) == 0;
+	return system(("cd " + path + " && makepkg -si").c_str()) == 0;
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
