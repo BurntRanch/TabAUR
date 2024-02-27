@@ -24,7 +24,7 @@ string Config::getSystemCacheDir() {
 }
 
 string Config::getCacheDir() {
-	// insert config lookup here
+	// insert cache lookup here
 	
 	// if no custom cache dir found, make it up
 	
@@ -41,10 +41,6 @@ string Config::getSystemConfDir() {
 }
 
 string Config::getConfDir() {
-	// insert config lookup here
-	
-	// if no custom cache dir found, make it up
-	
 	return this->getSystemConfDir() + "/TabAUR";
 }
 
