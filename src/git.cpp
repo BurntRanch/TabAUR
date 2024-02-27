@@ -2,6 +2,117 @@
 // main.cpp simply pieces each function together to make the program work.
 #include <git.hpp>
 
+
+std::vector<gzFile> gz_files;
+tartype_t gz_type = { (openfunc_t) gzopen_frontend, (closefunc_t) gzclose_frontend,
+		(readfunc_t) gzread_frontend, (writefunc_t) gzwrite_frontend };
+
+int gzopen_frontend( const char *pathname, int flags, mode_t mode ) {
+	char	*gz_flags = NULL;
+	int		fd, rv;
+	gzFile	gzf;
+
+	/*	create flags needed by zlib from flags used with open()	*/
+	switch ( flags & O_ACCMODE ) {
+	case O_WRONLY:
+		gz_flags = strdup( "wb" );
+		if ( gz_flags == NULL ) return -1;
+		break;
+	case O_RDONLY:
+		gz_flags = strdup( "rb" );
+		if ( gz_flags == NULL ) return -1;
+		break;
+	default:
+	case O_RDWR:
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*	however open file with flags passed by the user	*/
+	fd = open( pathname, flags, mode );
+	if ( fd == -1 ) {
+		rv = -1;
+		goto leave_gzopen_frontend;
+	}
+
+	/*	and now zlib	*/
+	gzf = gzdopen( fd, gz_flags );
+	if ( gzf == NULL ) {
+		(void) close( fd );
+		rv = -1;
+		goto leave_gzopen_frontend;
+	}
+	
+	gz_files.push_back( gzf );
+	rv = gz_files.size();
+
+leave_gzopen_frontend:
+	if ( gz_flags ) free( gz_flags );
+	return rv;
+}
+
+int gzclose_frontend( int fd ) {
+	int		rv;
+	gzFile	gzf;
+
+	/*	checks	*/
+	if ( gz_files.empty() ) {
+		errno = EBADF;
+		return -1;
+	}
+
+	if ( fd > gz_files.size() ) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*	call zlib	*/
+	rv = gzclose( gz_files[fd-1] );
+
+	/*	remove gzFile* association from our list	*/
+	gz_files.pop_back();
+
+	return rv ? -1 : 0;
+}
+
+ssize_t gzread_frontend( int fd, void *buf, size_t count ) {
+	if ( gz_files.empty() ) {
+		errno = EBADF;
+		return -1;
+	}
+
+	if ( fd > gz_files.size() ) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	ssize_t result = gzread( gz_files[fd-1], buf, count );
+	return result;
+}
+
+ssize_t gzwrite_frontend( int fd, const void *buf, size_t count ) {
+	int rv;
+
+	if ( gz_files.empty() ) {
+		errno = EBADF;
+		return -1;
+	}
+	
+	if ( fd > gz_files.size() ) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	/*	yes, _this_ zlib function returns 0 on error and number of
+	 *	uncompressed bytes instead	*/
+	rv = gzwrite( gz_files[fd-1], buf, count );
+	if ( rv <= 0 ) {
+		return -1;
+	} else {
+		return rv;
+	}
+}
+
 TaurBackend::TaurBackend() {
 	git2_inits = 0;
 
@@ -30,6 +141,58 @@ git_repository *TaurBackend::taur_clone_git(std::string url, std::string out_pat
 	return out;
 }
 
+template<typename T>
+T sanitize(T beg, T end)
+{
+    T dest = beg;
+    for (T itr = beg;itr != end; ++itr)
+	// if its:
+	// 1. a digit
+	// 2. an uppercase letter
+	// 3. a lowercase letter
+        if (!(((*itr) >= 48 && (*itr) <= 57) && ((*itr) >= 65 && (*itr) <= 90) && ((*itr) >= 97 && (*itr) <= 122)))
+            *(dest++) = *itr;
+    return dest;
+}
+
+// this relies on main.cpp sanitizing the path itself
+bool TaurBackend::taur_download_tar(std::string url, std::string out_path) {
+	std::ofstream out(out_path);
+	if (!out.is_open())
+		return false;
+
+	cpr::Session session;
+	session.SetUrl(cpr::Url(url));
+	cpr::Response response = session.Download(out);
+
+	out.close();
+
+	system(("tar -xf " + out_path).c_str());
+
+	/*TAR *tar;
+
+	if (tar_open(&tar, out_path.c_str(), &gz_type, O_RDONLY, 0, TAR_GNU | TAR_VERBOSE | TAR_IGNORE_MAGIC))
+		return false;
+
+	std::string out_foldername = out_path.substr(0, out_path.find("."));
+	char *c_str_foldername = new char[out_foldername.length() + 1];
+	strcpy(c_str_foldername, out_foldername.c_str());
+
+	if (tar_extract_all(tar, c_str_foldername)) {
+		tar_close(tar);
+		return false;
+	}
+	if (tar_close(tar) != 0)
+		return false;*/
+
+	return true;
+}
+
+// this relies on main.cpp sanitizing the path itself
+bool TaurBackend::taur_install_pkg(std::string path) {
+	return system(("cd " + path + " && makepkg -i").c_str()) == 0;
+}
+
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
 bool is_number(const std::string& s)
 {
@@ -44,23 +207,25 @@ std::string getURL(rapidjson::Document& doc) {
 	} else if (resultcount == 1) {
 		return ("https://aur.archlinux.org" + std::string(doc["results"][0]["URLPath"].GetString()));
 	} else if (resultcount > 1) {
-		for (int i = 0; i < resultcount; i++)
-			std::cout << "[" << i << "]: " << 
-				doc["results"][i]["Name"].GetString() << std::endl;
-
+		std::cout << "TabAUR has found multiple packages relating to your search query, Please pick one." << std::endl;
 		std::string input;
-		do {	
+		do {
 			if (!input.empty())
 				std::cout << "Invalid input!" << std::endl;
+
+			for (int i = 0; i < resultcount; i++)
+				std::cout << "[" << i << "]: " << 
+					doc["results"][i]["Name"].GetString() << std::endl;
+
 			std::cout << "Choose a package to download: ";
 			std::cin >> input;
 		} while (!is_number(input) || std::stoi(input) >= resultcount);
 
 		rapidjson::Value& selected = doc["results"][std::stoi(input)];
-		if (selected["URL"].IsString())
-			return (std::string(selected["URL"].GetString()) + ".git");
-		else
-			return ("https://aur.archlinux.org" + std::string(selected["URLPath"].GetString()));
+		//if (selected["URL"].IsString())
+		//	return (std::string(selected["URL"].GetString()) + ".git");
+		//else
+		return ("https://aur.archlinux.org" + std::string(selected["URLPath"].GetString()));
 	}
 
 	return "";

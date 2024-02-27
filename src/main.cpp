@@ -46,20 +46,30 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	if (hasEnding(url, ".git")) {
+	string filename = url.substr(url.rfind("/") + 1);
+
+	/*if (hasEnding(url, ".git")) {
 		status = 0;
 		// get the end of the URL, in the function we also remove the ".git" at the end.
-		string filename = url.substr(url.rfind("/") + 1);
-		backend.taur_clone_git(url, filename.substr(0, filename.find(".git")), &status);
+		backend.taur_clone_git(url, filename.substr(0, filename.find(".")), &status);
 
 		if (status != 0) {
 			print_error(git_error_last());
 			return -1;
 		}
+	} else {*/
+		bool stat = backend.taur_download_tar(url, filename);
 
-		return 0;
-	} else {
-		cout << "This AUR repository uses tar.gz, which is not supported yet by TabAUR." << endl;
+		if (!stat) {
+			cout << "An error has occurred and we could not download your package." << endl;
+			return -1;
+		}		
+	//}
+	
+	stat = backend.taur_install_pkg(filename.substr(0, filename.find('.')));
+
+	if (!stat) {
+		cout << "Building/Installing your package has failed." << endl;
 		return -1;
 	}
 
