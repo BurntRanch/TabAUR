@@ -8,15 +8,15 @@
 using std::string;
 
 class Config {
-public:
-  Config();
-  string getSystemCacheDir();
-  string getCacheDir();
-  string getSystemConfigDir();
-  string getConfigDir();
-  void   loadConfigFile(string filename);
-private:
+  public:
+    Config();
+    string getSystemCacheDir();
+    string getCacheDir();
+    string getSystemConfigDir();
+    string getConfigDir();
+    void   loadConfigFile(string filename);
 
+  private:
 };
 
 #endif
