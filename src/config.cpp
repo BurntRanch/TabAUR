@@ -7,7 +7,7 @@
 
 Config::Config() {
     if (!std::filesystem::exists(this->getCacheDir())) {
-        std::cout << "TabAUR config folder was not found, Creating folder at " << this->getCacheDir() << "!" << std::endl;
+        std::cout << "TabAUR cache folder was not found, Creating folder at " << this->getCacheDir() << "!" << std::endl;
         std::filesystem::create_directory(this->getCacheDir());
     }
     string filename = getConfigDir() + "/config.toml";
