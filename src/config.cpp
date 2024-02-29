@@ -7,7 +7,7 @@
 
 Config::Config(){
 	if (!std::filesystem::exists(this->getCacheDir())) {
-		std::cout << "TabAUR config folder was not found, Creating folder at " << this->getCacheDir() << "!" << std::endl;
+		std::cout << "TabAUR cache folder was not found, Creating folder at " << this->getCacheDir() << "!" << std::endl;
 		std::filesystem::create_directory(this->getCacheDir());
 	}
   string filename = getConfigDir() + "/config.toml";
@@ -15,6 +15,8 @@ Config::Config(){
   if (!std::filesystem::exists(this->getConfigDir())) {
     std::cout << "TabAUR config folder was not found, Creating folder at " << this->getConfigDir() << "!" << std::endl;
 		std::filesystem::create_directory(this->getConfigDir());
+		std::ofstream configFile(this->getConfigDir() + "/config.toml");
+		configFile.close();
   }
   loadConfigFile(filename);
 }
@@ -29,13 +31,13 @@ string Config::getSystemCacheDir() {
 }
 
 string Config::getCacheDir() {
-<<<<<<< HEAD
 	// insert cache lookup here
-	
+	std::optional<std::string> cacheDir = this->tbl["cacheDir"].value<std::string>();
+	if (cacheDir && std::filesystem::exists(cacheDir.value()))
+		return cacheDir.value();
+
 	// if no custom cache dir found, make it up
 	
-=======
->>>>>>> 00e7f3a096073915e128a1355cd25d979f63c978
 	return this->getSystemCacheDir() + "/TabAUR";
 }
 
@@ -48,20 +50,14 @@ string Config::getSystemConfigDir() {
     return std::string(std::getenv("HOME")) + "/.config";
 }
 
-<<<<<<< HEAD
-string Config::getConfDir() {
-	return this->getSystemConfDir() + "/TabAUR";
-=======
 string Config::getConfigDir() {
 	return this->getSystemConfigDir() + "/TabAUR";
->>>>>>> 00e7f3a096073915e128a1355cd25d979f63c978
 }
 
 void Config::loadConfigFile(string filename) {
-  toml::table tbl;
     try
     {
-        tbl = toml::parse_file(filename);
+        this->tbl = toml::parse_file(filename);
     }
     catch (const toml::parse_error& err)
     {

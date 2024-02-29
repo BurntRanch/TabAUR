@@ -16,7 +16,7 @@ public:
   string getConfigDir();
   void   loadConfigFile(string filename);
 private:
-
+	toml::table tbl;
 };
 
 #endif
