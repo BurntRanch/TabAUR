@@ -5,21 +5,10 @@
 #include <iostream>
 #include <fcntl.h>
 
-#include <tar.h>
-#include <libtar.h>
 #include <cpr/cpr.h>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
-
-// libtar hates .tar.gz so we have to spoonfeed it these functions
-// how dumb
-#include <zlib.h>
-#include <errno.h>
-int     gzopen_frontend(const char* pathname, int flags, mode_t mode);
-int     gzclose_frontend(int fd);
-ssize_t gzread_frontend(int fd, void* buf, size_t count);
-ssize_t gzwrite_frontend(int fd, const void* buf, size_t count);
 
 class TaurBackend {
   public:

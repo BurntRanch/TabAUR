@@ -5,6 +5,8 @@
 #include <strutil.hpp>
 #include <filesystem>
 
+using std::string;
+
 Config::Config(){
   if (!std::filesystem::exists(this->getCacheDir())) {
     std::cout << "TabAUR cache folder was not found, Creating folder at " << this->getCacheDir() << "!" << std::endl;
