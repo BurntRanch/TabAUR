@@ -17,6 +17,14 @@ public:
   void   loadConfigFile(string filename);
 private:
 	toml::table tbl;
+  public:
+    Config();
+    string getSystemCacheDir();
+    string getCacheDir();
+    string getSystemConfigDir();
+    string getConfigDir();
+    void   loadConfigFile(string filename);
+  private:
 };
 
 #endif
