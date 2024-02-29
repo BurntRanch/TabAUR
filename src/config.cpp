@@ -23,7 +23,7 @@ Config::Config(){
   loadConfigFile(filename);
 }
 
-string Config::getSystemCacheDir() {
+string Config::getHomeCacheDir() {
     char* dir = std::getenv("XDG_CACHE_HOME");
     if (dir != NULL && std::filesystem::exists(std::string(dir))) {
         std::string str_dir(dir);
@@ -38,10 +38,10 @@ string Config::getCacheDir() {
 		return cacheDir.value();
 	// if no custom cache dir found, make it up
 	
-	return this->getSystemCacheDir() + "/TabAUR";
+	return this->getHomeCacheDir() + "/TabAUR";
 }
 
-string Config::getSystemConfigDir() {
+string Config::getHomeConfigDir() {
     char* dir = std::getenv("XDG_CONFIG_HOME");
     if (dir != NULL && std::filesystem::exists(std::string(dir))) {
         std::string str_dir(dir);
@@ -51,7 +51,7 @@ string Config::getSystemConfigDir() {
 }
 
 string Config::getConfigDir() {
-    return this->getSystemConfigDir() + "/TabAUR";
+    return this->getHomeConfigDir() + "/TabAUR";
 }
 
 void Config::loadConfigFile(string filename) {

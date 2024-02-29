@@ -10,9 +10,9 @@ using std::string;
 class Config {
 public:
   Config();
-  string getSystemCacheDir();
+  string getHomeCacheDir();
   string getCacheDir();
-  string getSystemConfigDir();
+  string getHomeConfigDir();
   string getConfigDir();
   void   loadConfigFile(string filename);
 private:
