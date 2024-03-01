@@ -54,6 +54,10 @@ string Config::getConfigDir() {
     return this->getHomeConfigDir() + "/TabAUR";
 }
 
+std::optional<std::string> Config::getConfigValue(string value, string _default){
+    return this->tbl[value] ? this->tbl[value].value<string>() : _default;
+}
+
 void Config::loadConfigFile(string filename) {
     try
     {

@@ -14,6 +14,7 @@ public:
   string getCacheDir();
   string getHomeConfigDir();
   string getConfigDir();
+  std::optional<std::string> getConfigValue(string value, string _default);
   void   loadConfigFile(string filename);
 private:
 	toml::table tbl;

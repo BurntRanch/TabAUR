@@ -10,6 +10,8 @@ using std::cin;
 using std::endl;
 using std::string;
 
+Config config2;
+
 // Verifies the argument count and validity.
 bool verify_arguments(int c, char** args) {
     if (c < 2)
@@ -34,12 +36,14 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    Config      config;
     TaurBackend backend;
+    
+    auto r = config2.getConfigValue("makepkgBin", "/bin/7z");
+    cout << *r << "\n";
 
     int         status   = 0;
     string      url      = backend.taur_search_aur(string(argv[1]), &status);
-    string      cacheDir = config.getCacheDir();
+    string      cacheDir = config2.getCacheDir();
 
     if (status != 0) {
         cout << "An error has occurred: " << url << endl;
