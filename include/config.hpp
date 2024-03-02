@@ -6,6 +6,7 @@
 #include <toml.hpp>
 
 using std::string;
+using std::optional;
 
 class Config {
 public:
@@ -14,7 +15,13 @@ public:
   string getCacheDir();
   string getHomeConfigDir();
   string getConfigDir();
-  std::optional<std::string> getConfigValue(string value, string _default);
+  
+  template<typename T>
+  T getConfigValue(string value, T fallback) {
+    // .value<T>().value(), nice.
+    return this->tbl[value].value<T>() ? this->tbl[value].value<T>().value() : fallback;
+  }
+  
   void   loadConfigFile(string filename);
 private:
 	toml::table tbl;
