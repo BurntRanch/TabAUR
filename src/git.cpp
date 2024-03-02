@@ -4,8 +4,6 @@
 #include <config.hpp>
 #include <optional>
 
-Config config1;
-
 TaurBackend::TaurBackend() {
     git2_inits = 0;
 
@@ -68,8 +66,8 @@ bool TaurBackend::taur_download_tar(std::string url, std::string out_path) {
 
 // this relies on main.cpp sanitizing the path itself
 bool TaurBackend::taur_install_pkg(std::string path) {
-    auto makepkg_bin = config1.getConfigValue("makepkgBin", "/bin/makepkg");
-    return system(("cd " + path + " && " + makepkg_bin->c_str() + "-si").c_str()) == 0;
+    auto makepkg_bin = config.getConfigValue<string>("makepkgBin", "/usr/bin/makepkg");
+    return system(("cd " + path + " && " + makepkg_bin.c_str() + "-si").c_str()) == 0;
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718

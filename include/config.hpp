@@ -28,4 +28,6 @@ private:
     toml::table tbl;
 };
 
+extern Config config;
+
 #endif

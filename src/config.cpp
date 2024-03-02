@@ -10,6 +10,9 @@ using std::getenv;
 using std::optional;
 using std::ofstream;
 
+// imo this looks pointless, but it should work 
+Config config;
+
 Config::Config() {
     string cacheDir  = this->getCacheDir();
     string configDir = this->getConfigDir();
