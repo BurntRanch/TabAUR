@@ -10,21 +10,22 @@ using std::optional;
 
 class Config {
 public:
-  Config();
-  string getHomeCacheDir();
-  string getCacheDir();
-  string getHomeConfigDir();
-  string getConfigDir();
+    Config();
+    string getHomeCacheDir();
+    string getCacheDir();
+    string getHomeConfigDir();
+    string getConfigDir();
   
-  template<typename T>
-  T getConfigValue(string value, T fallback) {
-    // .value<T>().value(), nice.
-    return this->tbl[value].value<T>() ? this->tbl[value].value<T>().value() : fallback;
-  }
+    //stupid c++ that wants template functions in header
+    template<typename T>
+    T getConfigValue(string value, T fallback) {
+      // .value<T>().value(), nice.
+      return this->tbl[value].value<T>() ? this->tbl[value].value<T>().value() : fallback;
+    }
   
-  void   loadConfigFile(string filename);
+    void   loadConfigFile(string filename);
 private:
-	toml::table tbl;
+    toml::table tbl;
 };
 
 #endif

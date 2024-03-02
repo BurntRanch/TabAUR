@@ -37,13 +37,13 @@ int main(int argc, char* argv[]) {
     }
 
     TaurBackend backend;
-    
+
     auto r = config2.getConfigValue("makepkgBin", "/bin/7z");
     cout << *r << "\n";
 
-    int         status   = 0;
-    string      url      = backend.taur_search_aur(string(argv[1]), &status);
-    string      cacheDir = config2.getCacheDir();
+    int    status   = 0;
+    string url      = backend.taur_search_aur(string(argv[1]), &status);
+    string cacheDir = config2.getCacheDir();
 
     if (status != 0) {
         cout << "An error has occurred: " << url << endl;
