@@ -20,7 +20,7 @@ public:
     template<typename T>
     T getConfigValue(string value, T fallback) {
       // .value<T>().value(), nice.
-      return this->tbl[value].value<T>() ? this->tbl[value].value<T>().value() : fallback;
+      return this->tbl.at_path(value).value<T>() ? this->tbl.at_path(value).value<T>().value() : fallback;
     }
   
     void   loadConfigFile(string filename);

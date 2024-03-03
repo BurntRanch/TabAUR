@@ -58,16 +58,15 @@ bool TaurBackend::taur_download_tar(std::string url, std::string out_path) {
     out.close();
 
     bool isNested = out_path.find("/") != -1;
-
-    // see that || part in the middle? if its a file and not a directory, who cares? it'll keep going.
-    return system(("cd " + (isNested ? out_path.substr(0, out_path.rfind("/")) : out_path) + "/ || tar -xf " + (isNested ? out_path.substr(out_path.rfind("/") + 1) : out_path))
+    
+    return system(("cd " + (isNested ? out_path.substr(0, out_path.rfind("/")) : out_path) + "/ && tar -xf " + (isNested ? out_path.substr(out_path.rfind("/") + 1) : out_path))
                       .c_str()) == 0;
 }
 
 // this relies on main.cpp sanitizing the path itself
 bool TaurBackend::taur_install_pkg(std::string path) {
-    auto makepkg_bin = config.getConfigValue<string>("makepkgBin", "/usr/bin/makepkg");
-    return system(("cd " + path + " && " + makepkg_bin.c_str() + "-si").c_str()) == 0;
+    auto makepkg_bin = config.getConfigValue<string>("general.makepkgBin", "/usr/bin/makepkg");
+    return system(("cd " + path + " && " + makepkg_bin.c_str() + " -si").c_str()) == 0;
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718

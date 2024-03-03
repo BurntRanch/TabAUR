@@ -7,29 +7,27 @@
 
 using std::string;
 using std::getenv;
-using std::optional;
 using std::ofstream;
 
 // imo this looks pointless, but it should work 
 Config config;
 
 Config::Config() {
-    string cacheDir  = this->getCacheDir();
     string configDir = this->getConfigDir();
-    if (!std::filesystem::exists(cacheDir)) {
-        std::cout << "TabAUR cache folder was not found, Creating folder at " << cacheDir << "!" << std::endl;
-        std::filesystem::create_directory(cacheDir);
-    }
-
     if (!std::filesystem::exists(configDir)) {
         std::cout << "TabAUR config folder was not found, Creating folder at " << configDir << "!" << std::endl;
         std::filesystem::create_directory(configDir);
         ofstream configFile(configDir + "/config.toml");
         configFile.close();
     }
-
     string filename = configDir + "/config.toml";
     loadConfigFile(filename);
+    
+    string cacheDir = this->getCacheDir();
+    if (!std::filesystem::exists(cacheDir)) {
+        std::cout << "TabAUR cache folder was not found, Creating folder at " << cacheDir << "!" << std::endl;
+        std::filesystem::create_directory(cacheDir);
+    }
 }
 
 string Config::getHomeCacheDir() {
@@ -42,11 +40,7 @@ string Config::getHomeCacheDir() {
 }
 
 string Config::getCacheDir() {
-    optional<string> cacheDir = this->tbl["cacheDir"].value<string>();
-    if (cacheDir && std::filesystem::exists(cacheDir.value()))
-        return cacheDir.value();
-    // if no custom cache dir found, make it up
-    return this->getHomeCacheDir() + "/TabAUR";
+    return this->getConfigValue<string>("storage.cacheDir", this->getHomeCacheDir() + "/TabAUR");
 }
 
 string Config::getHomeConfigDir() {
