@@ -8,8 +8,6 @@
 using std::cout;
 using std::cin;
 using std::endl;
-using std::string;
-using std::optional;
 
 Config config;
 
@@ -39,10 +37,8 @@ int main(int argc, char* argv[]) {
 
     TaurBackend backend(config, config.getConfigDir());
     
-    string r = config.getConfigValue<string>("makepkgBin", "/bin/7z");
-
     int         	status   = 0;
-    optional<TAUR_PKG>  pkg      = backend.taur_search_aur(string(argv[1]), &status);
+    optional<TaurPkg_t>  pkg      = backend.search_aur(string(argv[1]), &status);
     string      	cacheDir = config.getCacheDir();
 
     if (status != 0) {
@@ -66,7 +62,7 @@ int main(int argc, char* argv[]) {
 			return -1;
 		}
 	} else {*/
-    bool stat = backend.taur_download_tar(url, filename);
+    bool stat = backend.download_tar(url, filename);
 
     if (!stat) {
         cout << "An error has occurred and we could not download your package." << endl;
@@ -74,7 +70,7 @@ int main(int argc, char* argv[]) {
     }
     //}
 
-    stat = backend.taur_install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")));
+    stat = backend.install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")));
 
     if (!stat) {
         cout << "Building/Installing your package has failed." << endl;

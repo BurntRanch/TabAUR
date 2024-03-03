@@ -2,11 +2,7 @@
 
 #define PADDING '\1'
 
-using std::string;
-using std::optional;
-using std::ifstream;
 using std::ofstream;
-using std::vector;
 using std::ios;
 
 DB::DB(string name) {
@@ -61,19 +57,19 @@ optional<int> DB::findPkg(string name) {
     return {};
 }
 
-optional<TAUR_PKG> DB::getPkg(string name) {
+optional<TaurPkg_t> DB::getPkg(string name) {
     optional<int> oi = findPkg(name);
     if (oi) {
         int i = oi.value();
         vector<string> recordDetails = split(this->dbRecords[i], '\1');
-        return (TAUR_PKG) {recordDetails[0], recordDetails[1], recordDetails[2]};
+        return (TaurPkg_t) {recordDetails[0], recordDetails[1], recordDetails[2]};
     }
 
     return {};
 }
 
 // Adds/Updates packages
-void DB::addPkg(TAUR_PKG pkg) {
+void DB::addPkg(TaurPkg_t pkg) {
     if (getPkg(pkg.name)) {
         int i = findPkg(pkg.name).value();
         this->dbRecords[i] = pkg.name + PADDING + pkg.version + PADDING + pkg.url;

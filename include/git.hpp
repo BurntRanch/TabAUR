@@ -17,10 +17,10 @@ class TaurBackend {
     Config config;
     TaurBackend(Config cfg, std::string dbLocation);
     ~TaurBackend();
-    git_repository* taur_clone_git(std::string url, std::string out_path, int* status);
-    std::optional<TAUR_PKG>     taur_search_aur(std::string query, int* status);
-    bool            taur_download_tar(std::string url, std::string out_path);
-    bool            taur_install_pkg(TAUR_PKG pkg, std::string extracted_path);
+    git_repository* clone_git(std::string url, std::string out_path, int* status);
+    std::optional<TaurPkg_t>     search_aur(std::string query, int* status);
+    bool            download_tar(std::string url, std::string out_path);
+    bool            install_pkg(TaurPkg_t pkg, std::string extracted_path);
 
   private:
     git_clone_options git_opt;

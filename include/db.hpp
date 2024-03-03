@@ -14,10 +14,10 @@ using std::ifstream;
 using std::vector;
 using std::optional;
 
-struct TAUR_PKG {
-	std::string name;
-	std::string version;
-	std::string url;
+struct TaurPkg_t {
+	string name;
+	string version;
+	string url;
 };
 
 class DB {
@@ -25,8 +25,8 @@ class DB {
         DB(string name);
         ~DB();
         optional<int> findPkg(string name);
-        optional<TAUR_PKG> getPkg(string name);
-        void addPkg(TAUR_PKG pkg);
+        optional<TaurPkg_t> getPkg(string name);
+        void addPkg(TaurPkg_t pkg);
     private:
         string fileName;
         vector<string> dbRecords;
