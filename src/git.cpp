@@ -68,7 +68,7 @@ bool TaurBackend::taur_download_tar(std::string url, std::string out_path) {
 
 // this relies on main.cpp sanitizing the path itself
 bool TaurBackend::taur_install_pkg(TAUR_PKG pkg, std::string extracted_path) {
-    std::string makepkg_bin = this->config.getConfigValue<std::string>("makepkgBin", "/bin/makepkg");
+    std::string makepkg_bin = this->config.getConfigValue<std::string>("general.makepkgBin", "/bin/makepkg");
 
     bool installSuccess = system(("cd " + extracted_path + " && " + makepkg_bin + " -si").c_str()) == 0;
     if (!installSuccess)

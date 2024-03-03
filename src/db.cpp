@@ -33,8 +33,6 @@ DB::DB(string name) {
 
     file.close();
 
-    fileContent[pos] = '\0';
-
     this->dbRecords = split(string(fileContent.begin(), fileContent.end()), '\n');
 }
 
@@ -46,8 +44,9 @@ DB::~DB() {
         return;
     }
 
-    for (size_t i = 0; i < this->dbRecords.size(); i++)
+    for (size_t i = 0; i < this->dbRecords.size(); i++) {
         file.write((this->dbRecords[i] + '\n').c_str(), this->dbRecords[i].size() + 1);
+    }
 
     file.close();
 }
