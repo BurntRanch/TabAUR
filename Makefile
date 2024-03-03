@@ -1,10 +1,10 @@
 CXX	?= g++
 SRC 	 = $(sort $(wildcard src/*.cpp))
 OBJ 	 = $(SRC:.cpp=.o)
-LIBS 	?= -lgit2 -lcpr -ltar -lz
+LIBS 	?= -lgit2 -lcpr 
 LDFLAGS  = ${LIBS}
 TARGET   = taur
-CPPFLAGS = -g -isystem include
+CPPFLAGS = -isystem include
 
 all: $(TARGET)
 

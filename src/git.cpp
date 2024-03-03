@@ -4,9 +4,7 @@
 #include <config.hpp>
 #include <optional>
 
-Config config1;
-
-TaurBackend::TaurBackend() {
+TaurBackend::TaurBackend(Config cfg, std::string dbLocation) : config(cfg), db(DB((dbLocation + "/pkg.db"))) {
     git2_inits = 0;
 
     int status = git_clone_options_init(&git_opt, GIT_CLONE_OPTIONS_VERSION);
@@ -61,15 +59,24 @@ bool TaurBackend::taur_download_tar(std::string url, std::string out_path) {
 
     bool isNested = out_path.find("/") != -1;
 
-    // see that || part in the middle? if its a file and not a directory, who cares? it'll keep going.
-    return system(("cd " + (isNested ? out_path.substr(0, out_path.rfind("/")) : out_path) + "/ || tar -xf " + (isNested ? out_path.substr(out_path.rfind("/") + 1) : out_path)).c_str()) == 0;
+    if (isNested)
+    	return system(("cd " + out_path.substr(0, out_path.rfind("/")) + "/ && tar -xf " + out_path.substr(out_path.rfind("/") + 1)).c_str()) == 0;
+    else
+    	return system(("tar -xf " + (isNested ? out_path.substr(out_path.rfind("/") + 1) : out_path)).c_str()) == 0;
 
 }
 
 // this relies on main.cpp sanitizing the path itself
-bool TaurBackend::taur_install_pkg(std::string path) {
-    auto makepkg_bin = config1.getConfigValue("makepkgBin", "/bin/makepkg");
-    return system(("cd " + path + " && " + makepkg_bin->c_str() + "-si").c_str()) == 0;
+bool TaurBackend::taur_install_pkg(TAUR_PKG pkg, std::string extracted_path) {
+    std::string makepkg_bin = this->config.getConfigValue<std::string>("makepkgBin", "/bin/makepkg");
+
+    bool installSuccess = system(("cd " + extracted_path + " && " + makepkg_bin + " -si").c_str()) == 0;
+    if (!installSuccess)
+	    return false;
+
+    this->db.addPkg(pkg);
+
+    return true;
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
@@ -77,12 +84,11 @@ bool is_number(const std::string& s) {
     return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
-std::string getURL(rapidjson::Document& doc) {
+std::optional<TAUR_PKG> getPkg(rapidjson::Document& doc) {
     int resultcount = doc["resultcount"].GetInt();
-    if (resultcount == 1 && doc["results"][0]["URL"].IsString()) {
-        return std::string(doc["results"][0]["URL"].GetString());
-    } else if (resultcount == 1) {
-        return ("https://aur.archlinux.org" + std::string(doc["results"][0]["URLPath"].GetString()));
+    if (resultcount == 1) {
+	std::string url = ("https://aur.archlinux.org" + std::string(doc["results"][0]["URLPath"].GetString()));
+	return (TAUR_PKG) {std::string(doc["results"][0]["Name"].GetString()), std::string(doc["results"][0]["Version"].GetString()), url};
     } else if (resultcount > 1) {
         std::cout << "TabAUR has found multiple packages relating to your search query, Please pick one." << std::endl;
         std::string input;
@@ -101,15 +107,16 @@ std::string getURL(rapidjson::Document& doc) {
         //if (selected["URL"].IsString())
         //	return (std::string(selected["URL"].GetString()) + ".git");
         //else
-        return ("https://aur.archlinux.org" + std::string(selected["URLPath"].GetString()));
+	std::string url = ("https://aur.archlinux.org" + std::string(selected["URLPath"].GetString()));
+	return (TAUR_PKG) { std::string(selected["Name"].GetString()), std::string(selected["Version"].GetString()), url };
     }
 
-    return "";
+    return {};
 }
 
-// Returns an error message instead of a package name if an error occurs
+// Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-std::string TaurBackend::taur_search_aur(std::string query, int* status) {
+std::optional<TAUR_PKG> TaurBackend::taur_search_aur(std::string query, int* status) {
     // link to AUR API
     cpr::Url            url(("https://aur.archlinux.org/rpc/v5/search/" + cpr::util::urlEncode(query) + "?by=name"));
     cpr::Response       r = cpr::Get(url);
@@ -121,15 +128,15 @@ std::string TaurBackend::taur_search_aur(std::string query, int* status) {
 
     if (strcmp(json_response["type"].GetString(), "error") == 0) {
         *status = -1;
-        return std::string(json_response["error"].GetString());
+        return {};
     }
 
     if (json_response["resultcount"].GetInt() == 0) {
         *status = -2;
-        return "Package not found";
+        return {};
     }
 
     *status = 0;
 
-    return getURL(json_response);
+    return getPkg(json_response);
 }

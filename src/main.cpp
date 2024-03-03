@@ -9,8 +9,9 @@ using std::cout;
 using std::cin;
 using std::endl;
 using std::string;
+using std::optional;
 
-Config config2;
+Config config;
 
 // Verifies the argument count and validity.
 bool verify_arguments(int c, char** args) {
@@ -36,19 +37,22 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    TaurBackend backend;
+    TaurBackend backend(config, config.getConfigDir());
     
-    auto r = config2.getConfigValue("makepkgBin", "/bin/7z");
-    cout << *r << "\n";
+    string r = config.getConfigValue<string>("makepkgBin", "/bin/7z");
 
-    int         status   = 0;
-    string      url      = backend.taur_search_aur(string(argv[1]), &status);
-    string      cacheDir = config2.getCacheDir();
+    int         	status   = 0;
+    optional<TAUR_PKG>  pkg      = backend.taur_search_aur(string(argv[1]), &status);
+    string      	cacheDir = config.getCacheDir();
 
     if (status != 0) {
-        cout << "An error has occurred: " << url << endl;
+        cout << "An error has occurred and we could not search for your package." << endl;
         return -1;
     }
+
+    string url;
+    if (pkg)
+	url = pkg.value().url;
 
     string filename = cacheDir + "/" + url.substr(url.rfind("/") + 1);
 
@@ -70,7 +74,7 @@ int main(int argc, char* argv[]) {
     }
     //}
 
-    stat = backend.taur_install_pkg(filename.substr(0, filename.rfind(".tar.gz")));
+    stat = backend.taur_install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")));
 
     if (!stat) {
         cout << "Building/Installing your package has failed." << endl;
