@@ -92,7 +92,7 @@ bool TaurBackend::download_tar(string url, string out_path) {
 
     out_path.erase(sanitize(out_path.begin(), out_path.end()), out_path.end());
     if (isNested)
-    	return system((string("tar -xf \"") + out_path.substr(out_path.rfind("/") + 1) + string("\"")).c_str()) == 0;
+    	return system(("cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\"").c_str()) == 0;
     else
     	return system((string("tar -xf \"") + out_path + string("\"")).c_str()) == 0;
 
