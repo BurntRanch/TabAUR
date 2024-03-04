@@ -77,7 +77,6 @@ T sanitize(T beg, T end) {
     return dest;
 }
 
-// this relies on main.cpp sanitizing the path itself
 bool TaurBackend::download_tar(string url, string out_path) {
     std::ofstream out(out_path);
     if (!out.is_open())
@@ -91,10 +90,11 @@ bool TaurBackend::download_tar(string url, string out_path) {
 
     bool isNested = out_path.find("/") != -1;
 
-    if (isNested) {
-    	return chdir(out_path.c_str()) == 0 && execlp("tar", "tar", "-xf", out_path.substr(out_path.rfind("/") + 1).c_str(), NULL) == 0;
-    } else
-    	return execlp("tar", "tar", "-xf", out_path.c_str(), NULL) == 0;
+    out_path.erase(sanitize(out_path.begin(), out_path.end()), out_path.end());
+    if (isNested)
+    	return system(("tar -xf " + out_path.substr(out_path.rfind("/") + 1)).c_str()) == 0;
+    else
+    	return system(("tar -xf " + out_path.c_str()) == 0;
 
 }
 
@@ -106,14 +106,15 @@ bool TaurBackend::download_pkg(string url, string out_path) {
     return false;
 }
 
-// this relies on main.cpp sanitizing the path itself
 bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
     string makepkg_bin = this->config.getConfigValue<string>("general.makepkgBin", "/bin/makepkg");
 
+    // never forget to sanitize
     extracted_path.erase(sanitize(extracted_path.begin(), extracted_path.end()), extracted_path.end());
-    bool chdirSuccess = chdir(extracted_path.c_str()) == 0;
-    int execSuccess = execlp(makepkg_bin.c_str(), makepkg_bin.c_str(), "-si", NULL);
-    if (!(chdirSuccess && execSuccess == 0))
+    makepkg_bin.erase(sanitize(makepkg_bin.begin(), makepkg_bin.end()), makepkg_bin.end());
+
+    bool installSuccess = system(("cd " + extracted_path + " && " + makepkg_bin + " -si").c_str()) == 0;
+    if (!installSuccess)
 	    return false;
 
     this->db.addPkg(pkg);
