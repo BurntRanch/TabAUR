@@ -8,6 +8,7 @@
 using std::cout;
 using std::cin;
 using std::endl;
+using std::filesystem::path;
 
 Config config;
 
@@ -38,8 +39,9 @@ int main(int argc, char* argv[]) {
     TaurBackend backend(config, config.getConfigDir());
     
     int         	status   = 0;
-    optional<TaurPkg_t>  pkg      = backend.search_aur(string(argv[1]), &status);
     string      	cacheDir = config.getCacheDir();
+    bool            useGit   = config.getConfigValue<bool>("general.useGit", false);
+    optional<TaurPkg_t>  pkg      = backend.search_aur(string(argv[1]), &status, useGit);
 
     if (status != 0) {
         cout << "An error has occurred and we could not search for your package." << endl;
@@ -50,7 +52,10 @@ int main(int argc, char* argv[]) {
     if (pkg)
 	url = pkg.value().url;
 
-    string filename = cacheDir + "/" + url.substr(url.rfind("/") + 1);
+    string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
+
+    if (useGit)
+        filename = filename.substr(0, filename.rfind(".git"));
 
     /*if (hasEnding(url, ".git")) {
 		status = 0;
@@ -62,7 +67,7 @@ int main(int argc, char* argv[]) {
 			return -1;
 		}
 	} else {*/
-    bool stat = backend.download_tar(url, filename);
+    bool stat = backend.download_pkg(url, filename);
 
     if (!stat) {
         cout << "An error has occurred and we could not download your package." << endl;
@@ -70,7 +75,10 @@ int main(int argc, char* argv[]) {
     }
     //}
 
-    stat = backend.install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")));
+    if (useGit)
+        stat = backend.install_pkg(pkg.value(), filename.substr(0, filename.rfind(".git")));
+    else
+        stat = backend.install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")));
 
     if (!stat) {
         cout << "Building/Installing your package has failed." << endl;

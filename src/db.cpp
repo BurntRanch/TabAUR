@@ -41,6 +41,9 @@ DB::~DB() {
     }
 
     for (size_t i = 0; i < this->dbRecords.size(); i++) {
+        // empty
+        if (this->dbRecords[i].length() <= 5)
+            continue;
         file.write((this->dbRecords[i] + '\n').c_str(), this->dbRecords[i].size() + 1);
     }
 

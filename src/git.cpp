@@ -4,7 +4,7 @@
 #include <config.hpp>
 #include <optional>
 
-TaurBackend::TaurBackend(Config cfg, std::string dbLocation) : config(cfg), db(DB((dbLocation + "/pkg.db"))) {
+TaurBackend::TaurBackend(Config cfg, string dbLocation) : config(cfg), db(DB((dbLocation + "/pkg.db"))) {
     git2_inits = 0;
 
     int status = git_clone_options_init(&git_opt, GIT_CLONE_OPTIONS_VERSION);
@@ -22,14 +22,46 @@ TaurBackend::~TaurBackend() {
         git_libgit2_shutdown();
 }
 
-// Clone from a remote git repository, and return a git_repository object back.
-// status will be set to whatever git_clone returns, 0 = success.
-git_repository* TaurBackend::clone_git(std::string url, std::string out_path, int* status) {
-    git_repository* out = nullptr;
-    *status             = git_clone(&out, url.c_str(), out_path.c_str(), &git_opt);
+// Clone from a remote git repository, and return a bool back.
+bool clone_git(string url, string out_path) {
+    git_repository* repo = nullptr;
+    git_clone_options options = GIT_CLONE_OPTIONS_INIT;
+    int status          = git_clone(&repo, url.c_str(), out_path.c_str(), &options);
 
-    // If an error were to happen, it would just return NULL.
-    return out;
+    return (status == 0 && repo != nullptr);
+}
+
+// Pull from a local git repository, and return a bool back.
+bool pull_git(string path) {
+    git_repository* repo;
+    int status           = git_repository_open(&repo, path.c_str());
+
+    if (status != 0)
+        return false;
+
+    git_remote *remote;
+    status               = git_remote_lookup(&remote, repo, "origin");
+    if (status != 0)
+        return false;
+
+    git_fetch_options options = GIT_FETCH_OPTIONS_INIT;
+    status               = git_remote_fetch(remote, NULL, &options, NULL);
+    if (status != 0)
+        return false;
+
+    return true;
+}
+
+using std::filesystem::path;
+
+bool TaurBackend::download_git(string url, string out_path) {
+    if (std::filesystem::exists(path(out_path) / ".git"))
+        return pull_git(out_path);
+    else {
+        if (std::filesystem::exists(path(out_path)))
+            std::filesystem::remove_all(out_path);
+        return clone_git(url, out_path);
+    }
 }
 
 template <typename T>
@@ -46,7 +78,7 @@ T sanitize(T beg, T end) {
 }
 
 // this relies on main.cpp sanitizing the path itself
-bool TaurBackend::download_tar(std::string url, std::string out_path) {
+bool TaurBackend::download_tar(string url, string out_path) {
     std::ofstream out(out_path);
     if (!out.is_open())
         return false;
@@ -59,18 +91,27 @@ bool TaurBackend::download_tar(std::string url, std::string out_path) {
 
     bool isNested = out_path.find("/") != -1;
 
-    if (isNested)
-    	return system(("cd " + out_path.substr(0, out_path.rfind("/")) + "/ && tar -xf " + out_path.substr(out_path.rfind("/") + 1)).c_str()) == 0;
-    else
-    	return system(("tar -xf " + (isNested ? out_path.substr(out_path.rfind("/") + 1) : out_path)).c_str()) == 0;
+    if (isNested) {
+    	return chdir(out_path.c_str()) == 0 && execlp("tar", "tar", "-xf", out_path.substr(out_path.rfind("/") + 1).c_str()) == 0;
+    } else
+    	return execlp("tar", "tar", "-xf", out_path.c_str()) == 0;
 
 }
 
-// this relies on main.cpp sanitizing the path itself
-bool TaurBackend::install_pkg(TaurPkg_t pkg, std::string extracted_path) {
-    std::string makepkg_bin = this->config.getConfigValue<std::string>("general.makepkgBin", "/bin/makepkg");
+bool TaurBackend::download_pkg(string url, string out_path) {
+    if (hasEnding(url, ".git"))
+        return this->download_git(url, out_path);
+    else if (hasEnding(url, ".tar.gz"))
+        return this->download_tar(url, out_path);
+    return false;
+}
 
-    bool installSuccess = system(("cd " + extracted_path + " && " + makepkg_bin + " -si").c_str()) == 0;
+// this relies on main.cpp sanitizing the path itself
+bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
+    string makepkg_bin = this->config.getConfigValue<string>("general.makepkgBin", "/bin/makepkg");
+
+    extracted_path.erase(sanitize(extracted_path.begin(), extracted_path.end()), extracted_path.end());
+    bool installSuccess = chdir(extracted_path) == 0 && execlp(makepkg_bin, makepkg_bin, "-si".c_str()) == 0;
     if (!installSuccess)
 	    return false;
 
@@ -80,18 +121,24 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, std::string extracted_path) {
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_number(const std::string& s) {
+bool is_number(const string& s) {
     return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
-std::optional<TaurPkg_t> getPkg(rapidjson::Document& doc) {
+string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
+    if (returnGit)
+        return ("https://aur.archlinux.org/" + string(pkgJson["Name"].GetString()) + ".git");
+    else
+	    return ("https://aur.archlinux.org/" + string(pkgJson["URLPath"].GetString()));
+}
+
+std::optional<TaurPkg_t> getPkg(rapidjson::Document& doc, bool useGit = false) {
     int resultcount = doc["resultcount"].GetInt();
     if (resultcount == 1) {
-	std::string url = ("https://aur.archlinux.org" + std::string(doc["results"][0]["URLPath"].GetString()));
-	return (TaurPkg_t) {std::string(doc["results"][0]["Name"].GetString()), std::string(doc["results"][0]["Version"].GetString()), url};
+	    return (TaurPkg_t) {string(doc["results"][0]["Name"].GetString()), string(doc["results"][0]["Version"].GetString()), getUrl(doc["results"][0], useGit)};
     } else if (resultcount > 1) {
         std::cout << "TabAUR has found multiple packages relating to your search query, Please pick one." << std::endl;
-        std::string input;
+        string input;
         do {
             if (!input.empty())
                 std::cout << "Invalid input!" << std::endl;
@@ -105,10 +152,10 @@ std::optional<TaurPkg_t> getPkg(rapidjson::Document& doc) {
 
         rapidjson::Value& selected = doc["results"][std::stoi(input)];
         //if (selected["URL"].IsString())
-        //	return (std::string(selected["URL"].GetString()) + ".git");
+        //	return (string(selected["URL"].GetString()) + ".git");
         //else
-	std::string url = ("https://aur.archlinux.org" + std::string(selected["URLPath"].GetString()));
-	return (TaurPkg_t) { std::string(selected["Name"].GetString()), std::string(selected["Version"].GetString()), url };
+    	string url = getUrl(selected, useGit);
+    	return (TaurPkg_t) { string(selected["Name"].GetString()), string(selected["Version"].GetString()), url };
     }
 
     return {};
@@ -116,12 +163,12 @@ std::optional<TaurPkg_t> getPkg(rapidjson::Document& doc) {
 
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-std::optional<TaurPkg_t> TaurBackend::search_aur(std::string query, int* status) {
+std::optional<TaurPkg_t> TaurBackend::search_aur(string query, int* status, bool useGit) {
     // link to AUR API
     cpr::Url            url(("https://aur.archlinux.org/rpc/v5/search/" + cpr::util::urlEncode(query) + "?by=name"));
     cpr::Response       r = cpr::Get(url);
 
-    std::string         raw_text_response = r.text;
+    string         raw_text_response = r.text;
 
     rapidjson::Document json_response;
     json_response.Parse(raw_text_response.c_str());
@@ -138,5 +185,5 @@ std::optional<TaurPkg_t> TaurBackend::search_aur(std::string query, int* status)
 
     *status = 0;
 
-    return getPkg(json_response);
+    return getPkg(json_response, useGit);
 }

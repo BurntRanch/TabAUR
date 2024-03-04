@@ -4,6 +4,7 @@
 #include <git2.h>
 #include <iostream>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
@@ -17,9 +18,10 @@ class TaurBackend {
     Config config;
     TaurBackend(Config cfg, std::string dbLocation);
     ~TaurBackend();
-    git_repository* clone_git(std::string url, std::string out_path, int* status);
-    std::optional<TaurPkg_t>     search_aur(std::string query, int* status);
+    std::optional<TaurPkg_t>     search_aur(std::string query, int* status, bool useGit = false);
     bool            download_tar(std::string url, std::string out_path);
+    bool            download_git(std::string url, std::string out_path);
+    bool            download_pkg(std::string url, std::string out_path);
     bool            install_pkg(TaurPkg_t pkg, std::string extracted_path);
 
   private:
