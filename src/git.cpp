@@ -92,9 +92,9 @@ bool TaurBackend::download_tar(string url, string out_path) {
     bool isNested = out_path.find("/") != -1;
 
     if (isNested) {
-    	return chdir(out_path.c_str()) == 0 && execlp("tar", "tar", "-xf", out_path.substr(out_path.rfind("/") + 1).c_str()) == 0;
+    	return chdir(out_path.c_str()) == 0 && execlp("tar", "tar", "-xf", out_path.substr(out_path.rfind("/") + 1).c_str(), NULL) == 0;
     } else
-    	return execlp("tar", "tar", "-xf", out_path.c_str()) == 0;
+    	return execlp("tar", "tar", "-xf", out_path.c_str(), NULL) == 0;
 
 }
 
@@ -111,8 +111,9 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
     string makepkg_bin = this->config.getConfigValue<string>("general.makepkgBin", "/bin/makepkg");
 
     extracted_path.erase(sanitize(extracted_path.begin(), extracted_path.end()), extracted_path.end());
-    bool installSuccess = chdir(extracted_path.c_str()) == 0 && execlp(makepkg_bin.c_str(), makepkg_bin.c_str(), "-si") == 0;
-    if (!installSuccess)
+    bool chdirSuccess = chdir(extracted_path.c_str()) == 0;
+    int execSuccess = execlp(makepkg_bin.c_str(), makepkg_bin.c_str(), "-si", NULL);
+    if (!(chdirSuccess && execSuccess == 0))
 	    return false;
 
     this->db.addPkg(pkg);
