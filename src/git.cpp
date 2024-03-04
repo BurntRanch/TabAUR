@@ -111,7 +111,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
     string makepkg_bin = this->config.getConfigValue<string>("general.makepkgBin", "/bin/makepkg");
 
     extracted_path.erase(sanitize(extracted_path.begin(), extracted_path.end()), extracted_path.end());
-    bool installSuccess = chdir(extracted_path.c_str()) == 0 && execlp(makepkg_bin, makepkg_bin, "-si".c_str()) == 0;
+    bool installSuccess = chdir(extracted_path.c_str()) == 0 && execlp(makepkg_bin.c_str(), makepkg_bin.c_str(), "-si") == 0;
     if (!installSuccess)
 	    return false;
 
