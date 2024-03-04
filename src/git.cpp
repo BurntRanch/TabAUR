@@ -92,9 +92,9 @@ bool TaurBackend::download_tar(string url, string out_path) {
 
     out_path.erase(sanitize(out_path.begin(), out_path.end()), out_path.end());
     if (isNested)
-    	return system(("tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\"").c_str()) == 0;
+    	return system((string("tar -xf \"") + out_path.substr(out_path.rfind("/") + 1) + string("\"")).c_str()) == 0;
     else
-    	return system(("tar -xf \"" + out_path.c_str() + "\"") == 0;
+    	return system((string("tar -xf \"") + out_path + string("\"")).c_str()) == 0;
 
 }
 
@@ -113,7 +113,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
     extracted_path.erase(sanitize(extracted_path.begin(), extracted_path.end()), extracted_path.end());
     makepkg_bin.erase(sanitize(makepkg_bin.begin(), makepkg_bin.end()), makepkg_bin.end());
 
-    bool installSuccess = system(("cd \"" + extracted_path + "\" && " + makepkg_bin + " -si").c_str()) == 0;
+    bool installSuccess = system((string("cd \"") + extracted_path + string("\" && ") + makepkg_bin + string(" -si")).c_str()) == 0;
     if (!installSuccess)
 	    return false;
 
