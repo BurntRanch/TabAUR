@@ -30,4 +30,17 @@ private:
 
 extern Config config;
 
+// we comment the default config values, just like /etc/pacman.conf
+inline const std::string defConfig = R"#([general]
+#if true(default), then it'll uses git for downloading/updating the aur repo
+#else if false, then it'll use tarballs (.tar.gz) of the aur repo
+#useGit = true
+
+[bin]
+#makepkgBin = "makepkg" 
+
+[storage]
+#cacheDir = "" 
+)#";
+
 #endif
