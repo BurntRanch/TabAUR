@@ -115,7 +115,7 @@ bool TaurBackend::remove_pkg(string pkgName) {
 
     pkgName.erase(sanitize(pkgName.begin(), pkgName.end()), pkgName.end());
 
-    bool removeSuccess = system(("sudo pacman -R $(pacman -Qsq \"" + pkgName + "*\")").c_str()) == 0;
+    bool removeSuccess = system(("sudo pacman -Rns $(pacman -Qsq \"" + pkgName + "*\")").c_str()) == 0;
     if (!removeSuccess)
         return false;
 

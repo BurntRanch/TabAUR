@@ -26,7 +26,6 @@ class TaurBackend {
     bool            download_pkg(string url, string out_path);
     bool            remove_pkg(string name);
     bool            install_pkg(TaurPkg_t pkg, string extracted_path);
-
   private:
     git_clone_options git_opt;
     int               git2_inits;

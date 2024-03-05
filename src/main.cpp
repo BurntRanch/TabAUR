@@ -75,13 +75,11 @@ void print_error(const git_error* error) {
     cerr << "Got an error: " << error->message << endl;
 }
 
-bool installPkg(string pkgName, TaurBackend *taurBackend) { 
-    TaurBackend backend = *taurBackend;
-
+bool installPkg(string pkgName, TaurBackend *backend) { 
     int         	status   = 0;
     string      	cacheDir = config.getCacheDir();
     bool            useGit   = config.getConfigValue<bool>("general.useGit", false);
-    optional<TaurPkg_t>  pkg      = backend.search_aur(pkgName, &status, useGit);
+    optional<TaurPkg_t>  pkg      = backend->search_aur(pkgName, &status, useGit);
 
     if (status != 0 || !pkg) {
         cerr << "An error has occurred and we could not search for your package." << endl;
@@ -95,7 +93,7 @@ bool installPkg(string pkgName, TaurBackend *taurBackend) {
     if (useGit)
         filename = filename.substr(0, filename.rfind(".git"));
 
-    bool stat = backend.download_pkg(url, filename);
+    bool stat = backend->download_pkg(url, filename);
 
     if (!stat) {
         cerr << "An error has occurred and we could not download your package." << endl;
@@ -103,9 +101,9 @@ bool installPkg(string pkgName, TaurBackend *taurBackend) {
     }
 
     if (useGit)
-        stat = backend.install_pkg(pkg.value(), filename.substr(0, filename.rfind(".git")));
+        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".git")));
     else
-        stat = backend.install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")));
+        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")));
 
     if (!stat) {
         cout << "Building/Installing your package has failed." << endl;
@@ -115,10 +113,8 @@ bool installPkg(string pkgName, TaurBackend *taurBackend) {
     return true;
 }
 
-bool removePkg(string pkgName, TaurBackend *taurBackend) {
-    TaurBackend backend = *taurBackend;
-
-    return backend.remove_pkg(pkgName);
+bool removePkg(string pkgName, TaurBackend *backend) {
+    return backend->remove_pkg(pkgName);
 }
 
 // main

@@ -89,11 +89,6 @@ void DB::removePkg(TaurPkg_t pkg) {
     if (oe) {
         int e = oe.value();
 
-        vector<string> newDB;
-        for (size_t i = 0; i < this->dbRecords.size(); i++)
-            if (i != e)
-                newDB.push_back(this->dbRecords[i]);
-
-        this->dbRecords = newDB;
+        this->dbRecords.erase(this->dbRecords.begin() + e);
     }
 }
