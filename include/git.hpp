@@ -13,16 +13,19 @@
 #include <db.hpp>
 #include <cpr/cpr.h>
 
+using std::string;
+
 class TaurBackend {
   public:
     Config config;
-    TaurBackend(Config cfg, std::string dbLocation);
+    TaurBackend(Config cfg, string dbLocation);
     ~TaurBackend();
-    std::optional<TaurPkg_t>     search_aur(std::string query, int* status, bool useGit = false);
-    bool            download_tar(std::string url, std::string out_path);
-    bool            download_git(std::string url, std::string out_path);
-    bool            download_pkg(std::string url, std::string out_path);
-    bool            install_pkg(TaurPkg_t pkg, std::string extracted_path);
+    std::optional<TaurPkg_t>     search_aur(string query, int* status, bool useGit = false);
+    bool            download_tar(string url, string out_path);
+    bool            download_git(string url, string out_path);
+    bool            download_pkg(string url, string out_path);
+    bool            remove_pkg(string name);
+    bool            install_pkg(TaurPkg_t pkg, string extracted_path);
 
   private:
     git_clone_options git_opt;

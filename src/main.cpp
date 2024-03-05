@@ -9,6 +9,20 @@ using std::cout;
 using std::cin;
 using std::endl;
 using std::filesystem::path;
+using std::vector;
+using std::string;
+using std::cerr;
+
+enum OperationType {
+    OP_INSTALL,
+    OP_UPDATE_ALL,
+    OP_REMOVE,
+};
+
+struct Operation_t {
+    OperationType op;
+    vector<string> args;
+};
 
 Config config;
 
@@ -19,61 +33,74 @@ bool verify_arguments(int c, char** args) {
     return true;
 }
 
+bool parse_arguments(int c, char** args, Operation_t *operation) {
+    if (c <= 1)
+        return false;
+
+    for (size_t i = 1; i < c; i++) {
+        string arg(args[i]);
+
+        std::transform(arg.begin(), arg.end(), arg.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+
+        if (arg == "-s")
+            operation->op = OP_INSTALL;
+        else if (arg == "-syu") {
+            operation->op = OP_UPDATE_ALL;
+            return true;
+        } else if (arg == "-r")
+            operation->op = OP_REMOVE;
+        // unknown
+        else if (hasStart(arg, "-")) {
+            std::cerr << "Unknown argument: " << arg << std::endl;
+            return false;
+        } else {
+            operation->args.push_back(arg);
+        }
+    }
+
+    // make sure we captured atleast one argument for the following operations, OP_UPDATE_ALL doesn't care about arguments.
+    if (operation->args.size() < 1 && (operation->op == OP_INSTALL || operation->op == OP_REMOVE))
+        return false;
+
+    return true;
+}
+
 void print_help() {
     cout << "TabAUR Launch Options:" << endl;
-    cout << "\ttaur <AUR Search Query>" << endl;
+    cout << "\ttaur <pacman-like arguments> <parameters to the operation>" << endl;
 }
 
 void print_error(const git_error* error) {
-    cout << "Got an error: " << error->message << endl;
+    cerr << "Got an error: " << error->message << endl;
 }
 
-// main
-int main(int argc, char* argv[]) {
-    if (!verify_arguments(argc, argv)) {
-        cout << "Invalid arguments!" << endl << endl;
-        print_help();
-        return -1;
-    }
+bool installPkg(string pkgName, TaurBackend *taurBackend) { 
+    TaurBackend backend = *taurBackend;
 
-    TaurBackend backend(config, config.getConfigDir());
-    
     int         	status   = 0;
     string      	cacheDir = config.getCacheDir();
     bool            useGit   = config.getConfigValue<bool>("general.useGit", false);
-    optional<TaurPkg_t>  pkg      = backend.search_aur(string(argv[1]), &status, useGit);
+    optional<TaurPkg_t>  pkg      = backend.search_aur(pkgName, &status, useGit);
 
-    if (status != 0) {
-        cout << "An error has occurred and we could not search for your package." << endl;
+    if (status != 0 || !pkg) {
+        cerr << "An error has occurred and we could not search for your package." << endl;
         return -1;
     }
 
-    string url;
-    if (pkg)
-	url = pkg.value().url;
+    string url = pkg.value().url;
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
     if (useGit)
         filename = filename.substr(0, filename.rfind(".git"));
 
-    /*if (hasEnding(url, ".git")) {
-		status = 0;
-		// get the end of the URL, in the function we also remove the ".git" at the end.
-		backend.taur_clone_git(url, filename.substr(0, filename.find(".")), &status);
-
-		if (status != 0) {
-			print_error(git_error_last());
-			return -1;
-		}
-	} else {*/
     bool stat = backend.download_pkg(url, filename);
 
     if (!stat) {
-        cout << "An error has occurred and we could not download your package." << endl;
-        return -1;
+        cerr << "An error has occurred and we could not download your package." << endl;
+        return false;
     }
-    //}
 
     if (useGit)
         stat = backend.install_pkg(pkg.value(), filename.substr(0, filename.rfind(".git")));
@@ -82,8 +109,38 @@ int main(int argc, char* argv[]) {
 
     if (!stat) {
         cout << "Building/Installing your package has failed." << endl;
-        return -1;
+        return false;
     }
 
-    return 0;
+    return true;
+}
+
+bool removePkg(string pkgName, TaurBackend *taurBackend) {
+    TaurBackend backend = *taurBackend;
+
+    return backend.remove_pkg(pkgName);
+}
+
+// main
+int main(int argc, char* argv[]) {
+    Operation_t operation = {OP_INSTALL, vector<string>()};
+    if (!parse_arguments(argc, argv, &operation)) {
+        cerr << "Invalid arguments!" << endl << endl;
+        print_help();
+        return 1;
+    }
+
+    TaurBackend backend(config, config.getConfigDir());
+
+    switch (operation.op) {
+    case OP_INSTALL:
+        return (installPkg(operation.args[0], &backend)) ? 0 : 1;
+    case OP_REMOVE:
+        return (removePkg(operation.args[0], &backend)) ? 0 : 1;
+    case OP_UPDATE_ALL:
+    // TODO: same thing
+        return 2;
+    }
+
+    return 3;
 }

@@ -7,6 +7,12 @@ bool hasEnding(std::string const& fullString, std::string const& ending) {
     return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
 }
 
+bool hasStart(std::string const& fullString, std::string const& start) {
+    if (start.length() > fullString.length())
+        return false;
+    return (0 == fullString.compare(0, start.length(), start));
+}
+
 std::vector<std::string> split(std::string text, char delim) {
     std::string line;
     std::vector<std::string> vec;

@@ -35,7 +35,6 @@ bool clone_git(string url, string out_path) {
 bool pull_git(string path) {
     git_repository* repo;
     int status           = git_repository_open(&repo, path.c_str());
-
     if (status != 0)
         return false;
 
@@ -88,6 +87,7 @@ bool TaurBackend::download_tar(string url, string out_path) {
 
     out.close();
 
+    // if this is in a directory, it will change to that directory first.
     bool isNested = out_path.find("/") != -1;
 
     out_path.erase(sanitize(out_path.begin(), out_path.end()), out_path.end());
@@ -104,6 +104,24 @@ bool TaurBackend::download_pkg(string url, string out_path) {
     else if (hasEnding(url, ".tar.gz"))
         return this->download_tar(url, out_path);
     return false;
+}
+
+bool TaurBackend::remove_pkg(string pkgName) {
+    optional<TaurPkg_t> pkg = this->db.getPkg(pkgName);
+    if (!pkg) {
+        std::cerr << "Failed to find your package " << pkgName << " in the TabAUR DB" << std::endl; 
+        return false;
+    }
+
+    pkgName.erase(sanitize(pkgName.begin(), pkgName.end()), pkgName.end());
+
+    bool removeSuccess = system(("sudo pacman -R $(pacman -Qsq \"" + pkgName + "*\")").c_str()) == 0;
+    if (!removeSuccess)
+        return false;
+
+    this->db.removePkg(pkg.value());
+
+    return true;
 }
 
 bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {

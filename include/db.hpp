@@ -27,6 +27,7 @@ class DB {
         optional<int> findPkg(string name);
         optional<TaurPkg_t> getPkg(string name);
         void addPkg(TaurPkg_t pkg);
+        void removePkg(TaurPkg_t pkg);
     private:
         string fileName;
         vector<string> dbRecords;

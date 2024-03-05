@@ -52,7 +52,7 @@ DB::~DB() {
 
 optional<int> DB::findPkg(string name) {
     for (size_t i = 0; i < this->dbRecords.size(); i++) {
-        vector<string> recordDetails = split(this->dbRecords[i], '\1');
+        vector<string> recordDetails = split(this->dbRecords[i], PADDING);
         if (recordDetails[0] == name)
             return i;
     }
@@ -64,7 +64,7 @@ optional<TaurPkg_t> DB::getPkg(string name) {
     optional<int> oi = findPkg(name);
     if (oi) {
         int i = oi.value();
-        vector<string> recordDetails = split(this->dbRecords[i], '\1');
+        vector<string> recordDetails = split(this->dbRecords[i], PADDING);
         return (TaurPkg_t) {recordDetails[0], recordDetails[1], recordDetails[2]};
     }
 
@@ -81,4 +81,19 @@ void DB::addPkg(TaurPkg_t pkg) {
     }
 
     this->dbRecords.push_back(pkg.name + PADDING + pkg.version + PADDING + pkg.url);
+}
+
+void DB::removePkg(TaurPkg_t pkg) {
+    optional<int> oe = findPkg(pkg.name);
+
+    if (oe) {
+        int e = oe.value();
+
+        vector<string> newDB;
+        for (size_t i = 0; i < this->dbRecords.size(); i++)
+            if (i != e)
+                newDB.push_back(this->dbRecords[i]);
+
+        this->dbRecords = newDB;
+    }
 }
