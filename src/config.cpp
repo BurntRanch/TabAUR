@@ -4,6 +4,7 @@
 #include <config.hpp>
 #include <strutil.hpp>
 #include <filesystem>
+#include <fstream>
 
 using std::string;
 using std::getenv;
@@ -11,13 +12,18 @@ using std::ofstream;
 
 Config::Config() {
     string configDir = this->getConfigDir();
+    string filename = configDir + "/config.toml";
     if (!std::filesystem::exists(configDir)) {
         std::cout << "TabAUR config folder was not found, Creating folder at " << configDir << "!" << std::endl;
         std::filesystem::create_directory(configDir);
-        ofstream configFile(configDir + "/config.toml");
+    }
+    if(!std::filesystem::exists(filename)) {
+        // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
+        std::cout << "config.toml not found, generating new one" << std::endl;
+        ofstream configFile(filename, std::ios::trunc);
+        configFile.write(defConfig.c_str(), defConfig.size());
         configFile.close();
     }
-    string filename = configDir + "/config.toml";
     loadConfigFile(filename);
     
     string cacheDir = this->getCacheDir();
