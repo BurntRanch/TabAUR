@@ -34,8 +34,10 @@ bool verify_arguments(int c, char** args) {
 }
 
 bool parse_arguments(int c, char** args, Operation_t *operation) {
-    if (c <= 1)
-        return false;
+    if (c <= 1) {
+        operation->op = OP_UPDATE_ALL;
+        return true;
+    }
 
     for (size_t i = 1; i < c; i++) {
         string arg(args[i]);
@@ -68,7 +70,8 @@ bool parse_arguments(int c, char** args, Operation_t *operation) {
 
 void print_help() {
     cout << "TabAUR Launch Options:" << endl;
-    cout << "\ttaur <pacman-like arguments> <parameters to the operation>" << endl;
+    cout << "\ttaur <pacman-like arguments> <parameters to the operation>" << endl << endl;
+    cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl;
 }
 
 void print_error(const git_error* error) {
@@ -121,7 +124,6 @@ bool removePkg(string pkgName, TaurBackend *backend) {
 int main(int argc, char* argv[]) {
     Operation_t operation = {OP_INSTALL, vector<string>()};
     if (!parse_arguments(argc, argv, &operation)) {
-        cerr << "Invalid arguments!" << endl << endl;
         print_help();
         return 1;
     }
