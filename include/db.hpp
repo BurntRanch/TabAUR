@@ -24,10 +24,11 @@ class DB {
     public:
         DB(string name);
         ~DB();
-        optional<int> findPkg(string name);
-        optional<TaurPkg_t> getPkg(string name);
-        void addPkg(TaurPkg_t pkg);
-        void removePkg(TaurPkg_t pkg);
+        optional<int> find_pkg(string name);
+        optional<TaurPkg_t> get_pkg(string name);
+        void add_pkg(TaurPkg_t pkg);
+        void remove_pkg(TaurPkg_t pkg);
+        vector<TaurPkg_t> get_all_pkgs();
     private:
         string fileName;
         vector<string> dbRecords;

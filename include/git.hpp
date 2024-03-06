@@ -14,6 +14,7 @@
 #include <cpr/cpr.h>
 
 using std::string;
+using std::filesystem::path;
 
 class TaurBackend {
   public:
@@ -24,8 +25,10 @@ class TaurBackend {
     bool            download_tar(string url, string out_path);
     bool            download_git(string url, string out_path);
     bool            download_pkg(string url, string out_path);
+    vector<TaurPkg_t> fetch_pkgs(vector<TaurPkg_t> pkgs);
     bool            remove_pkg(string name);
     bool            install_pkg(TaurPkg_t pkg, string extracted_path);
+    bool            update_all_pkgs(path cacheDir);
   private:
     git_clone_options git_opt;
     int               git2_inits;

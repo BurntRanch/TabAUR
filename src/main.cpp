@@ -120,6 +120,12 @@ bool removePkg(string pkgName, TaurBackend *backend) {
     return backend->remove_pkg(pkgName);
 }
 
+bool updateAll(TaurBackend *backend) {
+    string          cacheDir = config.getCacheDir();
+
+    return backend->update_all_pkgs(path(cacheDir));
+}
+
 // main
 int main(int argc, char* argv[]) {
     Operation_t operation = {OP_INSTALL, vector<string>()};
@@ -136,8 +142,7 @@ int main(int argc, char* argv[]) {
     case OP_REMOVE:
         return (removePkg(operation.args[0], &backend)) ? 0 : 1;
     case OP_UPDATE_ALL:
-    // TODO: same thing
-        return 2;
+        return (updateAll(&backend)) ? 0 : 1;
     }
 
     return 3;

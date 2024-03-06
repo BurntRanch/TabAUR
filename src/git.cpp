@@ -106,8 +106,45 @@ bool TaurBackend::download_pkg(string url, string out_path) {
     return false;
 }
 
+string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
+    if (returnGit)
+        return ("https://aur.archlinux.org/" + string(pkgJson["Name"].GetString()) + ".git");
+    else
+	    return ("https://aur.archlinux.org/" + string(pkgJson["URLPath"].GetString()));
+}
+
+TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
+    return (TaurPkg_t) { pkgJson["Name"].GetString(), pkgJson["Version"].GetString(), getUrl(pkgJson, returnGit) };
+}
+
+vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<TaurPkg_t> pkgs) {
+    if (pkgs.empty())
+        return vector<TaurPkg_t>();
+
+    std::string varName = cpr::util::urlEncode("arg[]");
+    std::string  urlStr = "https://aur.archlinux.org/rpc/v5/info?" + varName + "=" + cpr::util::urlEncode(pkgs[0].name);
+
+    for (int i = 1; i < pkgs.size(); i++)
+        urlStr += ("&" + varName + "=" + cpr::util::urlEncode(pkgs[i].name));
+
+    cpr::Url        url = cpr::Url(urlStr);
+    cpr::Response  resp = cpr::Get(url);
+
+    if (resp.status_code != 200)
+        return vector<TaurPkg_t>();
+
+    rapidjson::Document json;
+    json.Parse(resp.text.c_str());
+
+    vector<TaurPkg_t> out;
+    for (int i = 0; i < json["resultcount"].GetInt(); i++)
+        out.push_back(parsePkg(json["results"][i]));
+
+    return out;
+}
+
 bool TaurBackend::remove_pkg(string pkgName) {
-    optional<TaurPkg_t> pkg = this->db.getPkg(pkgName);
+    optional<TaurPkg_t> pkg = this->db.get_pkg(pkgName);
     if (!pkg) {
         std::cerr << "Failed to find your package " << pkgName << " in the TabAUR DB" << std::endl; 
         return false;
@@ -119,7 +156,7 @@ bool TaurBackend::remove_pkg(string pkgName) {
     if (!removeSuccess)
         return false;
 
-    this->db.removePkg(pkg.value());
+    this->db.remove_pkg(pkg.value());
 
     return true;
 }
@@ -131,11 +168,60 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
     extracted_path.erase(sanitize(extracted_path.begin(), extracted_path.end()), extracted_path.end());
     makepkg_bin.erase(sanitize(makepkg_bin.begin(), makepkg_bin.end()), makepkg_bin.end());
 
-    bool installSuccess = system((string("cd \"") + extracted_path + string("\" && ") + makepkg_bin + string(" -si")).c_str()) == 0;
+    bool installSuccess = system(("cd \"" + extracted_path + "\" && " + makepkg_bin + " -si").c_str()) == 0;
     if (!installSuccess)
 	    return false;
 
-    this->db.addPkg(pkg);
+    this->db.add_pkg(pkg);
+
+    return true;
+}
+
+bool TaurBackend::update_all_pkgs(path cacheDir) {
+    vector<TaurPkg_t> pkgs = this->db.get_all_pkgs();
+    vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgs);
+
+    int updatedPkgs = 0;
+
+    if (onlinePkgs.size() != pkgs.size())
+        std::cout << "Couldn't get all packages! Still trying to update the others." << std::endl;
+
+    for (size_t i = 0; i < onlinePkgs.size(); i++) {
+        int pkgIndex;
+        bool found = false;
+
+        for (pkgIndex = 0; pkgIndex < pkgs.size(); pkgIndex++) {
+            if (pkgs[pkgIndex].name == onlinePkgs[i].name) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            std::cout << "We couldn't find " << onlinePkgs[i].name << " in the local pkg database, This shouldn't happen." << std::endl;
+            continue;
+        }
+
+        if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
+            continue;
+        }
+
+        std::cout << "Upgrading package " << pkgs[pkgIndex].name << " from version " << pkgs[pkgIndex].version << " to version " << onlinePkgs[i].version << "!" << std::endl;
+        
+        bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, cacheDir / onlinePkgs[i].name);
+
+        if (!downloadSuccess)
+            return false;
+
+        bool installSuccess = this->install_pkg(onlinePkgs[i], cacheDir / onlinePkgs[i].name);
+
+        if (!installSuccess)
+            return false;
+
+        updatedPkgs++;
+    }
+
+    std::cout << "Upgraded " << updatedPkgs << " packages." << std::endl;
 
     return true;
 }
@@ -143,13 +229,6 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
 bool is_number(const string& s) {
     return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
-}
-
-string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
-    if (returnGit)
-        return ("https://aur.archlinux.org/" + string(pkgJson["Name"].GetString()) + ".git");
-    else
-	    return ("https://aur.archlinux.org/" + string(pkgJson["URLPath"].GetString()));
 }
 
 std::optional<TaurPkg_t> getPkg(rapidjson::Document& doc, bool useGit = false) {

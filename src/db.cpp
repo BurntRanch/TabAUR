@@ -50,7 +50,7 @@ DB::~DB() {
     file.close();
 }
 
-optional<int> DB::findPkg(string name) {
+optional<int> DB::find_pkg(string name) {
     for (size_t i = 0; i < this->dbRecords.size(); i++) {
         vector<string> recordDetails = split(this->dbRecords[i], PADDING);
         if (recordDetails[0] == name)
@@ -60,21 +60,25 @@ optional<int> DB::findPkg(string name) {
     return {};
 }
 
-optional<TaurPkg_t> DB::getPkg(string name) {
-    optional<int> oi = findPkg(name);
+TaurPkg_t parseDBRecord(string record) {
+    vector<string> recordDetails = split(record, PADDING);
+    return (TaurPkg_t) { recordDetails[0], recordDetails[1], recordDetails[2] };
+}
+
+optional<TaurPkg_t> DB::get_pkg(string name) {
+    optional<int> oi = this->find_pkg(name);
     if (oi) {
         int i = oi.value();
-        vector<string> recordDetails = split(this->dbRecords[i], PADDING);
-        return (TaurPkg_t) {recordDetails[0], recordDetails[1], recordDetails[2]};
+        return parseDBRecord(this->dbRecords[i]);
     }
 
     return {};
 }
 
 // Adds/Updates packages
-void DB::addPkg(TaurPkg_t pkg) {
-    if (getPkg(pkg.name)) {
-        int i = findPkg(pkg.name).value();
+void DB::add_pkg(TaurPkg_t pkg) {
+    if (this->get_pkg(pkg.name)) {
+        int i = this->find_pkg(pkg.name).value();
         this->dbRecords[i] = pkg.name + PADDING + pkg.version + PADDING + pkg.url;
 
         return;
@@ -83,12 +87,23 @@ void DB::addPkg(TaurPkg_t pkg) {
     this->dbRecords.push_back(pkg.name + PADDING + pkg.version + PADDING + pkg.url);
 }
 
-void DB::removePkg(TaurPkg_t pkg) {
-    optional<int> oe = findPkg(pkg.name);
+void DB::remove_pkg(TaurPkg_t pkg) {
+    optional<int> oe = this->find_pkg(pkg.name);
 
     if (oe) {
         int e = oe.value();
 
         this->dbRecords.erase(this->dbRecords.begin() + e);
     }
+}
+
+vector<TaurPkg_t> DB::get_all_pkgs() {
+    vector<TaurPkg_t> out;
+    for (size_t i = 0; i < this->dbRecords.size(); i++) {
+        if (this->dbRecords[i].length() <= 5)
+            continue;
+        out.push_back(parseDBRecord(this->dbRecords[i]));
+    }
+
+    return out;
 }
