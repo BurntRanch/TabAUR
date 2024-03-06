@@ -90,7 +90,7 @@ bool TaurBackend::download_tar(string url, string out_path) {
     // if this is in a directory, it will change to that directory first.
     bool isNested = out_path.find("/") != -1;
 
-    out_path.erase(sanitize(out_path.begin(), out_path.end()), out_path.end());
+    // out_path.erase(sanitize(out_path.begin(), out_path.end()), out_path.end());
     if (isNested)
     	return system(("cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\"").c_str()) == 0;
     else
