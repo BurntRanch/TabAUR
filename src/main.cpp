@@ -1,9 +1,8 @@
-#include <iostream>
-#include <ostream>
 #include <stdbool.h>
 #include <git.hpp>
 #include <config.hpp>
 #include <strutil.hpp>
+#include <args.hpp>
 
 using std::cout;
 using std::cin;
@@ -13,18 +12,8 @@ using std::vector;
 using std::string;
 using std::cerr;
 
-enum OperationType {
-    OP_INSTALL,
-    OP_UPDATE_ALL,
-    OP_REMOVE,
-};
-
-struct Operation_t {
-    OperationType op;
-    vector<string> args;
-};
-
 Config config;
+struct Operation_t* operation;
 
 // Verifies the argument count and validity.
 bool verify_arguments(int c, char** args) {
@@ -33,7 +22,7 @@ bool verify_arguments(int c, char** args) {
     return true;
 }
 
-bool parse_arguments(int c, char** args, Operation_t *operation) {
+/*bool parse_arguments(int c, char** args, Operation_t *operation) {
     if (c <= 1) {
         operation->op = OP_UPDATE_ALL;
         return true;
@@ -66,9 +55,9 @@ bool parse_arguments(int c, char** args, Operation_t *operation) {
         return false;
 
     return true;
-}
+}*/
 
-void print_help() {
+void usage() {
     cout << "TabAUR Launch Options:" << endl;
     cout << "\ttaur <pacman-like arguments> <parameters to the operation>" << endl << endl;
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl;
@@ -126,24 +115,67 @@ bool updateAll(TaurBackend *backend) {
     return backend->update_all_pkgs(path(cacheDir));
 }
 
+int parsearg_op(int opt){
+    switch(opt){
+        case 'S':
+            operation->op = OP_SYNC; break;
+        case 'h':
+            usage(); break;
+        case 'V':
+            std::cout << "TabAUR version 0.0.1" << std::endl; break;
+        default:
+            return 1;
+    }
+    return 0;
+}
+
+int parseargs(int argc, char* argv[]){
+    int opt;
+    int option_index = 0;
+	int result;
+	const char *optstring = "ShV";
+	static const struct option opts[] = 
+    {
+        {"sync",    no_argument, 0, 'S'},
+        {"help",    no_argument, 0, 'h'},
+        {"version", no_argument, 0, 'V'},
+        {0,0,0,0}
+    };
+
+    /* parse operation */
+	while((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
+		if(opt == 0) {
+			continue;
+		} else if(opt == '?') {
+			for (int i = 0; i < argc; i++){
+                operation->args.push_back(argv[i]);
+                cout << operation->args[i];
+            }
+			return 1;
+		}
+		parsearg_op(opt);
+	}
+    return 0;
+}
 // main
 int main(int argc, char* argv[]) {
-    Operation_t operation = {OP_INSTALL, vector<string>()};
-    if (!parse_arguments(argc, argv, &operation)) {
+    //Operation_t operation = {OP_INSTALL, vector<string>()};
+    /*if (!parse_arguments(argc, argv, &operation)) {
         print_help();
         return 1;
-    }
+    }*/
 
     TaurBackend backend(config, config.getConfigDir());
 
-    switch (operation.op) {
+    parseargs(argc, argv);
+    /*switch (operation.op) {
     case OP_INSTALL:
         return (installPkg(operation.args[0], &backend)) ? 0 : 1;
     case OP_REMOVE:
         return (removePkg(operation.args[0], &backend)) ? 0 : 1;
     case OP_UPDATE_ALL:
         return (updateAll(&backend)) ? 0 : 1;
-    }
+    }*/
 
     return 3;
 }
