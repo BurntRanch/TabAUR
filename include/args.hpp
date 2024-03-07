@@ -20,7 +20,7 @@ struct Operation_t {
     std::vector<std::string> args;
 };
 
-extern struct Operation_t* operation;
+extern struct Operation_t operation;
 
 int parseargs(int argc, char* argv[]);
 int parsearg_op(int opt);

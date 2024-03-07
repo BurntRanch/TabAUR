@@ -13,7 +13,7 @@ using std::string;
 using std::cerr;
 
 Config config;
-struct Operation_t* operation;
+struct Operation_t operation;
 
 // Verifies the argument count and validity.
 bool verify_arguments(int c, char** args) {
@@ -118,7 +118,7 @@ bool updateAll(TaurBackend *backend) {
 int parsearg_op(int opt){
     switch(opt){
         case 'S':
-            operation->op = OP_SYNC; break;
+            operation.op = OP_SYNC; break;
         case 'h':
             usage(); break;
         case 'V':
@@ -147,13 +147,14 @@ int parseargs(int argc, char* argv[]){
 		if(opt == 0) {
 			continue;
 		} else if(opt == '?') {
-			for (int i = 0; i < argc; i++){
-                operation->args.push_back(argv[i]);
-                cout << operation->args[i];
-            }
 			return 1;
 		}
 		parsearg_op(opt);
+        for (int i = 0; i < argc; i++)
+                operation.args.push_back(argv[i]);
+            for (const auto& str : operation.args)
+                cout << str << " ";
+
 	}
     return 0;
 }
@@ -168,14 +169,14 @@ int main(int argc, char* argv[]) {
     TaurBackend backend(config, config.getConfigDir());
 
     parseargs(argc, argv);
-    /*switch (operation.op) {
-    case OP_INSTALL:
+    switch (operation.op) {
+    case OP_SYNC:
         return (installPkg(operation.args[0], &backend)) ? 0 : 1;
-    case OP_REMOVE:
+    /*case OP_REMOVE:
         return (removePkg(operation.args[0], &backend)) ? 0 : 1;
     case OP_UPDATE_ALL:
-        return (updateAll(&backend)) ? 0 : 1;
-    }*/
+        return (updateAll(&backend)) ? 0 : 1;*/
+    }
 
     return 3;
 }
