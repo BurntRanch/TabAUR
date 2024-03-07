@@ -21,12 +21,12 @@ jobs:
 
     - name: Install cpr
       run: |
-          git clone https://aur.archlinux.org/cpr.git
-          chown -R nobody cpr
+          git clone https://github.com/libcpr/cpr
           cd cpr
-          sudo -u nobody makepkg -s --nocheck
-          sudo -u nobody makepkg --packagelist > list
-          yes | pacman -U $(cat list)      
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCPR_BUILD_TESTS=OFF -DCPR_USE_SYSTEM_CURL=ON
+          make
+          sudo make install    
     - name: Clean
       run: make clean
 
