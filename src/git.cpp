@@ -143,6 +143,30 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<TaurPkg_t> pkgs) {
     return out;
 }
 
+// http://stackoverflow.com/questions/478898/ddg#478960
+string exec(string cmd) {
+    std::array<char, 128> buffer;
+    string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+    return result;
+}
+
+bool runRemovePkg(DB *db, TaurPkg_t pkg, string finalPackageList) {
+    bool removeSuccess = system(("sudo pacman -Rns " + finalPackageList).c_str()) == 0;
+    if (!removeSuccess)
+        return false;
+
+    db->remove_pkg(pkg);
+
+    return true;
+}
+
 bool TaurBackend::remove_pkg(string pkgName) {
     optional<TaurPkg_t> pkg = this->db.get_pkg(pkgName);
     if (!pkg) {
@@ -152,13 +176,45 @@ bool TaurBackend::remove_pkg(string pkgName) {
 
     pkgName.erase(sanitize(pkgName.begin(), pkgName.end()), pkgName.end());
 
-    bool removeSuccess = system(("sudo pacman -Rns $(pacman -Qsq \"" + pkgName + "*\")").c_str()) == 0;
-    if (!removeSuccess)
+    string packages_str = exec("pacman -Qmq | grep \"" + pkgName + "\"");
+    vector<string> packages = split(packages_str, '\n');
+
+    if (packages.empty())
         return false;
 
-    this->db.remove_pkg(pkg.value());
+    if (packages.size() == 1)
+        return runRemovePkg(&this->db, pkg.value(), packages[0]);
 
-    return true;
+    std::cout << "Choose packages to exclude from this removal, (Seperate by spaces):" << std::endl;
+    for (size_t i = 0; i < packages.size(); i++)
+        std::cout << "[" << i << "] " << packages[i] << std::endl;
+
+    string excluded;
+    std::cin >> excluded;
+
+    if (!excluded.empty()) {
+        vector<string> excludedIndexes = split(excluded, ' ');
+        for (size_t i = 0; i < excludedIndexes.size(); i++) {
+            try {
+                int excludedIndex = stoi(excludedIndexes[i]);
+
+                if (excludedIndex >= packages.size())
+                    continue;
+
+                packages.erase(packages.begin() + excludedIndex);
+            } catch (std::invalid_argument) {
+                std::cerr << "Invalid argument! Assuming no exclusion." << std::endl;
+            }
+        }
+    }
+
+    string finalPackageList = "";
+
+    for (size_t i = 0; i < packages.size(); i++) {
+        finalPackageList += packages[i] + " ";
+    }
+
+    return runRemovePkg(&this->db, pkg.value(), finalPackageList);
 }
 
 bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
@@ -224,6 +280,10 @@ bool TaurBackend::update_all_pkgs(path cacheDir) {
     std::cout << "Upgraded " << updatedPkgs << " packages." << std::endl;
 
     return true;
+}
+
+vector<TaurPkg_t> TaurBackend::get_all_local_pkgs() {
+    return this->db.get_all_pkgs();
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718

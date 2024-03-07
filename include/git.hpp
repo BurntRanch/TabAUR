@@ -12,6 +12,12 @@
 #include <config.hpp>
 #include <db.hpp>
 #include <cpr/cpr.h>
+#include <cstdio>
+#include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <array>
 
 using std::string;
 using std::filesystem::path;
@@ -29,6 +35,7 @@ class TaurBackend {
     bool            remove_pkg(string name);
     bool            install_pkg(TaurPkg_t pkg, string extracted_path);
     bool            update_all_pkgs(path cacheDir);
+    vector<TaurPkg_t> get_all_local_pkgs();
   private:
     git_clone_options git_opt;
     int               git2_inits;

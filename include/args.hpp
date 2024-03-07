@@ -8,6 +8,8 @@
 
 enum OperationType {
     OP_SYNC = 1, // when you run taur -S[args]
+    OP_REM = 2, // when you run taur -R[args]
+    OP_QUERY = 3,
 	OP_SYSUPGRADE,
     OP_PACMAN // when it's different from -S, we gonna use pacman
 };

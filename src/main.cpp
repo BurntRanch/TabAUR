@@ -118,11 +118,17 @@ bool updateAll(TaurBackend *backend) {
 int parsearg_op(int opt){
     switch(opt){
         case 'S':
-            operation.op = OP_SYNC; break;
+            operation.op = OP_SYNC; operation.args.push_back(optarg); break;
+        case 'R':
+            operation.op = OP_REM; operation.args.push_back(optarg); break;
+        case 'Q':
+            operation.op = OP_QUERY; break;
         case 'h':
             usage(); break;
         case 'V':
             std::cout << "TabAUR version 0.0.1" << std::endl; break;
+        case ':':
+            std::cerr << "Option requires an argument!" << std::endl; break;
         default:
             return 1;
     }
@@ -133,10 +139,12 @@ int parseargs(int argc, char* argv[]){
     int opt;
     int option_index = 0;
 	int result;
-	const char *optstring = "ShV";
+	const char *optstring = "S:R:QhV";
 	static const struct option opts[] = 
     {
-        {"sync",    no_argument, 0, 'S'},
+        {"sync",    required_argument, 0, 'S'},
+        {"remove",  required_argument, 0, 'R'},
+        {"query",   no_argument, 0, 'Q'},
         {"help",    no_argument, 0, 'h'},
         {"version", no_argument, 0, 'V'},
         {0,0,0,0}
@@ -150,14 +158,22 @@ int parseargs(int argc, char* argv[]){
 			return 1;
 		}
 		parsearg_op(opt);
-        for (int i = 0; i < argc; i++)
-                operation.args.push_back(argv[i]);
-            for (const auto& str : operation.args)
-                cout << str << " ";
-
 	}
+
+    if ((operation.op == OP_SYNC || operation.op == OP_REM) && operation.args.size() < 1)
+        return 1;
+
     return 0;
 }
+
+bool queryPkgs(TaurBackend *backend) {
+    vector<TaurPkg_t> pkgs = backend->get_all_local_pkgs();
+    for (size_t i = 0; i < pkgs.size(); i++)
+        cout << pkgs[i].name << " " << pkgs[i].version << endl;
+
+    return true;
+}
+
 // main
 int main(int argc, char* argv[]) {
     //Operation_t operation = {OP_INSTALL, vector<string>()};
@@ -168,14 +184,18 @@ int main(int argc, char* argv[]) {
 
     TaurBackend backend(config, config.getConfigDir());
 
-    parseargs(argc, argv);
+    if (parseargs(argc, argv))
+        return 1;
+
     switch (operation.op) {
     case OP_SYNC:
         return (installPkg(operation.args[0], &backend)) ? 0 : 1;
-    /*case OP_REMOVE:
+    case OP_REM:
         return (removePkg(operation.args[0], &backend)) ? 0 : 1;
-    case OP_UPDATE_ALL:
-        return (updateAll(&backend)) ? 0 : 1;*/
+    case OP_QUERY:
+        return (queryPkgs(&backend)) ? 0 : 1;
+    //case OP_UPDATE_ALL:
+    //    return (updateAll(&backend)) ? 0 : 1;
     }
 
     return 3;
