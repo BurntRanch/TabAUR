@@ -23,7 +23,7 @@ jobs:
       run: |
           git clone https://aur.archlinux.org/cpr.git
           chown -R nobody cpr
-          cd pacman-git
+          cd cpr
           sudo -u nobody makepkg --nocheck
           sudo -u nobody makepkg --packagelist > list
           yes | pacman -U $(cat list)      
