@@ -17,14 +17,14 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Install Packages
-      run: pacman -Syu gcc git libgit2 sudo fakeroot --noconfirm --needed
+      run: pacman -Syu gcc git libgit2 sudo fakeroot cmake curl --noconfirm --needed
 
     - name: Install cpr
       run: |
           git clone https://aur.archlinux.org/cpr.git
           chown -R nobody cpr
           cd cpr
-          sudo -u nobody makepkg --nocheck
+          sudo -u nobody makepkg -s --nocheck
           sudo -u nobody makepkg --packagelist > list
           yes | pacman -U $(cat list)      
     - name: Clean
