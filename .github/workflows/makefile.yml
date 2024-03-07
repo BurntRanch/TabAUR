@@ -20,7 +20,7 @@ jobs:
       run: pacman -Syu gcc git libgit2 sudo fakeroot --noconfirm --needed
 
     - name: Install cpr
-      run: git clone https://aur.archlinux.org/cpr.git && cd cpr && makepkg -si --noconfirm
+      run: git clone https://aur.archlinux.org/cpr.git && cd cpr && sudo -u nobody makepkg -si --noconfirm
       
     - name: Clean
       run: make clean
