@@ -157,33 +157,39 @@ string exec(string cmd) {
     return result;
 }
 
-bool runRemovePkg(DB *db, TaurPkg_t pkg, string finalPackageList) {
+bool runRemovePkg(DB *db, optional<TaurPkg_t> pkg, string finalPackageList) {
     bool removeSuccess = system(("sudo pacman -Rns " + finalPackageList).c_str()) == 0;
     if (!removeSuccess)
         return false;
 
-    db->remove_pkg(pkg);
+    if (pkg)
+        db->remove_pkg(pkg.value());
 
     return true;
 }
 
 bool TaurBackend::remove_pkg(string pkgName) {
     optional<TaurPkg_t> pkg = this->db.get_pkg(pkgName);
-    if (!pkg) {
+    /*if (!pkg) {
         std::cerr << "Failed to find your package " << pkgName << " in the TabAUR DB" << std::endl; 
         return false;
-    }
+    }*/
 
     pkgName.erase(sanitize(pkgName.begin(), pkgName.end()), pkgName.end());
 
-    string packages_str = exec("pacman -Qmq | grep \"" + pkgName + "\"");
+    string packages_str;
+    if (pkg)
+        packages_str = exec("pacman -Qmq | grep \"" + pkgName + "\"");
+    else
+        packages_str = exec("pacman -Qnq | grep \"" + pkgName + "\"");
+
     vector<string> packages = split(packages_str, '\n');
 
     if (packages.empty())
         return false;
 
     if (packages.size() == 1)
-        return runRemovePkg(&this->db, pkg.value(), packages[0]);
+        return runRemovePkg(&this->db, pkg, packages[0]);
 
     std::cout << "Choose packages to exclude from this removal, (Seperate by spaces):" << std::endl;
     for (size_t i = 0; i < packages.size(); i++)
@@ -192,19 +198,17 @@ bool TaurBackend::remove_pkg(string pkgName) {
     string excluded;
     std::cin >> excluded;
 
-    if (!excluded.empty()) {
-        vector<string> excludedIndexes = split(excluded, ' ');
-        for (size_t i = 0; i < excludedIndexes.size(); i++) {
-            try {
-                int excludedIndex = stoi(excludedIndexes[i]);
+    vector<string> excludedIndexes = split(excluded, ' ');
+    for (size_t i = 0; i < excludedIndexes.size(); i++) {
+        try {
+            int excludedIndex = stoi(excludedIndexes[i]);
 
-                if (excludedIndex >= packages.size())
-                    continue;
+            if (excludedIndex >= packages.size())
+                continue;
 
-                packages.erase(packages.begin() + excludedIndex);
-            } catch (std::invalid_argument) {
-                std::cerr << "Invalid argument! Assuming no exclusion." << std::endl;
-            }
+            packages.erase(packages.begin() + excludedIndex);
+        } catch (std::invalid_argument) {
+            std::cerr << "Invalid argument! Assuming no exclusion." << std::endl;
         }
     }
 
@@ -214,7 +218,7 @@ bool TaurBackend::remove_pkg(string pkgName) {
         finalPackageList += packages[i] + " ";
     }
 
-    return runRemovePkg(&this->db, pkg.value(), finalPackageList);
+    return runRemovePkg(&this->db, pkg, finalPackageList);
 }
 
 bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path) {
