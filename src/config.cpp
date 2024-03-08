@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <config.hpp>
-#include <strutil.hpp>
+#include <util.hpp>
 #include <filesystem>
 #include <fstream>
 

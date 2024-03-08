@@ -5,7 +5,7 @@
 #include <iostream>
 #include <fcntl.h>
 #include <unistd.h>
-#include <strutil.hpp>
+#include <util.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>

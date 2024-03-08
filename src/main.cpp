@@ -1,11 +1,10 @@
 #include <stdbool.h>
-#include <git.hpp>
+#include <taur.hpp>
 #include <config.hpp>
-#include <strutil.hpp>
+#include <util.hpp>
 #include <args.hpp>
 
 using std::cout;
-using std::cin;
 using std::endl;
 using std::filesystem::path;
 using std::vector;
@@ -121,7 +120,7 @@ int parsearg_op(int opt){
             operation.op = OP_REM; operation.args.push_back(optarg); break;
         case 'Q':
             operation.op = OP_QUERY; break;
-        case 'A':
+        case 'a':
             config.aurOnly = true; break;
         case 'h':
             usage(); break;
@@ -137,18 +136,18 @@ int parsearg_op(int opt){
 
 int parseargs(int argc, char* argv[]){
     // default
-    operation.op = OP_SYSUPGRADE;
+    //operation.op = OP_SYSUPGRADE;
 
     int opt;
     int option_index = 0;
 	int result;
-	const char *optstring = "S:R:QAhV";
+	const char *optstring = "S:R:QahV";
 	static const struct option opts[] = 
     {
         {"sync",    required_argument, 0, 'S'},
         {"remove",  required_argument, 0, 'R'},
         {"query",   no_argument,       0, 'Q'},
-        {"aur-only",no_argument,       0, 'A'},
+        {"aur-only",no_argument,       0, 'a'},
         {"help",    no_argument,       0, 'h'},
         {"version", no_argument,       0, 'V'},
         {0,0,0,0}
@@ -193,6 +192,9 @@ int main(int argc, char* argv[]) {
 
     if (parseargs(argc, argv))
         return 1;
+
+    log_printf(LOG_ERROR, "test error %s", "\nn1 warn\n");
+    log_printf(LOG_WARN, "test warning %s", "\nn2 warn\n");
 
     switch (operation.op) {
     case OP_SYNC:
