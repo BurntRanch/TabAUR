@@ -136,6 +136,9 @@ int parsearg_op(int opt){
 }
 
 int parseargs(int argc, char* argv[]){
+    // default
+    operation.op = OP_SYSUPGRADE;
+
     int opt;
     int option_index = 0;
 	int result;
@@ -198,8 +201,8 @@ int main(int argc, char* argv[]) {
         return (removePkg(operation.args[0], &backend)) ? 0 : 1;
     case OP_QUERY:
         return (queryPkgs(&backend)) ? 0 : 1;
-    //case OP_UPDATE_ALL:
-    //    return (updateAll(&backend)) ? 0 : 1;
+    case OP_SYSUPGRADE:
+        return (updateAll(&backend)) ? 0 : 1;
     }
 
     return 3;

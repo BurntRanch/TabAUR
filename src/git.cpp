@@ -114,12 +114,18 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
-    if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray()) {
+    if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
         const rapidjson::Value& dependsArray = pkgJson["Depends"].GetArray();
+        const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
         vector<string> depends;
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
+        for (size_t i = 0; i < makeDependsArray.Size(); i++) {
+            if (std::find(depends.begin(), depends.end(), makeDependsArray[i].GetString()) != depends.end())
+                continue;
+            depends.push_back(makeDependsArray[i].GetString());
+        }
 
         return (TaurPkg_t) { pkgJson["Name"].GetString(), pkgJson["Version"].GetString(), getUrl(pkgJson, returnGit), depends };
     }
@@ -263,11 +269,16 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         TaurPkg_t depend = oDepend.value();
 
         string filename = path(this->config.cacheDir) / depend.url.substr(depend.url.rfind("/") + 1);
+
+        if (useGit)
+            filename = filename.substr(0, filename.rfind(".git"));
+        else
+            filename = filename.substr(0, filename.rfind(".tar.gz"));
         
         bool downloadStatus = this->download_pkg(depend.url, filename);
 
         if (!downloadStatus) {
-            std::cerr << "Failed to download dependency of " << pkg.name << " (Source: " << depend.url << ")" << std::endl;
+            std::cerr << "====[ ERROR ]==== Failed to download dependency of " << pkg.name << " (Source: " << depend.url << ")" << std::endl;
             return false;
         }
 
@@ -276,7 +287,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         bool installStatus = this->install_pkg(depend, out_path, useGit);
 
         if (!installStatus) {
-            std::cerr << "Failed to install dependency of " << pkg.name << " (" << depend.name << ")" << std::endl;
+            std::cerr << "====[ ERROR ]==== Failed to install dependency of " << pkg.name << " (" << depend.name << ")" << std::endl;
             return false;
         }
     }
@@ -301,6 +312,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
 
     int updatedPkgs = 0;
+    int attemptedDownloads = 0;
 
     if (onlinePkgs.size() != pkgs.size())
         std::cout << "Couldn't get all packages! Still trying to update the others." << std::endl;
@@ -326,21 +338,25 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         }
 
         std::cout << "Upgrading package " << pkgs[pkgIndex].name << " from version " << pkgs[pkgIndex].version << " to version " << onlinePkgs[i].version << "!" << std::endl;
-        
+        attemptedDownloads++;
+
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, cacheDir / onlinePkgs[i].name);
 
         if (!downloadSuccess)
-            return false;
+            continue;
 
         bool installSuccess = this->install_pkg(onlinePkgs[i], cacheDir / onlinePkgs[i].name, useGit);
 
         if (!installSuccess)
-            return false;
+            continue;
 
         updatedPkgs++;
     }
 
-    std::cout << "Upgraded " << updatedPkgs << " packages." << std::endl;
+    std::cout << "Upgraded " << updatedPkgs << "/" << attemptedDownloads << " packages." << std::endl;
+
+    if (attemptedDownloads < updatedPkgs)
+        std::cout << "Some packages failed to download, Please redo this command and log the issue." << std::endl << "If it is an issue with TabAUR, feel free to open an issue in GitHub." << std::endl;
 
     return true;
 }
