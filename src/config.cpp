@@ -66,4 +66,9 @@ void Config::loadConfigFile(string filename) {
         std::cerr << "Parsing failed:\n" << err << "\n";
         exit(-1);
     }
+    
+    this->useGit = this->getConfigValue<bool>("general.useGit", true);
+    this->aurOnly = this->getConfigValue<bool>("general.aurOnly", false);
+    this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg");
+    this->cacheDir = this->getCacheDir();
 }

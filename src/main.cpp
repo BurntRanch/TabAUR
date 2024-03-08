@@ -69,9 +69,10 @@ void print_error(const git_error* error) {
 
 bool installPkg(string pkgName, TaurBackend *backend) { 
     int         	status   = 0;
-    string      	cacheDir = config.getCacheDir();
-    bool            useGit   = config.getConfigValue<bool>("general.useGit", false);
-    optional<TaurPkg_t>  pkg      = backend->search_aur(pkgName, &status, useGit);
+    string      	cacheDir = config.cacheDir;
+    bool            useGit   = config.useGit;
+    
+    optional<TaurPkg_t>  pkg = backend->search_aur(pkgName, &status, useGit);
 
     if (status != 0 || !pkg) {
         cerr << "An error has occurred and we could not search for your package." << endl;
@@ -82,9 +83,6 @@ bool installPkg(string pkgName, TaurBackend *backend) {
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
-    if (useGit)
-        filename = filename.substr(0, filename.rfind(".git"));
-
     bool stat = backend->download_pkg(url, filename);
 
     if (!stat) {
@@ -93,9 +91,9 @@ bool installPkg(string pkgName, TaurBackend *backend) {
     }
 
     if (useGit)
-        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".git")));
+        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".git")), useGit);
     else
-        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")));
+        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")), useGit);
 
     if (!stat) {
         cout << "Building/Installing your package has failed." << endl;
@@ -106,13 +104,13 @@ bool installPkg(string pkgName, TaurBackend *backend) {
 }
 
 bool removePkg(string pkgName, TaurBackend *backend) {
-    return backend->remove_pkg(pkgName);
+    return backend->remove_pkg(pkgName, config.aurOnly);
 }
 
 bool updateAll(TaurBackend *backend) {
-    string          cacheDir = config.getCacheDir();
+    string          cacheDir = config.cacheDir;
 
-    return backend->update_all_pkgs(path(cacheDir));
+    return backend->update_all_pkgs(path(cacheDir), config.useGit);
 }
 
 int parsearg_op(int opt){
@@ -123,6 +121,8 @@ int parsearg_op(int opt){
             operation.op = OP_REM; operation.args.push_back(optarg); break;
         case 'Q':
             operation.op = OP_QUERY; break;
+        case 'A':
+            config.aurOnly = true; break;
         case 'h':
             usage(); break;
         case 'V':
@@ -139,14 +139,15 @@ int parseargs(int argc, char* argv[]){
     int opt;
     int option_index = 0;
 	int result;
-	const char *optstring = "S:R:QhV";
+	const char *optstring = "S:R:QAhV";
 	static const struct option opts[] = 
     {
         {"sync",    required_argument, 0, 'S'},
         {"remove",  required_argument, 0, 'R'},
-        {"query",   no_argument, 0, 'Q'},
-        {"help",    no_argument, 0, 'h'},
-        {"version", no_argument, 0, 'V'},
+        {"query",   no_argument,       0, 'Q'},
+        {"aur-only",no_argument,       0, 'A'},
+        {"help",    no_argument,       0, 'h'},
+        {"version", no_argument,       0, 'V'},
         {0,0,0,0}
     };
 
@@ -160,14 +161,17 @@ int parseargs(int argc, char* argv[]){
 		parsearg_op(opt);
 	}
 
-    if ((operation.op == OP_SYNC || operation.op == OP_REM) && operation.args.size() < 1)
-        return 1;
+    if ((operation.op == OP_SYNC || operation.op == OP_REM) && operation.args.size() < 1) {
+       usage(); 
+       return 1;
+    }
 
     return 0;
 }
 
 bool queryPkgs(TaurBackend *backend) {
-    vector<TaurPkg_t> pkgs = backend->get_all_local_pkgs();
+    vector<TaurPkg_t> pkgs = backend->get_all_local_pkgs(config.aurOnly);
+
     for (size_t i = 0; i < pkgs.size(); i++)
         cout << pkgs[i].name << " " << pkgs[i].version << endl;
 
@@ -182,7 +186,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }*/
 
-    TaurBackend backend(config, config.getConfigDir());
+    TaurBackend backend(config);
 
     if (parseargs(argc, argv))
         return 1;

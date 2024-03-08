@@ -5,12 +5,11 @@
 #include <iostream>
 #include <fcntl.h>
 #include <unistd.h>
-
+#include <strutil.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <config.hpp>
-#include <db.hpp>
 #include <cpr/cpr.h>
 #include <cstdio>
 #include <iostream>
@@ -21,25 +20,35 @@
 
 using std::string;
 using std::filesystem::path;
+using std::vector;
+using std::optional;
+
+struct TaurPkg_t {
+    string         name;
+    string         version;
+    string         url;
+    vector<string> depends = vector<string>();
+};
 
 class TaurBackend {
   public:
     Config config;
-    TaurBackend(Config cfg, string dbLocation);
+    TaurBackend(Config cfg);
     ~TaurBackend();
-    std::optional<TaurPkg_t>     search_aur(string query, int* status, bool useGit = false);
+    std::optional<TaurPkg_t>     getPkgFromJson(rapidjson::Document& doc, bool useGit);
+    std::optional<TaurPkg_t>     search_aur(string query, int* status, bool useGit);
     bool            download_tar(string url, string out_path);
     bool            download_git(string url, string out_path);
     bool            download_pkg(string url, string out_path);
-    vector<TaurPkg_t> fetch_pkgs(vector<TaurPkg_t> pkgs);
-    bool            remove_pkg(string name);
-    bool            install_pkg(TaurPkg_t pkg, string extracted_path);
-    bool            update_all_pkgs(path cacheDir);
-    vector<TaurPkg_t> get_all_local_pkgs();
+    optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
+    vector<TaurPkg_t> fetch_pkgs(vector<string> pkgs, bool returnGit);
+    bool            remove_pkg(string name, bool searchForeignPackages);
+    bool            install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit);
+    bool            update_all_pkgs(path cacheDir, bool useGit);
+    vector<TaurPkg_t> get_all_local_pkgs(bool aurOnly);
   private:
     git_clone_options git_opt;
     int               git2_inits;
-    DB                db;
 };
 
 #endif

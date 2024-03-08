@@ -10,6 +10,11 @@ using std::optional;
 
 class Config {
 public:
+    bool useGit;
+    bool aurOnly;
+    string makepkgBin;
+    string cacheDir;
+
     Config();
     string getHomeCacheDir();
     string getCacheDir();
@@ -21,8 +26,7 @@ public:
     T getConfigValue(string value, T fallback) {
       // .value<T>().value(), nice.
       return this->tbl.at_path(value).value<T>() ? this->tbl.at_path(value).value<T>().value() : fallback;
-    }
-  
+    }  
     void   loadConfigFile(string filename);
 private:
     toml::table tbl;
@@ -35,6 +39,10 @@ inline const std::string defConfig = R"#([general]
 #if true(default), then it'll uses git for downloading/updating the aur repo
 #else if false, then it'll use tarballs (.tar.gz) of the aur repo
 #useGit = true
+
+# if false (default), it'll allow you to operate on system packages as well as AUR.
+# this option can be overrided by the --aur-only long option or running "-Ra" instead of "-R".
+#aurOnly = false
 
 [bin]
 #makepkgBin = "makepkg" 
