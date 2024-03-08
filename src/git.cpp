@@ -355,7 +355,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
 
     std::cout << "Upgraded " << updatedPkgs << "/" << attemptedDownloads << " packages." << std::endl;
 
-    if (attemptedDownloads < updatedPkgs)
+    if (attemptedDownloads > updatedPkgs)
         std::cout << "Some packages failed to download, Please redo this command and log the issue." << std::endl << "If it is an issue with TabAUR, feel free to open an issue in GitHub." << std::endl;
 
     return true;
