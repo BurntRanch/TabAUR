@@ -14,6 +14,7 @@ public:
     bool aurOnly;
     string makepkgBin;
     string cacheDir;
+    string sudo;
 
     Config();
     string getHomeCacheDir();
@@ -36,9 +37,12 @@ extern Config config;
 
 // we comment the default config values, just like /etc/pacman.conf
 inline const std::string defConfig = R"#([general]
-#if true(default), then it'll uses git for downloading/updating the aur repo
-#else if false, then it'll use tarballs (.tar.gz) of the aur repo
+# if true(default), then it'll uses git for downloading/updating the aur repo
+# else if false, then it'll use tarballs (.tar.gz) of the aur repo
 #useGit = true
+
+# If you use sudo or doas
+#sudo = "sudo"
 
 # if false (default), it'll allow you to operate on system packages as well as AUR.
 # this option can be overrided by the --aur-only long option or running "-Ra" instead of "-R".
@@ -48,7 +52,7 @@ inline const std::string defConfig = R"#([general]
 #makepkgBin = "makepkg" 
 
 [storage]
-#cacheDir = "" 
+#cacheDir = ""
 )#";
 
 #endif

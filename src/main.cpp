@@ -13,13 +13,6 @@ using std::string;
 Config config;
 struct Operation_t operation;
 
-// Verifies the argument count and validity.
-bool verify_arguments(int c, char** args) {
-    if (c < 2)
-        return false;
-    return true;
-}
-
 void usage() {
     cout << "TabAUR Launch Options:" << endl;
     cout << "\ttaur <pacman-like arguments> <parameters to the operation>" << endl << endl;
@@ -83,7 +76,7 @@ int parsearg_op(int opt){
         case 'a':
             config.aurOnly = true; break;
         case 'h':
-            usage(); break;
+            usage(); exit(0); break;
         case 'V':
             std::cout << "TabAUR version 0.0.1" << std::endl; break;
         case ':':
@@ -142,11 +135,6 @@ bool queryPkgs(TaurBackend *backend) {
 
 // main
 int main(int argc, char* argv[]) {
-    //Operation_t operation = {OP_INSTALL, vector<string>()};
-    /*if (!parse_arguments(argc, argv, &operation)) {
-        print_help();
-        return 1;
-    }*/
 
     TaurBackend backend(config);
 

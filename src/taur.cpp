@@ -191,8 +191,11 @@ string exec(string cmd) {
 }
 
 bool sanitizeAndRemove(string& input) {
+    string sudo = config.sudo;
+    sudo.erase(sanitize(sudo.begin(), sudo.end()), sudo.end());
     input.erase(sanitize(input.begin(), input.end()), input.end());
-    return system(("sudo pacman -R " + input).c_str()) == 0;
+
+    return system((sudo + " pacman -R " + input).c_str()) == 0;
 }
 
 bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
@@ -278,7 +281,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         bool downloadStatus = this->download_pkg(depend.url, filename);
 
         if (!downloadStatus) {
-            log_printf(LOG_ERROR, "Failed to download dependency of %s (Source: %s)", pkg.name.c_str(), depend.url.c_str(), "\n");
+            log_printf(LOG_ERROR, _("Failed to download dependency of %s (Source: %s)\n"), pkg.name.c_str(), depend.url.c_str());
             return false;
         }
 
@@ -296,8 +299,11 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 }
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
-    // first things first
-    bool pacmanUpgradeSuccess = system("sudo pacman -Syu") == 0;
+    string sudo = this->config.sudo;
+    sudo.erase(sanitize(sudo.begin(), sudo.end()), sudo.end());
+    
+    // first thing first
+    bool pacmanUpgradeSuccess = system((sudo + " pacman -Syu").c_str()) == 0;
 
     if (!pacmanUpgradeSuccess)
         return false;

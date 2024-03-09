@@ -19,7 +19,7 @@ Config::Config() {
     }
     if(!std::filesystem::exists(filename)) {
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
-        log_printf(LOG_WARN, _("config.toml not found, generating new one"));
+        log_printf(LOG_WARN, _("config.toml not found, generating new one\n"));
         ofstream configFile(filename, std::ios::trunc);
         configFile.write(defConfig.c_str(), defConfig.size());
         configFile.close();
@@ -68,8 +68,9 @@ void Config::loadConfigFile(string filename) {
         exit(-1);
     }
     
-    this->useGit = this->getConfigValue<bool>("general.useGit", true);
-    this->aurOnly = this->getConfigValue<bool>("general.aurOnly", false);
+    this->sudo      = this->getConfigValue<string>("general.sudo", "sudo");
+    this->useGit    = this->getConfigValue<bool>("general.useGit", true);
+    this->aurOnly   = this->getConfigValue<bool>("general.aurOnly", false);
     this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg");
-    this->cacheDir = this->getCacheDir();
+    this->cacheDir  = this->getCacheDir();
 }
