@@ -14,12 +14,12 @@ Config::Config() {
     string configDir = this->getConfigDir();
     string filename = configDir + "/config.toml";
     if (!std::filesystem::exists(configDir)) {
-        std::cout << "TabAUR config folder was not found, Creating folder at " << configDir << "!" << std::endl;
+        log_printf(LOG_WARN, _("TabAUR config folder was not found, Creating folder at %s!\n"), configDir.c_str());
         std::filesystem::create_directory(configDir);
     }
     if(!std::filesystem::exists(filename)) {
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
-        std::cout << "config.toml not found, generating new one" << std::endl;
+        log_printf(LOG_WARN, _("config.toml not found, generating new one"));
         ofstream configFile(filename, std::ios::trunc);
         configFile.write(defConfig.c_str(), defConfig.size());
         configFile.close();
@@ -28,7 +28,7 @@ Config::Config() {
     
     string cacheDir = this->getCacheDir();
     if (!std::filesystem::exists(cacheDir)) {
-        std::cout << "TabAUR cache folder was not found, Creating folder at " << cacheDir << "!" << std::endl;
+        log_printf(LOG_WARN, _("TabAUR cache folder was not found, Creating folder at %s!\n"), cacheDir.c_str());
         std::filesystem::create_directory(cacheDir);
     }
 }
@@ -63,7 +63,8 @@ void Config::loadConfigFile(string filename) {
     try {
         this->tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        std::cerr << "Parsing failed:\n" << err << "\n";
+        log_printf(LOG_ERROR, _("Parsing config.toml failed:\n"));
+        std::cerr << err << std::endl;
         exit(-1);
     }
     

@@ -9,7 +9,6 @@ using std::endl;
 using std::filesystem::path;
 using std::vector;
 using std::string;
-using std::cerr;
 
 Config config;
 struct Operation_t operation;
@@ -21,49 +20,10 @@ bool verify_arguments(int c, char** args) {
     return true;
 }
 
-/*bool parse_arguments(int c, char** args, Operation_t *operation) {
-    if (c <= 1) {
-        operation->op = OP_UPDATE_ALL;
-        return true;
-    }
-
-    for (size_t i = 1; i < c; i++) {
-        string arg(args[i]);
-
-        std::transform(arg.begin(), arg.end(), arg.begin(),
-            [](unsigned char c){ return std::tolower(c); });
-
-        if (arg == "-s")
-            operation->op = OP_INSTALL;
-        else if (arg == "-syu") {
-            operation->op = OP_UPDATE_ALL;
-            return true;
-        } else if (arg == "-r")
-            operation->op = OP_REMOVE;
-        // unknown
-        else if (hasStart(arg, "-")) {
-            std::cerr << "Unknown argument: " << arg << std::endl;
-            return false;
-        } else {
-            operation->args.push_back(arg);
-        }
-    }
-
-    // make sure we captured atleast one argument for the following operations, OP_UPDATE_ALL doesn't care about arguments.
-    if (operation->args.size() < 1 && (operation->op == OP_INSTALL || operation->op == OP_REMOVE))
-        return false;
-
-    return true;
-}*/
-
 void usage() {
     cout << "TabAUR Launch Options:" << endl;
     cout << "\ttaur <pacman-like arguments> <parameters to the operation>" << endl << endl;
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl;
-}
-
-void print_error(const git_error* error) {
-    cerr << "Got an error: " << error->message << endl;
 }
 
 bool installPkg(string pkgName, TaurBackend *backend) { 
@@ -74,7 +34,7 @@ bool installPkg(string pkgName, TaurBackend *backend) {
     optional<TaurPkg_t>  pkg = backend->search_aur(pkgName, &status, useGit);
 
     if (status != 0 || !pkg) {
-        cerr << "An error has occurred and we could not search for your package." << endl;
+        log_printf(LOG_ERROR, _("An error has occurred and we could not search for your package.\n"));
         return -1;
     }
 
@@ -85,7 +45,7 @@ bool installPkg(string pkgName, TaurBackend *backend) {
     bool stat = backend->download_pkg(url, filename);
 
     if (!stat) {
-        cerr << "An error has occurred and we could not download your package." << endl;
+        log_printf(LOG_ERROR, _("An error has occurred and we could not download your package.\n"));
         return false;
     }
 
@@ -95,7 +55,7 @@ bool installPkg(string pkgName, TaurBackend *backend) {
         stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")), useGit);
 
     if (!stat) {
-        cout << "Building/Installing your package has failed." << endl;
+        log_printf(LOG_ERROR, _("Building/Installing your package has failed.\n"));
         return false;
     }
 
@@ -136,7 +96,7 @@ int parsearg_op(int opt){
 
 int parseargs(int argc, char* argv[]){
     // default
-    //operation.op = OP_SYSUPGRADE;
+    operation.op = OP_SYSUPGRADE;
 
     int opt;
     int option_index = 0;
@@ -192,9 +152,6 @@ int main(int argc, char* argv[]) {
 
     if (parseargs(argc, argv))
         return 1;
-
-    log_printf(LOG_ERROR, "test error %s", "\nn1 warn\n");
-    log_printf(LOG_WARN, "test warning %s", "\nn2 warn\n");
 
     switch (operation.op) {
     case OP_SYNC:

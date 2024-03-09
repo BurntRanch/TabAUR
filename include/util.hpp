@@ -7,6 +7,8 @@
 #include <iostream>
 #include <sstream>
 
+#define _(str) (char *)str
+
 enum log_level {
     LOG_ERROR,
     LOG_WARN

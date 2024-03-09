@@ -192,7 +192,7 @@ string exec(string cmd) {
 
 bool sanitizeAndRemove(string& input) {
     input.erase(sanitize(input.begin(), input.end()), input.end());
-    return system(("sudo pacman -Rns " + input).c_str()) == 0;
+    return system(("sudo pacman -R " + input).c_str()) == 0;
 }
 
 bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
@@ -278,7 +278,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         bool downloadStatus = this->download_pkg(depend.url, filename);
 
         if (!downloadStatus) {
-            std::cerr << "====[ ERROR ]==== Failed to download dependency of " << pkg.name << " (Source: " << depend.url << ")" << std::endl;
+            log_printf(LOG_ERROR, "Failed to download dependency of %s (Source: %s)", pkg.name.c_str(), depend.url.c_str(), "\n");
             return false;
         }
 
@@ -287,7 +287,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         bool installStatus = this->install_pkg(depend, out_path, useGit);
 
         if (!installStatus) {
-            std::cerr << "====[ ERROR ]==== Failed to install dependency of " << pkg.name << " (" << depend.name << ")" << std::endl;
+            log_printf(LOG_ERROR, "Failed to install dependency of %s (%s)", pkg.name.c_str(), depend.name.c_str());
             return false;
         }
     }
@@ -315,7 +315,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     int attemptedDownloads = 0;
 
     if (onlinePkgs.size() != pkgs.size())
-        std::cout << "Couldn't get all packages! Still trying to update the others." << std::endl;
+        log_printf(LOG_WARN, "Couldn't get all packages! Still trying to update the others.");
 
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
         int pkgIndex;
@@ -329,7 +329,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         }
 
         if (!found) {
-            std::cout << "We couldn't find " << onlinePkgs[i].name << " in the local pkg database, This shouldn't happen." << std::endl;
+            log_printf(LOG_WARN, "We couldn't find %s in the local pkg database, This shouldn't happen.", onlinePkgs[i].name.c_str(), "\n");
             continue;
         }
 
@@ -356,7 +356,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     std::cout << "Upgraded " << updatedPkgs << "/" << attemptedDownloads << " packages." << std::endl;
 
     if (attemptedDownloads > updatedPkgs)
-        std::cout << "Some packages failed to download, Please redo this command and log the issue." << std::endl << "If it is an issue with TabAUR, feel free to open an issue in GitHub." << std::endl;
+        log_printf(LOG_ERROR, "Some packages failed to download, Please redo this command and log the issue.", "\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.\n");
 
     return true;
 }

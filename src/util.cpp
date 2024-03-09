@@ -44,12 +44,13 @@ void log_printf(int log, std::string fmt, ...){
     va_start(args, fmt);
     switch(log){
         case LOG_ERROR:
-            std::cerr << BOLDRED << "====[ ERROR ]==== " << '\n'; break;
+            std::cerr << BOLDRED << "====[ ERROR ]==== " << '\n' << NOCOLOR << BOLD; break;
         case LOG_WARN:
-            std::cout << BOLDYELLOW << "====[ WARN ]==== " << '\n'; break;
+            std::cout << BOLDYELLOW << "Warning: " << NOCOLOR << BOLD; break;
     }
     vprintf(fmt.c_str(), args);
     va_end(args);
+    std::cout << NOCOLOR;
 }
 
 std::vector<std::string> split(std::string text, char delim) {
