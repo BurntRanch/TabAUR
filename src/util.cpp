@@ -2,7 +2,7 @@
 #include <util.hpp>
 
 // credits to pacman package manager 
-// original on src/pacman/util.c
+// original on https://gitlab.archlinux.org/pacman/pacman/-/blob/master/src/pacman/conf.c#L45 
 #define NOCOLOR       "\033[0m"
 
 #define BOLD          "\033[0;1m"
@@ -44,7 +44,7 @@ void log_printf(int log, std::string fmt, ...){
     va_start(args, fmt);
     switch(log){
         case LOG_ERROR:
-            std::cerr << BOLDRED << "====[ ERROR ]==== " << '\n' << NOCOLOR << BOLD; break;
+            std::cerr << BOLDRED << "====[ ERROR ]==== " << std::endl << NOCOLOR << BOLD; break;
         case LOG_WARN:
             std::cout << BOLDYELLOW << "Warning: " << NOCOLOR << BOLD; break;
         case LOG_INFO:
@@ -53,6 +53,21 @@ void log_printf(int log, std::string fmt, ...){
     vprintf(fmt.c_str(), args);
     va_end(args);
     std::cout << NOCOLOR;
+}
+
+std::string expandHome(std::string& str) {
+    std::string ret = str;
+    size_t found = ret.find("~");
+    if (found != std::string::npos) {
+        const char* homeDir = getenv("HOME");
+        if (homeDir != nullptr)
+            ret.replace(found, 1, homeDir);
+        else {
+            log_printf(LOG_ERROR, _("HOME environment variable is not set.\n"));
+            exit(-1);
+        }
+    }
+    return ret;
 }
 
 std::vector<std::string> split(std::string text, char delim) {

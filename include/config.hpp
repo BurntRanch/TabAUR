@@ -2,6 +2,7 @@
 #define CONFIG_HPP
 
 #include <string>
+#include <util.hpp>
 #define TOML_HEADER_ONLY 1
 #include <toml.hpp>
 
@@ -21,14 +22,18 @@ public:
     string getCacheDir();
     string getHomeConfigDir();
     string getConfigDir();
-  
-    //stupid c++ that wants template functions in header
+    void   loadConfigFile(string filename); 
+    
+    // stupid c++ that wants template functions in header
     template<typename T>
     T getConfigValue(string value, T fallback) {
-      // .value<T>().value(), nice.
-      return this->tbl.at_path(value).value<T>() ? this->tbl.at_path(value).value<T>().value() : fallback;
-    }  
-    void   loadConfigFile(string filename);
+        optional<T> ret = this->tbl.at_path(value).value<T>();
+        if constexpr (is_string<T>::value) // if we get a value that's a string
+            return ret ? expandHome(ret.value()) : expandHome(fallback);
+        else
+            return ret ? ret.value() : fallback;
+    }
+
 private:
     toml::table tbl;
 };
@@ -44,15 +49,16 @@ inline const std::string defConfig = R"#([general]
 # If you use sudo or doas
 #sudo = "sudo"
 
-# if false (default), it'll allow you to operate on system packages as well as AUR.
+# If false (default), it'll allow you to operate on system packages as well as AUR.
 # this option can be overrided by the --aur-only long option or running "-Ra" instead of "-R".
 #aurOnly = false
 
-[bin]
-#makepkgBin = "makepkg" 
+[bins]
+#makepkgBin = "makepkg"
 
 [storage]
-#cacheDir = ""
+# Where we are gonna download the AUR packages (default $XDG_CACHE_HOME, else ~/.cache/TabAUR)
+#cacheDir = "~/.cache/TabAUR"
 )#";
 
 #endif
