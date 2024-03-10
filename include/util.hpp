@@ -11,7 +11,8 @@
 
 enum log_level {
     LOG_ERROR,
-    LOG_WARN
+    LOG_WARN,
+    LOG_INFO
 };
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160

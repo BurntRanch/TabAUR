@@ -47,6 +47,8 @@ void log_printf(int log, std::string fmt, ...){
             std::cerr << BOLDRED << "====[ ERROR ]==== " << '\n' << NOCOLOR << BOLD; break;
         case LOG_WARN:
             std::cout << BOLDYELLOW << "Warning: " << NOCOLOR << BOLD; break;
+        case LOG_INFO:
+            std::cout << BOLDBLUE << "Info: " << NOCOLOR << BOLD; break;
     }
     vprintf(fmt.c_str(), args);
     va_end(args);

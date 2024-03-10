@@ -35,6 +35,9 @@ bool installPkg(string pkgName, TaurBackend *backend) {
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
+    if (useGit)
+        filename = filename.substr(0, filename.rfind(".git"));
+
     bool stat = backend->download_pkg(url, filename);
 
     if (!stat) {
@@ -42,10 +45,10 @@ bool installPkg(string pkgName, TaurBackend *backend) {
         return false;
     }
 
-    if (useGit)
-        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".git")), useGit);
-    else
+    if (!useGit)
         stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")), useGit);
+    else
+        stat = backend->install_pkg(pkg.value(), filename, useGit);
 
     if (!stat) {
         log_printf(LOG_ERROR, _("Building/Installing your package has failed.\n"));
