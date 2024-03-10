@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <config.hpp>
-#include <util.hpp>
 #include <filesystem>
 #include <fstream>
 
@@ -73,4 +72,5 @@ void Config::loadConfigFile(string filename) {
     this->aurOnly   = this->getConfigValue<bool>("general.aurOnly", false);
     this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg");
     this->cacheDir  = this->getCacheDir();
+    this->colors    = this->getConfigValue<bool>("general.colors", true);
 }

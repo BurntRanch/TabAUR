@@ -16,6 +16,7 @@ public:
     string makepkgBin;
     string cacheDir;
     string sudo;
+    bool colors;
 
     Config();
     string getHomeCacheDir();
@@ -48,6 +49,9 @@ inline const std::string defConfig = R"#([general]
 
 # If you use sudo or doas
 #sudo = "sudo"
+
+# Optional pretty prints, because some terminals don't suport them
+#colors = true
 
 # If false (default), it'll allow you to operate on system packages as well as AUR.
 # this option can be overrided by the --aur-only long option or running "-Ra" instead of "-R".
