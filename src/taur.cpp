@@ -4,31 +4,6 @@
 #include <config.hpp>
 #include <optional>
 
-// credits to pacman package manager 
-// original on https://gitlab.archlinux.org/pacman/pacman/-/blob/master/src/pacman/conf.c#L45 
-#define NOCOLOR       "\033[0m"
-
-#define BOLD          "\033[0;1m"
-
-#define BLACK         "\033[0;30m"
-#define RED           "\033[0;31m"
-#define GREEN         "\033[0;32m"
-#define YELLOW        "\033[0;33m"
-#define BLUE          "\033[0;34m"
-#define MAGENTA       "\033[0;35m"
-#define CYAN          "\033[0;36m"
-#define WHITE         "\033[0;37m"
-
-#define BOLDBLACK     "\033[1;30m"
-#define BOLDRED       "\033[1;31m"
-#define BOLDGREEN     "\033[1;32m"
-#define BOLDYELLOW    "\033[1;33m"
-#define BOLDBLUE      "\033[1;34m"
-#define BOLDMAGENTA   "\033[1;35m"
-#define BOLDCYAN      "\033[1;36m"
-#define BOLDWHITE     "\033[1;37m"
-#define GREY46        "\033[38;5;243m"
-
 TaurBackend::TaurBackend(Config cfg) : config(cfg) {
     git2_inits = 0;
 
@@ -295,7 +270,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         if (alreadyExists)
             continue;
 
-        log_printf(LOG_INFO, "Downloading dependency %s.\n", depend.name);
+        log_printf(LOG_INFO, _("Downloading dependency %s.\n"), depend.name.c_str());
 
         string filename = path(this->config.cacheDir) / depend.url.substr(depend.url.rfind("/") + 1);
 
@@ -314,7 +289,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         bool installStatus = this->install_pkg(depend, out_path, useGit);
 
         if (!installStatus) {
-            log_printf(LOG_ERROR, "Failed to install dependency of %s (%s)\n", pkg.name.c_str(), depend.name.c_str());
+            log_printf(LOG_ERROR, _("Failed to install dependency of %s (%s)\n"), pkg.name.c_str(), depend.name.c_str());
             return false;
         }
     }
@@ -323,7 +298,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 }
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
-    string sudo = this->config.sudo;
+    string sudo = config.sudo;
     sudo.erase(sanitize(sudo.begin(), sudo.end()), sudo.end());
     
     // first thing first
@@ -345,7 +320,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     int attemptedDownloads = 0;
 
     if (onlinePkgs.size() != pkgs.size())
-        log_printf(LOG_WARN, "Couldn't get all packages! (looked up %d AUR packages online, looked up %d AUR packages locally) Still trying to update the others.\n", onlinePkgs.size(), pkgs.size());
+        log_printf(LOG_WARN, _("Couldn't get all packages! (looked up %d AUR packages online, looked up %d AUR packages locally) Still trying to update the others.\n"), onlinePkgs.size(), pkgs.size());
 
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
         int pkgIndex;
@@ -359,7 +334,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         }
 
         if (!found) {
-            log_printf(LOG_WARN, "We couldn't find %s in the local pkg database, This shouldn't happen.\n", onlinePkgs[i].name.c_str(), "\n");
+            log_printf(LOG_WARN, _("We couldn't find %s in the local pkg database, This shouldn't happen.\n"), onlinePkgs[i].name.c_str());
             continue;
         }
 
@@ -367,7 +342,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
             continue;
         }
 
-        log_printf(LOG_INFO, "Upgrading package %s from version %s to version %s!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);
+        log_printf(LOG_INFO, _("Upgrading package %s from version %s to version %s!\n"), pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(), onlinePkgs[i].version.c_str());
         attemptedDownloads++;
 
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, cacheDir / onlinePkgs[i].name);
@@ -383,10 +358,10 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         updatedPkgs++;
     }
 
-    log_printf(LOG_INFO, "Upgraded %d/%d packages.\n", updatedPkgs, attemptedDownloads);
+    log_printf(LOG_INFO, _("Upgraded %d/%d packages.\n"), updatedPkgs, attemptedDownloads);
 
     if (attemptedDownloads > updatedPkgs)
-        log_printf(LOG_WARN, "Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.\n");
+        log_printf(LOG_WARN, _("Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.\n"));
 
     return true;
 }
@@ -445,7 +420,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
             vector<string> pkg = split(pkgs_string[i], ' ');
             out.push_back((TaurPkg_t) { pkg[0], pkg[1], "" });
         } catch (std::out_of_range e) {
-            log_printf(LOG_ERROR, "Pacman did not return what we expected, Command: " + cmd);
+            log_printf(LOG_ERROR, _("Pacman did not return what we expected, Command: %s\n") + cmd);
             exit(1);
         }
     }
@@ -480,11 +455,11 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
     if (count == 1) {
 	    return aurPkgs.size() == 1 ? this->fetch_pkg(aurPkgs[0], useGit) : pacPkgs[0];
     } else if (count > 1) {
-        log_printf(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.\n");
+        log_printf(LOG_INFO, _("TabAUR has found multiple packages relating to your search query, Please pick one.\n"));
         string input;
         do {
             if (!input.empty())
-                log_printf(LOG_WARN, "Invalid input!\n");
+                log_printf(LOG_WARN, _("Invalid input!\n"));
 
             for (int i = 0; i < aurPkgs.size(); i++)
                 std::cout 
