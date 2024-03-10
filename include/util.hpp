@@ -25,6 +25,20 @@ bool hasEnding(std::string const& fullString, std::string const& ending);
 bool hasStart(std::string const& fullString, std::string const& start);
 void log_printf(int log, std::string fmt, ...);
 std::string expandHome(std::string& str);
+
+template <typename T>
+T sanitize(T beg, T end) {
+    T dest = beg;
+    for (T itr = beg; itr != end; ++itr)
+        // if its:
+        // 1. a digit
+        // 2. an uppercase letter
+        // 3. a lowercase letter
+        if (!(((*itr) >= 48 && (*itr) <= 57) && ((*itr) >= 65 && (*itr) <= 90) && ((*itr) >= 97 && (*itr) <= 122)))
+            *(dest++) = *itr;
+    return dest;
+}
+
 std::vector<std::string> split(std::string text, char delim);
 
 #endif

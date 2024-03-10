@@ -20,18 +20,24 @@ void usage() {
 }
 
 bool installPkg(string pkgName, TaurBackend *backend) { 
-    int         	status   = 0;
     string      	cacheDir = config.cacheDir;
     bool            useGit   = config.useGit;
     
-    optional<TaurPkg_t>  pkg = backend->search_aur(pkgName, &status, useGit);
+    optional<TaurPkg_t>  pkg = backend->search(pkgName, useGit);
 
-    if (status != 0 || !pkg) {
+    if (!pkg) {
         log_printf(LOG_ERROR, _("An error has occurred and we could not search for your package.\n"));
         return -1;
     }
 
     string url = pkg.value().url;
+
+    if (url == "") {
+        string name = pkg.value().name;
+        name.erase(sanitize(name.begin(), name.end()), name.end());
+        
+        return system(("sudo pacman -S " + name).c_str()) == 0;
+    }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 

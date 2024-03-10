@@ -4,6 +4,31 @@
 #include <config.hpp>
 #include <optional>
 
+// credits to pacman package manager 
+// original on https://gitlab.archlinux.org/pacman/pacman/-/blob/master/src/pacman/conf.c#L45 
+#define NOCOLOR       "\033[0m"
+
+#define BOLD          "\033[0;1m"
+
+#define BLACK         "\033[0;30m"
+#define RED           "\033[0;31m"
+#define GREEN         "\033[0;32m"
+#define YELLOW        "\033[0;33m"
+#define BLUE          "\033[0;34m"
+#define MAGENTA       "\033[0;35m"
+#define CYAN          "\033[0;36m"
+#define WHITE         "\033[0;37m"
+
+#define BOLDBLACK     "\033[1;30m"
+#define BOLDRED       "\033[1;31m"
+#define BOLDGREEN     "\033[1;32m"
+#define BOLDYELLOW    "\033[1;33m"
+#define BOLDBLUE      "\033[1;34m"
+#define BOLDMAGENTA   "\033[1;35m"
+#define BOLDCYAN      "\033[1;36m"
+#define BOLDWHITE     "\033[1;37m"
+#define GREY46        "\033[38;5;243m"
+
 TaurBackend::TaurBackend(Config cfg) : config(cfg) {
     git2_inits = 0;
 
@@ -63,18 +88,6 @@ bool TaurBackend::download_git(string url, string out_path) {
     }
 }
 
-template <typename T>
-T sanitize(T beg, T end) {
-    T dest = beg;
-    for (T itr = beg; itr != end; ++itr)
-        // if its:
-        // 1. a digit
-        // 2. an uppercase letter
-        // 3. a lowercase letter
-        if (!(((*itr) >= 48 && (*itr) <= 57) && ((*itr) >= 65 && (*itr) <= 90) && ((*itr) >= 97 && (*itr) <= 122)))
-            *(dest++) = *itr;
-    return dest;
-}
 
 bool TaurBackend::download_tar(string url, string out_path) {
     std::ofstream out(out_path);
@@ -153,12 +166,14 @@ optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
 vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     if (pkgs.empty())
         return vector<TaurPkg_t>();
+    
+    std::cout << pkgs.size() << std::endl;
 
     std::string varName = cpr::util::urlEncode("arg[]");
-    std::string  urlStr = "https://aur.archlinux.org/rpc/v5/info?" + varName + "=" + cpr::util::urlEncode(pkgs[0]);
+    std::string  urlStr = "https://aur.archlinux.org/rpc/v5/info?" + varName + "=" + pkgs[0];
 
     for (int i = 1; i < pkgs.size(); i++)
-        urlStr += ("&" + varName + "=" + cpr::util::urlEncode(pkgs[i]));
+        urlStr += ("&" + varName + "=" + pkgs[i]);
 
     cpr::Url        url = cpr::Url(urlStr);
     cpr::Response  resp = cpr::Get(url);
@@ -405,37 +420,42 @@ bool is_number(const string& s) {
     return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
-std::optional<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool useGit) {
+// They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
+vector<string> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool useGit) {
     int resultcount = doc["resultcount"].GetInt();
-    if (resultcount == 1) {
-	    return this->fetch_pkg(doc["results"][0]["Name"].GetString(), useGit);
-    } else if (resultcount > 1) {
-        log_printf(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.\n");
-        string input;
-        do {
-            if (!input.empty())
-                log_printf(LOG_WARN, "Invalid input!\n");
 
-            for (int i = 0; i < resultcount; i++)
-                std::cout << "[" << i << "]: " << doc["results"][i]["Name"].GetString() << std::endl;
-
-            std::cout << "Choose a package to download: ";
-            std::cin >> input;
-        } while (!is_number(input) || std::stoi(input) >= resultcount);
-
-        rapidjson::Value& selected = doc["results"][std::stoi(input)];
-        //if (selected["URL"].IsString())
-        //	return (string(selected["URL"].GetString()) + ".git");
-        //else
-    	return this->fetch_pkg(selected["Name"].GetString(), useGit);
+    vector<string> out;
+    for (int i = 0; i < resultcount; i++) {
+        out.push_back(doc["results"][i]["Name"].GetString());
     }
 
-    return {};
+    return out;
+
+}
+
+vector<TaurPkg_t> TaurBackend::search_pac(string query) {
+    query.erase(sanitize(query.begin(), query.end()), query.end());
+    string cmd = "pacman -Qn | grep \"" + query + "\"";
+    vector<string> pkgs_string = split(exec(cmd), '\n');
+
+    vector<TaurPkg_t> out;
+
+    for (size_t i = 0; i < pkgs_string.size(); i++) {
+        try {
+            vector<string> pkg = split(pkgs_string[i], ' ');
+            out.push_back((TaurPkg_t) { pkg[0], pkg[1], "" });
+        } catch (std::out_of_range e) {
+            log_printf(LOG_ERROR, "Pacman did not return what we expected, Command: " + cmd);
+            exit(1);
+        }
+    }
+
+    return out;
 }
 
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-std::optional<TaurPkg_t> TaurBackend::search_aur(string query, int* status, bool useGit) {
+std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
     // link to AUR API
     cpr::Url            url(("https://aur.archlinux.org/rpc/v5/search/" + cpr::util::urlEncode(query) + "?by=name"));
     cpr::Response       r = cpr::Get(url);
@@ -445,17 +465,51 @@ std::optional<TaurPkg_t> TaurBackend::search_aur(string query, int* status, bool
     rapidjson::Document json_response;
     json_response.Parse(raw_text_response.c_str());
 
-    if (strcmp(json_response["type"].GetString(), "error") == 0) {
-        *status = -1;
+    if (strcmp(json_response["type"].GetString(), "error") == 0)
         return {};
+
+    if (json_response["resultcount"].GetInt() == 0)
+        return {};
+
+    // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
+    vector<string> aurPkgs = this->getPkgFromJson(json_response, useGit);
+    vector<TaurPkg_t> pacPkgs = this->search_pac(query);
+
+    int count = aurPkgs.size() + pacPkgs.size();
+
+    if (count == 1) {
+	    return aurPkgs.size() == 1 ? this->fetch_pkg(aurPkgs[0], useGit) : pacPkgs[0];
+    } else if (count > 1) {
+        log_printf(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.\n");
+        string input;
+        do {
+            if (!input.empty())
+                log_printf(LOG_WARN, "Invalid input!\n");
+
+            for (int i = 0; i < aurPkgs.size(); i++)
+                std::cout 
+                    << BOLDBLUE << "[" << i << "]: " 
+                    << NOCOLOR << BOLD << "AUR/" << aurPkgs[i] 
+                    << NOCOLOR << 
+                std::endl;
+            for (int i = 0; i < pacPkgs.size(); i++)
+                std::cout
+                    << BOLDCYAN << "[" << i + aurPkgs.size() << "]: "
+                    << NOCOLOR << BOLD << "SYNC/" << pacPkgs[i].name
+                    << NOCOLOR << 
+                std::endl;
+
+            std::cout << "Choose a package to download: ";
+            std::cin >> input;
+        } while (!is_number(input) || std::stoi(input) >= count);
+
+        int selected = std::stoi(input);
+
+        if (selected >= aurPkgs.size())
+            return pacPkgs[selected - aurPkgs.size()];
+        else
+            return this->fetch_pkg(aurPkgs[selected], useGit);
     }
 
-    if (json_response["resultcount"].GetInt() == 0) {
-        *status = -2;
-        return {};
-    }
-
-    *status = 0;
-
-    return this->getPkgFromJson(json_response, useGit);
+    return {};
 }

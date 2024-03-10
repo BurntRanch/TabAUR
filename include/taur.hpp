@@ -35,8 +35,10 @@ class TaurBackend {
     Config config;
     TaurBackend(Config cfg);
     ~TaurBackend();
-    std::optional<TaurPkg_t>     getPkgFromJson(rapidjson::Document& doc, bool useGit);
-    std::optional<TaurPkg_t>     search_aur(string query, int* status, bool useGit);
+    // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
+    vector<string>               getPkgFromJson(rapidjson::Document& doc, bool useGit);
+    vector<TaurPkg_t>            search_pac(string query);
+    optional<TaurPkg_t>          search(string query, bool useGit);
     bool            download_tar(string url, string out_path);
     bool            download_git(string url, string out_path);
     bool            download_pkg(string url, string out_path);
