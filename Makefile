@@ -11,14 +11,9 @@ all: cpr $(TARGET)
 cpr:
 	cmake -S $@ -B $@/build -DCMAKE_BUILD_TYPE=Release -DCPR_BUILD_TESTS=OFF -DCPR_USE_SYSTEM_CURL=ON
 	cmake --build $@/build --parallel
-	#sudo cmake --install --prefix=/usr $@/build
+	cmake --install $@/build
 
-semver:
-	cmake -S $@ -B $@/build -DCMAKE_BUILD_TYPE=Release
-	cmake --build $@/build --parallel
-	#sudo cmake --install --prefix=/usr $@/build
-
-$(TARGET): semver cpr ${OBJ}
+$(TARGET): cpr ${OBJ}
 	${CXX} $(OBJ) $(CPPFLAGS) -o $@ $(LDFLAGS)
 
 clean:
