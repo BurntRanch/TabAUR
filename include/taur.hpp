@@ -34,7 +34,7 @@ struct TaurPkg_t {
 };
 
 struct db_colors {
-    const string extra = BOLDMAGENTA;
+    const string extra = BOLDGREEN;
     const string multilib = BOLDCYAN;
     const string core = BOLDYELLOW;
 };

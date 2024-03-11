@@ -521,8 +521,10 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
     vector<TaurPkg_t> aurPkgs = this->getPkgFromJson(json_response, useGit);
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
+    db_colors db_color;
 
     size_t count = aurPkgs.size() + pacPkgs.size();
+    string dbColor;
 
     if (count == 1) {
 	    return aurPkgs.size() == 1 ? this->fetch_pkg(aurPkgs[0].name, useGit) : pacPkgs[0];
@@ -541,18 +543,26 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
                 std::cout 
                     << MAGENTA << i
                     << " " << BOLDBLUE << "aur/" << BOLD << aurPkgs[i].name
-                    << " " << BOLDYELLOW << aurPkgs[i].desc
-                    << NOCOLOR <<
-                std::endl;
-            for (size_t i = 0; i < pacPkgs.size(); i++)
-                std::cout
-                    << MAGENTA << i + aurPkgs.size() << " "
-                    << BOLDMAGENTA << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
-                    << " " << BOLDYELLOW << pacPkgs[i].desc
-                    << " " << BOLDGREEN << pacPkgs[i].version
-                    << NOCOLOR << 
+                    << "\n    " << NOCOLOR << aurPkgs[i].desc
+                    << 
                 std::endl;
 
+            for (size_t i = 0; i < pacPkgs.size(); i++) {
+                if(pacPkgs[i].db_name == "extra")
+                    dbColor = db_color.extra;
+                else if(pacPkgs[i].db_name == "multilib")
+                    dbColor = db_color.multilib;
+                else
+                    dbColor = db_color.core;
+
+                std::cout
+                    << MAGENTA << i + aurPkgs.size() << " "
+                    << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
+                    << " " << BOLDGREEN << pacPkgs[i].version << "\n    "
+                    << NOCOLOR << pacPkgs[i].desc
+                    << NOCOLOR << 
+                std::endl;
+            }
             std::cout << "Choose a package to download: ";
             std::cin >> input;
         } while (!is_number(input) || (size_t)std::stoi(input) >= count);
