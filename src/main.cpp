@@ -103,7 +103,6 @@ int parseargs(int argc, char* argv[]){
 
     int opt;
     int option_index = 0;
-	int result;
 	const char *optstring = "S:R:QahV";
 	static const struct option opts[] = 
     {
@@ -135,10 +134,10 @@ int parseargs(int argc, char* argv[]){
 }
 
 bool queryPkgs(TaurBackend *backend) {
-    vector<TaurPkg_t> pkgs = backend->get_all_local_pkgs(config.aurOnly);
+    vector<string> pkgs = backend->list_all_local_pkgs(config.aurOnly, false);
 
     for (size_t i = 0; i < pkgs.size(); i++)
-        cout << pkgs[i].name << " " << pkgs[i].version << endl;
+        cout << pkgs[i] << endl;
 
     return true;
 }

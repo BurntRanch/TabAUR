@@ -28,7 +28,8 @@ struct TaurPkg_t {
     string         name;
     string         version;
     string         url;
-    vector<string> depends = vector<string>();
+    string         desc;
+    vector<string> depends;
     string         db_name;
 };
 
@@ -44,7 +45,7 @@ class TaurBackend {
     TaurBackend(Config cfg);
     ~TaurBackend();
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
-    vector<string>               getPkgFromJson(rapidjson::Document& doc, bool useGit);
+    vector<TaurPkg_t>            getPkgFromJson(rapidjson::Document& doc, bool useGit);
     vector<TaurPkg_t>            search_pac(string query);
     optional<TaurPkg_t>          search(string query, bool useGit);
     bool            download_tar(string url, string out_path);
@@ -56,6 +57,7 @@ class TaurBackend {
     bool            install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit);
     bool            update_all_pkgs(path cacheDir, bool useGit);
     vector<TaurPkg_t> get_all_local_pkgs(bool aurOnly);
+    vector<string> list_all_local_pkgs(bool aurOnly, bool stripVersion);
   private:
     git_clone_options git_opt;
     int               git2_inits;
