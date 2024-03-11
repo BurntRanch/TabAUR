@@ -223,7 +223,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
     }
 
     vector<string> includedIndexes = split(included, ' ');
-    string finalPackageList = "i";
+    string finalPackageList = "";
 
     for (size_t i = 0; i < includedIndexes.size(); i++) {
         try {
