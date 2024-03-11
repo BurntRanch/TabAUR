@@ -351,6 +351,12 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         }
 
         string versionInfo = exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+        
+        if (versionInfo.empty()) {
+            log_printf(LOG_WARN, _("Failed to parse version information from %s's PKGBUILD, You might be able to ignore this safely."), pkgs[pkgIndex].name.c_str());
+            continue;
+        }
+
         if (alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))
             continue;
 
