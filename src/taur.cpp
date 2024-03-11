@@ -336,19 +336,28 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
             continue;
         }
 
-        if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
+        if (pkgs[pkgIndex].version != onlinePkgs[i].version) {
             continue;
         }
+
+        string pkgFolder = cacheDir / onlinePkgs[i].name;
+        pkgFolder.erase(sanitize(pkgFolder.begin(), pkgFolder.end()), pkgFolder.end());
+
+        bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgFolder);
+
+        if (!downloadSuccess) {
+            log_printf(LOG_WARN, _("Failed to download package %s!\n"), onlinePkgs[i].name.c_str());
+            continue;
+        }
+
+        string versionInfo = exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+        if (alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))
+            continue;
 
         log_printf(LOG_INFO, _("Upgrading package %s from version %s to version %s!\n"), pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(), onlinePkgs[i].version.c_str());
         attemptedDownloads++;
 
-        bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, cacheDir / onlinePkgs[i].name);
-
-        if (!downloadSuccess)
-            continue;
-
-        bool installSuccess = this->install_pkg(onlinePkgs[i], cacheDir / onlinePkgs[i].name, useGit);
+        bool installSuccess = this->install_pkg(onlinePkgs[i], pkgFolder, useGit);
 
         if (!installSuccess)
             continue;
