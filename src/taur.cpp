@@ -473,6 +473,10 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
         log_printf(LOG_INFO, _("TabAUR has found multiple packages relating to your search query, Please pick one.\n"));
         string input;
         do {
+            // CTRL-D
+            if (!std::cin)
+                return {};
+
             if (!input.empty())
                 log_printf(LOG_WARN, _("Invalid input!\n"));
 
