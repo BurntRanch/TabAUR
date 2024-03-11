@@ -1,5 +1,6 @@
 // Functions for TabAUR, These include printing stuff and others.
 // main.cpp simply pieces each function together to make the program work.
+#include "util.hpp"
 #include <taur.hpp>
 #include <config.hpp>
 #include <optional>
@@ -78,7 +79,7 @@ bool TaurBackend::download_tar(string url, string out_path) {
     // if this is in a directory, it will change to that directory first.
     bool isNested = out_path.find("/") != -1;
 
-    out_path.erase(sanitize(out_path.begin(), out_path.end()), out_path.end());
+    sanitizeStr(out_path);
     if (isNested)
     	return system(("cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\"").c_str()) == 0;
     else
@@ -179,11 +180,10 @@ string exec(string cmd) {
 }
 
 bool sanitizeAndRemove(string& input) {
-    string sudo = config.sudo;
-    sudo.erase(sanitize(sudo.begin(), sudo.end()), sudo.end());
-    input.erase(sanitize(input.begin(), input.end()), input.end());
+    sanitizeStr(config.sudo);
+    sanitizeStr(input);
 
-    return system((sudo + " pacman -R " + input).c_str()) == 0;
+    return system((config.sudo + " pacman -R " + input).c_str()) == 0;
 }
 
 bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
@@ -191,7 +191,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
         std::cerr << "Failed to find your package " << pkgName << " in the TabAUR DB" << std::endl; 
         return false;
     }*/
-    pkgName.erase(sanitize(pkgName.begin(), pkgName.end()), pkgName.end());
+    sanitizeStr(pkgName);
 
     string packages_str;
     if (searchForeignPackagesOnly)
@@ -245,8 +245,8 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
     string makepkg_bin = this->config.makepkgBin;
 
     // never forget to sanitize
-    extracted_path.erase(sanitize(extracted_path.begin(), extracted_path.end()), extracted_path.end());
-    makepkg_bin.erase(sanitize(makepkg_bin.begin(), makepkg_bin.end()), makepkg_bin.end());
+    sanitizeStr(extracted_path);
+    sanitizeStr(makepkg_bin);
 
     if (pkg.depends.empty())
         return system(("cd \"" + extracted_path + "\" && " + makepkg_bin + " -si").c_str()) == 0;
@@ -297,7 +297,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     string sudo = config.sudo;
-    sudo.erase(sanitize(sudo.begin(), sudo.end()), sudo.end());
+    sanitizeStr(sudo);
     
     // first thing first
     bool pacmanUpgradeSuccess = system((sudo + " pacman -Syu").c_str()) == 0;
@@ -343,7 +343,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         log_printf(LOG_INFO, _("Downloading %s, This could take a bit.\n"), pkgs[pkgIndex].name.c_str());
 
         string pkgFolder = cacheDir / onlinePkgs[i].name;
-        pkgFolder.erase(sanitize(pkgFolder.begin(), pkgFolder.end()), pkgFolder.end());
+        sanitizeStr(pkgFolder);
 
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgFolder);
 
@@ -424,7 +424,7 @@ vector<string> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool useGit
 }
 
 vector<TaurPkg_t> TaurBackend::search_pac(string query) {
-    query.erase(sanitize(query.begin(), query.end()), query.end());
+    sanitizeStr(query);
     string cmd = "pacman -Qn | grep \"" + query + "\"";
     vector<string> pkgs_string = split(exec(cmd), '\n');
 

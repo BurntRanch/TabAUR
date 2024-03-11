@@ -34,9 +34,8 @@ bool installPkg(string pkgName, TaurBackend *backend) {
 
     if (url == "") {
         string name = pkg.value().name;
-        string sudo = config.sudo;
-        sudo.erase(sanitize(sudo.begin(), sudo.end()), sudo.end());
-        name.erase(sanitize(name.begin(), name.end()), name.end());
+        sanitizeStr(config.sudo);
+        sanitizeStr(name);
         
         return system((config.sudo + " pacman -S " + name).c_str()) == 0;
     }
