@@ -336,9 +336,11 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
             continue;
         }
 
-        if (pkgs[pkgIndex].version != onlinePkgs[i].version) {
+        if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
             continue;
         }
+
+        log_printf(LOG_INFO, _("Downloading %s, This could take a bit.\n"), pkgs[pkgIndex].name.c_str());
 
         string pkgFolder = cacheDir / onlinePkgs[i].name;
         pkgFolder.erase(sanitize(pkgFolder.begin(), pkgFolder.end()), pkgFolder.end());
@@ -353,7 +355,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         string versionInfo = exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
         
         if (versionInfo.empty()) {
-            log_printf(LOG_WARN, _("Failed to parse version information from %s's PKGBUILD, You might be able to ignore this safely."), pkgs[pkgIndex].name.c_str());
+            log_printf(LOG_WARN, _("Failed to parse version information from %s's PKGBUILD, You might be able to ignore this safely.\n"), pkgs[pkgIndex].name.c_str());
             continue;
         }
 
