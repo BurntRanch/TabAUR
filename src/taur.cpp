@@ -462,7 +462,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
             vector<string> pkg = split(pkgs_string[i], '/');
 
             if (pkg.size() < 2) {
-                log_printf(LOG_ERROR, "Pacman returned an unexpected response:\n%s\n", pkgs_string[i]); 
+                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str()); 
                 continue;
             }
 
@@ -471,7 +471,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
             pkg = split(pkg[1], ' ');
 
             if (pkg.size() < 2) {
-                log_printf(LOG_ERROR, "Pacman returned an unexpected response:\n%s\n", pkgs_string[i]); 
+                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str()); 
                 continue;
             }
 
@@ -479,7 +479,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
             taur_pkg.version = pkg[1];
 
             if (pkgs_string.size() <= (i + 1)) {
-                log_printf(LOG_ERROR, "Pacman provided no description for package %s! Command: %s\n", pkg[0], cmd); 
+                log_printf(LOG_ERROR, _("Pacman provided no description for package %s! Command: %s\n"), pkg[0].c_str(), cmd.c_str()); 
                 out.push_back(taur_pkg);
                 continue;
             }
