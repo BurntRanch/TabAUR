@@ -2,6 +2,7 @@
 #define GIT_HPP
 
 #include <git2.h>
+#include <alpm.h>
 #include <iostream>
 #include <fcntl.h>
 #include <unistd.h>
