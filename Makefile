@@ -6,7 +6,7 @@ LDFLAGS  = ${LIBS}
 TARGET   = taur
 CPPFLAGS = -isystem include -std=c++17
 
-all: semver cpr $(TARGET)
+all: cpr $(TARGET)
 
 cpr:
 	cmake -S $@ -B $@/build -DCMAKE_BUILD_TYPE=Release -DCPR_BUILD_TESTS=OFF -DCPR_USE_SYSTEM_CURL=ON
@@ -24,4 +24,4 @@ $(TARGET): semver cpr ${OBJ}
 clean:
 	rm -rf taur src/*.o cpr/build
 
-.PHONY: cpr semver taur clean all
+.PHONY: cpr taur clean all

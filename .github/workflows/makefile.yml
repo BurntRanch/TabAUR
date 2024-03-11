@@ -19,14 +19,9 @@ jobs:
     - name: Install Packages
       run: pacman -Syu gcc git libgit2 base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
 
-    - name: Install cpr
-      run: |
-          git clone https://github.com/libcpr/cpr
-          cd cpr
-          mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCPR_BUILD_TESTS=OFF -DCPR_USE_SYSTEM_CURL=ON
-          make
-          sudo make install   
+    - name: Get submodules
+      run: git submodule init && git submodule update --init --recursive
+
     - name: Clean
       run: make clean
 
