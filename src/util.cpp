@@ -2,19 +2,19 @@
 #include <util.hpp>
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
-bool hasEnding(std::string const& fullString, std::string const& ending) {
+bool hasEnding(string const& fullString, std::string const& ending) {
     if (ending.length() > fullString.length())
         return false;
     return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
 }
 
-bool hasStart(std::string const& fullString, std::string const& start) {
+bool hasStart(string const& fullString, std::string const& start) {
     if (start.length() > fullString.length())
         return false;
     return (0 == fullString.compare(0, start.length(), start));
 }
 
-void log_printf(int log, std::string fmt, ...){
+void log_printf(int log, string fmt, ...){
     va_list args;
     va_start(args, fmt);
     switch(log){
@@ -30,10 +30,14 @@ void log_printf(int log, std::string fmt, ...){
     std::cout << NOCOLOR;
 }
 
-std::string expandHome(std::string& str) {
-    std::string ret = str;
+void sanitizeStr(string& str){
+    str.erase(sanitize(str.begin(), str.end()), str.end());
+}
+
+string expandHome(std::string& str) {
+    string ret = str;
     size_t found = ret.find("~");
-    if (found != std::string::npos) {
+    if (found != string::npos) {
         const char* homeDir = getenv("HOME");
         if (homeDir != nullptr)
             ret.replace(found, 1, homeDir);
@@ -45,9 +49,9 @@ std::string expandHome(std::string& str) {
     return ret;
 }
 
-std::vector<std::string> split(std::string text, char delim) {
-    std::string line;
-    std::vector<std::string> vec;
+std::vector<string> split(std::string text, char delim) {
+    string line;
+    std::vector<string> vec;
     std::stringstream ss(text);
     while(std::getline(ss, line, delim)) {
         vec.push_back(line);

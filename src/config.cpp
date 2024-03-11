@@ -68,7 +68,6 @@ void Config::loadConfigFile(string filename) {
     }
     
     this->sudo      = this->getConfigValue<string>("general.sudo", "sudo");
-    this->sudo.erase(sanitize(this->sudo.begin(), this->sudo.end()), this->sudo.end());
     this->useGit    = this->getConfigValue<bool>("general.useGit", true);
     this->aurOnly   = this->getConfigValue<bool>("general.aurOnly", false);
     this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg");
