@@ -67,10 +67,10 @@ void Config::loadConfigFile(string filename) {
         exit(-1);
     }
     
-    this->sudo      = this->getConfigValue<string>("general.sudo", "sudo");
+    this->sudo      = this->getConfigValue<string>("general.sudo", "sudo"); sanitizeStr(this->sudo);
     this->useGit    = this->getConfigValue<bool>("general.useGit", true);
     this->aurOnly   = this->getConfigValue<bool>("general.aurOnly", false);
-    this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg");
-    this->cacheDir  = this->getCacheDir();
+    this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg"); sanitizeStr(this->makepkgBin);
+    this->cacheDir  = this->getCacheDir(); sanitizeStr(this->cacheDir);
     this->colors    = this->getConfigValue<bool>("general.colors", true);
 }

@@ -29,6 +29,13 @@ struct TaurPkg_t {
     string         version;
     string         url;
     vector<string> depends = vector<string>();
+    string         db_name;
+};
+
+struct db_colors {
+    const string extra = BOLDMAGENTA;
+    const string multilib = BOLDCYAN;
+    const string core = BOLDYELLOW;
 };
 
 class TaurBackend {

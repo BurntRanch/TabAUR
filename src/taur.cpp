@@ -425,17 +425,25 @@ vector<string> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool useGit
 
 vector<TaurPkg_t> TaurBackend::search_pac(string query) {
     sanitizeStr(query);
-    string cmd = "pacman -Qn | grep \"" + query + "\"";
+    // we search for the package name and print only the name, not the description
+    string cmd = "pacman -Ss \"" + query + "\"  | awk '{if (NR % 2 != 0) print $0}'";
     vector<string> pkgs_string = split(exec(cmd), '\n');
-
+    TaurPkg_t taur_pkg;
     vector<TaurPkg_t> out;
 
     for (size_t i = 0; i < pkgs_string.size(); i++) {
         try {
-            vector<string> pkg = split(pkgs_string[i], ' ');
-            out.push_back((TaurPkg_t) { pkg[0], pkg[1], "" });
+            vector<string> pkg = split(pkgs_string[i], '/');
+            size_t space_pos = pkg[1].find(' ');
+            pkg[1].erase(space_pos);
+            taur_pkg.name = pkg[1]; 
+            taur_pkg.db_name = pkg[0];
+            std::cout << "pkg0: "<<pkg[0] << "pkg1: " << pkg[1] << std::endl ;
+            pkg = split(pkgs_string[i], ' ');
+            taur_pkg.version = pkg[1];
+            out.push_back(taur_pkg);
         } catch (std::out_of_range e) {
-            log_printf(LOG_ERROR, _("Pacman did not return what we expected, Command: %s\n") + cmd);
+            log_printf(LOG_ERROR, _("Pacman did not return what we expected, Command: %s\n"), cmd.c_str());
             exit(1);
         }
     }
@@ -482,14 +490,15 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
             for (int i = 0; i < aurPkgs.size(); i++)
                 std::cout 
-                    << BOLDBLUE << "[" << i << "]: " 
-                    << NOCOLOR << BOLD << "AUR/" << aurPkgs[i] 
+                    << MAGENTA << i << " "
+                    << NOCOLOR << BOLDBLUE << "aur/" << BOLD << aurPkgs[i] 
                     << NOCOLOR << 
                 std::endl;
             for (int i = 0; i < pacPkgs.size(); i++)
                 std::cout
-                    << BOLDCYAN << "[" << i + aurPkgs.size() << "]: "
-                    << NOCOLOR << BOLD << "SYNC/" << pacPkgs[i].name
+                    << MAGENTA << i + aurPkgs.size() << " "
+                    << BOLDMAGENTA << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
+                    << " " << BOLDGREEN << pacPkgs[i].version
                     << NOCOLOR << 
                 std::endl;
 
