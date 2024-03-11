@@ -20,7 +20,9 @@ jobs:
       run: pacman -Syu gcc git libgit2 base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
 
     - name: Get submodules
-      run: git submodule init && git submodule update --init --recursive
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
 
     - name: Clean
       run: make clean
