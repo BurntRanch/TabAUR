@@ -523,12 +523,8 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
     vector<TaurPkg_t> aurPkgs = this->getPkgFromJson(json_response, useGit);
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
 
-<<<<<<< HEAD
     size_t count = aurPkgs.size() + pacPkgs.size();
-=======
-    int count = aurPkgs.size() + pacPkgs.size();
     string dbColor;
->>>>>>> 60f638ebf531df9b41837ff6541ba862eded6964
 
     if (count == 1) {
 	    return aurPkgs.size() == 1 ? this->fetch_pkg(aurPkgs[0].name, useGit) : pacPkgs[0];
@@ -550,13 +546,6 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
                     << " " << BOLDYELLOW << aurPkgs[i].desc
                     << NOCOLOR <<
                 std::endl;
-<<<<<<< HEAD
-            for (size_t i = 0; i < pacPkgs.size(); i++)
-                std::cout
-                    << MAGENTA << i + aurPkgs.size() << " "
-                    << BOLDMAGENTA << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
-                    << " " << BOLDYELLOW << pacPkgs[i].desc
-=======
             for (int i = 0; i < pacPkgs.size(); i++) {
                 if(pacPkgs[i].db_name == "extra")
                     dbColor = db_color.extra;
@@ -565,10 +554,10 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
                 else
                     dbColor = db_color.core;
                 std::cout
-                    << MAGENTA << i + aurPkgs.size() << " "
-                    << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
->>>>>>> 60f638ebf531df9b41837ff6541ba862eded6964
+                    << MAGENTA << i + aurPkgs.size()
+                    << " " << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
                     << " " << BOLDGREEN << pacPkgs[i].version
+		    << " " << BOLDYELLOW << pacPkgs[i].desc
                     << NOCOLOR << 
                 std::endl;
             }
