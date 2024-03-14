@@ -17,6 +17,7 @@ public:
     string cacheDir;
     string sudo;
     bool colors;
+    bool secretRecipe;
 
     Config();
     string getHomeCacheDir();

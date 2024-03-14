@@ -73,4 +73,5 @@ void Config::loadConfigFile(string filename) {
     this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg"); sanitizeStr(this->makepkgBin);
     this->cacheDir  = this->getCacheDir(); sanitizeStr(this->cacheDir);
     this->colors    = this->getConfigValue<bool>("general.colors", true);
+    this->secretRecipe = this->getConfigValue<bool>("secret.IwantChocolateChipMuffins", false);
 }

@@ -16,7 +16,14 @@ struct Operation_t operation;
 void usage() {
     cout << "TabAUR Launch Options:" << endl;
     cout << "\ttaur <pacman-like arguments> <parameters to the operation>" << endl << endl;
-    cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl;
+    cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
+    if(config.secretRecipe){
+        log_printf(LOG_INFO, _("Loading secret recipe...\n"));
+        for(auto const& i : secret){
+            cout << i << endl;
+            usleep(650000); // 0.65 seconds
+        }
+    }
 }
 
 bool installPkg(string pkgName, TaurBackend *backend) { 
