@@ -34,6 +34,17 @@ void sanitizeStr(string& str){
     str.erase(sanitize(str.begin(), str.end()), str.end());
 }
 
+// Function to check if a package is from a synchronization database
+bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
+    const char *name = alpm_pkg_get_name(pkg);
+
+    for (; syncdbs; syncdbs = alpm_list_next(syncdbs))
+        for (alpm_list_t *p = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); p; p = alpm_list_next(p))
+            if (strcmp(name, alpm_pkg_get_name((alpm_pkg_t *)(p->data))) == 0)
+                return true;
+    return false;
+}
+
 string expandHome(std::string& str) {
     string ret = str;
     size_t found = ret.find("~");

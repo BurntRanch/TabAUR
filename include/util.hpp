@@ -6,6 +6,8 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <cstring>
+#include <alpm.h>
 
 using std::string;
 // taken from pacman
@@ -52,8 +54,8 @@ bool hasStart(string const& fullString, string const& start);
 void log_printf(int log, string fmt, ...);
 string expandHome(string& str);
 void sanitizeStr(string& str);
+bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 std::vector<string> split(string text, char delim);
-
 
 template <typename T>
 T sanitize(T beg, T end) {

@@ -23,6 +23,7 @@ using std::string;
 using std::filesystem::path;
 using std::vector;
 using std::optional;
+using std::unique_ptr;
 
 struct TaurPkg_t {
     string         name;
@@ -41,8 +42,8 @@ struct db_colors {
 
 class TaurBackend {
   public:
-    Config config;
-    TaurBackend(Config cfg);
+    Config *config;
+    TaurBackend(Config *cfg);
     ~TaurBackend();
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
     vector<TaurPkg_t>            getPkgFromJson(rapidjson::Document& doc, bool useGit);

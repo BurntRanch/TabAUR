@@ -3,6 +3,7 @@
 #include <config.hpp>
 #include <util.hpp>
 #include <args.hpp>
+#include <signal.h>
 
 using std::cout;
 using std::endl;
@@ -12,6 +13,11 @@ using std::string;
 
 Config config;
 struct Operation_t operation;
+
+void interruptHandler(int unused) {
+    log_printf(LOG_WARN, _("Caught CTRL-C, Exiting.\n"));
+    exit(-1);
+}
 
 void usage() {
     cout << "TabAUR Launch Options:" << endl;
@@ -144,8 +150,9 @@ bool queryPkgs(TaurBackend *backend) {
 
 // main
 int main(int argc, char* argv[]) {
+    signal(SIGINT, interruptHandler);
 
-    TaurBackend backend(config);
+    TaurBackend backend(&config);
 
     if (parseargs(argc, argv))
         return 1;

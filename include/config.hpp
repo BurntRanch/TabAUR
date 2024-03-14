@@ -5,9 +5,12 @@
 #include <util.hpp>
 #define TOML_HEADER_ONLY 1
 #include <toml.hpp>
+#include <ini.h>
+#include <alpm.h>
 
 using std::string;
 using std::optional;
+using std::unique_ptr;
 
 class Config {
 public:
@@ -16,14 +19,19 @@ public:
     string makepkgBin;
     string cacheDir;
     string sudo;
+    alpm_handle_t *handle = NULL;
     bool colors;
 
+    alpm_list_t *repos;
+
     Config();
+    ~Config();
     string getHomeCacheDir();
     string getCacheDir();
     string getHomeConfigDir();
     string getConfigDir();
     void   loadConfigFile(string filename); 
+    void   loadPacmanConfigFile(string filename); 
     
     // stupid c++ that wants template functions in header
     template<typename T>
@@ -63,6 +71,10 @@ inline const std::string defConfig = R"#([general]
 [storage]
 # Where we are gonna download the AUR packages (default $XDG_CACHE_HOME, else ~/.cache/TabAUR)
 #cacheDir = "~/.cache/TabAUR"
+
+[pacman]
+# Where is the pacman lib folder? (default: /var/lib/pacman)
+#libFolder = "/var/lib/pacman"
 )#";
 
 #endif
