@@ -31,7 +31,7 @@ public:
     T getConfigValue(string value, T fallback) {
         optional<T> ret = this->tbl.at_path(value).value<T>();
         if constexpr (is_string<T>::value) // if we get a value that's a string
-            return ret ? expandHome(ret.value()) : expandHome(fallback);
+            return ret ? expandVar(ret.value()) : expandVar(fallback);
         else
             return ret ? ret.value() : fallback;
     }
@@ -63,7 +63,7 @@ inline const std::string defConfig = R"#([general]
 
 [storage]
 # Where we are gonna download the AUR packages (default $XDG_CACHE_HOME, else ~/.cache/TabAUR)
-#cacheDir = "~/.cache/TabAUR"
+#cacheDir = "$XDG_CACHE_HOME"
 )#";
 
 #endif

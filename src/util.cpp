@@ -30,23 +30,27 @@ void log_printf(int log, string fmt, ...){
     std::cout << NOCOLOR;
 }
 
-void sanitizeStr(string& str){
+string sanitizeStr(string& str){
     str.erase(sanitize(str.begin(), str.end()), str.end());
+    return str;
 }
 
-string expandHome(std::string& str) {
-    string ret = str;
-    size_t found = ret.find("~");
-    if (found != string::npos) {
-        const char* homeDir = getenv("HOME");
-        if (homeDir != nullptr)
-            ret.replace(found, 1, homeDir);
-        else {
-            log_printf(LOG_ERROR, _("HOME environment variable is not set.\n"));
+std::string expandVar(std::string& str){
+    const char* env;
+    if(str[0] == '~'){
+        env = getenv("HOME"); // it's likely impossible for not having the $HOME env var setup 
+        str.replace(0, 1, env); // replace ~ with the $HOME value
+    } else if (str[0] == '$') {
+        str.erase(0, 1); // erase from str[0] to str[1]
+        env = getenv(str.c_str());
+        if (env == nullptr) {
+            log_printf(LOG_ERROR, _("No such enviroment variable: %s\n"), str.c_str());
             exit(-1);
-        }
+        } 
+        str = std::string(env);
     }
-    return ret;
+    
+    return str;
 }
 
 std::vector<string> split(std::string text, char delim) {

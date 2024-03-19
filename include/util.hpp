@@ -6,6 +6,7 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <filesystem>
 
 using std::string;
 // taken from pacman
@@ -50,8 +51,8 @@ struct is_string {
 bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);
 void log_printf(int log, string fmt, ...);
-string expandHome(string& str);
-void sanitizeStr(string& str);
+string expandVar(string& str);
+string sanitizeStr(string& str);
 std::vector<string> split(string text, char delim);
 
 

@@ -13,22 +13,22 @@ Config::Config() {
     string configDir = this->getConfigDir();
     string filename = configDir + "/config.toml";
     if (!std::filesystem::exists(configDir)) {
-        log_printf(LOG_WARN, _("TabAUR config folder was not found, Creating folder at %s!\n"), configDir.c_str());
-        std::filesystem::create_directory(configDir);
+        log_printf(LOG_WARN, _("TabAUR config folder was not found, Creating folders at %s!\n"), configDir.c_str());
+        std::filesystem::create_directories(configDir);
     }
     if(!std::filesystem::exists(filename)) {
-        // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         log_printf(LOG_WARN, _("config.toml not found, generating new one\n"));
+        // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         ofstream configFile(filename, std::ios::trunc);
-        configFile.write(defConfig.c_str(), defConfig.size());
+        configFile << defConfig;
         configFile.close();
     }
     loadConfigFile(filename);
     
     string cacheDir = this->getCacheDir();
     if (!std::filesystem::exists(cacheDir)) {
-        log_printf(LOG_WARN, _("TabAUR cache folder was not found, Creating folder at %s!\n"), cacheDir.c_str());
-        std::filesystem::create_directory(cacheDir);
+        log_printf(LOG_WARN, _("TabAUR cache folder was not found, Creating folders at %s!\n"), cacheDir.c_str());
+        std::filesystem::create_directories(cacheDir);
     }
 }
 
