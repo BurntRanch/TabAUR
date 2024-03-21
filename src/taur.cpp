@@ -581,7 +581,6 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
     vector<TaurPkg_t> aurPkgs = this->getPkgFromJson(json_response, useGit);
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
-    db_colors db_color;
 
     size_t count = aurPkgs.size() + pacPkgs.size();
     string dbColor;
@@ -618,12 +617,8 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
                     << MAGENTA << i + aurPkgs.size()
                     << " " << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
                     << " " << BOLDGREEN << pacPkgs[i].version
-        		    << " " << BOLDYELLOW << pacPkgs[i].desc
-                std::cout
-                    << MAGENTA << i + aurPkgs.size() << " "
-                    << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
-                    << " " << BOLDGREEN << pacPkgs[i].version << "\n    "
-                    << NOCOLOR << pacPkgs[i].desc
+                    << "\n    " << BOLDYELLOW << pacPkgs[i].desc
+		    << NOCOLOR <<
                 std::endl;
             }
             std::cout << "Choose a package to download: ";
