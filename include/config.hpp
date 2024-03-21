@@ -2,15 +2,14 @@
 #define CONFIG_HPP
 
 #include <string>
-#include <util.hpp>
+#include "util.hpp"
 #define TOML_HEADER_ONLY 1
-#include <toml.hpp>
-#include <ini.h>
-#include <alpm.h>
+
+#include "toml.hpp"
+#include "ini.h"
+#include "alpm.h"
 
 using std::string;
-using std::optional;
-using std::unique_ptr;
 
 class Config {
 public:
@@ -21,6 +20,7 @@ public:
     string sudo;
     alpm_handle_t *handle = NULL;
     bool colors;
+    bool secretRecipe;
 
     alpm_list_t *repos;
 
@@ -36,9 +36,9 @@ public:
     // stupid c++ that wants template functions in header
     template<typename T>
     T getConfigValue(string value, T fallback) {
-        optional<T> ret = this->tbl.at_path(value).value<T>();
-        if constexpr (is_string<T>::value) // if we get a value that's a string
-            return ret ? expandHome(ret.value()) : expandHome(fallback);
+        toml::optional<T> ret = this->tbl.at_path(value).value<T>();
+        if constexpr (toml::is_string<T>) // if we get a value that's a string
+            return ret ? expandVar(ret.value()) : expandVar(fallback);
         else
             return ret ? ret.value() : fallback;
     }
@@ -50,8 +50,8 @@ private:
 extern Config config;
 
 // we comment the default config values, just like /etc/pacman.conf
-inline const std::string defConfig = R"#([general]
-# if true(default), then it'll uses git for downloading/updating the aur repo
+inline const string defConfig = R"#([general]
+# if true(default), then it'll use git for downloading/updating the aur repo
 # else if false, then it'll use tarballs (.tar.gz) of the aur repo
 #useGit = true
 
@@ -70,7 +70,7 @@ inline const std::string defConfig = R"#([general]
 
 [storage]
 # Where we are gonna download the AUR packages (default $XDG_CACHE_HOME, else ~/.cache/TabAUR)
-#cacheDir = "~/.cache/TabAUR"
+#cacheDir = "$XDG_CACHE_HOME"
 
 [pacman]
 # Where is the pacman lib folder? (default: /var/lib/pacman)

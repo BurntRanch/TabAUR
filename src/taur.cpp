@@ -1,9 +1,8 @@
 // Functions for TabAUR, These include printing stuff and others.
 // main.cpp simply pieces each function together to make the program work.
 #include "util.hpp"
-#include <taur.hpp>
-#include <config.hpp>
-#include <optional>
+#include "taur.hpp"
+#include "config.hpp"
 
 TaurBackend::TaurBackend(Config *cfg) : config(cfg) {
     git2_inits = 0;
@@ -563,7 +562,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
 
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
+optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
     // link to AUR API
     cpr::Url            url(("https://aur.archlinux.org/rpc/v5/search/" + cpr::util::urlEncode(query) + "?by=name"));
     cpr::Response       r = cpr::Get(url);
@@ -582,6 +581,7 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
     vector<TaurPkg_t> aurPkgs = this->getPkgFromJson(json_response, useGit);
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
+    db_colors db_color;
 
     size_t count = aurPkgs.size() + pacPkgs.size();
     string dbColor;
@@ -619,7 +619,11 @@ std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
                     << " " << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
                     << " " << BOLDGREEN << pacPkgs[i].version
         		    << " " << BOLDYELLOW << pacPkgs[i].desc
-                    << NOCOLOR << 
+                std::cout
+                    << MAGENTA << i + aurPkgs.size() << " "
+                    << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
+                    << " " << BOLDGREEN << pacPkgs[i].version << "\n    "
+                    << NOCOLOR << pacPkgs[i].desc
                 std::endl;
             }
             std::cout << "Choose a package to download: ";
