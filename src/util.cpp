@@ -1,5 +1,5 @@
 #include <cstdio>
-#include <util.hpp>
+#include "util.hpp"
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, std::string const& ending) {

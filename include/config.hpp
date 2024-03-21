@@ -2,12 +2,11 @@
 #define CONFIG_HPP
 
 #include <string>
-#include <util.hpp>
+#include "util.hpp"
 #define TOML_HEADER_ONLY 1
-#include <toml.hpp>
+#include "toml.hpp"
 
 using std::string;
-using std::optional;
 
 class Config {
 public:
@@ -29,8 +28,8 @@ public:
     // stupid c++ that wants template functions in header
     template<typename T>
     T getConfigValue(string value, T fallback) {
-        optional<T> ret = this->tbl.at_path(value).value<T>();
-        if constexpr (is_string<T>::value) // if we get a value that's a string
+        toml::optional<T> ret = this->tbl.at_path(value).value<T>();
+        if constexpr (toml::is_string<T>) // if we get a value that's a string
             return ret ? expandVar(ret.value()) : expandVar(fallback);
         else
             return ret ? ret.value() : fallback;
@@ -43,7 +42,7 @@ private:
 extern Config config;
 
 // we comment the default config values, just like /etc/pacman.conf
-inline const std::string defConfig = R"#([general]
+inline const string defConfig = R"#([general]
 # if true(default), then it'll uses git for downloading/updating the aur repo
 # else if false, then it'll use tarballs (.tar.gz) of the aur repo
 #useGit = true

@@ -3,14 +3,12 @@
 
 #include <git2.h>
 #include <alpm.h>
-#include <iostream>
 #include <fcntl.h>
 #include <unistd.h>
-#include <util.hpp>
+#include <optional>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
-#include <config.hpp>
 #include <cpr/cpr.h>
 #include <cstdio>
 #include <iostream>
@@ -18,6 +16,9 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+
+#include "util.hpp"
+#include "config.hpp"
 
 using std::string;
 using std::filesystem::path;

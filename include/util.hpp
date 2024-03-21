@@ -42,11 +42,6 @@ enum log_level {
     LOG_INFO
 };
 
-template<typename T>
-struct is_string {
-    static constexpr bool value = std::is_same_v<T, string> || std::is_convertible_v<T, string>;
-};
-
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);

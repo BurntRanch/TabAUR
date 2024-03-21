@@ -31,6 +31,6 @@ endif
 	${CXX} $(OBJ) $(CPPFLAGS) -o $@ $(LDFLAGS)
 
 clean:
-	rm -rf taur src/*.o cpr/build
+	rm -rf taur $(OBJ) cpr/build
 
 .PHONY: cpr taur clean all

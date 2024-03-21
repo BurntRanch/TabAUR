@@ -1,15 +1,17 @@
 #include <stdbool.h>
-#include <taur.hpp>
-#include <config.hpp>
 #include <unistd.h>
-#include <util.hpp>
-#include <args.hpp>
+
+#include "util.hpp"
+#include "args.hpp"
+#include "taur.hpp"
+#include "config.hpp"
 
 using std::cout;
 using std::endl;
 using std::filesystem::path;
 using std::vector;
 using std::string;
+using std::optional;
 
 Config config;
 struct Operation_t operation;

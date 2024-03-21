@@ -1,9 +1,10 @@
 #define TOML_IMPLEMENTATION
 #include <cstdlib>
 #include <iostream>
-#include <config.hpp>
 #include <filesystem>
 #include <fstream>
+
+#include "config.hpp"
 
 using std::string;
 using std::getenv;
