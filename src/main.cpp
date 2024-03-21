@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <signal.h>
 #include <unistd.h>
 
 #include "util.hpp"
@@ -16,11 +15,6 @@ using std::optional;
 
 Config config;
 struct Operation_t operation;
-
-void interruptHandler(int unused) {
-    log_printf(LOG_WARN, _("Caught CTRL-C, Exiting.\n"));
-    exit(-1);
-}
 
 void usage() {
     string help_op = R"#(
@@ -61,67 +55,11 @@ bool installPkg(string pkgName, TaurBackend *backend) {
     string url = pkg.value().url;
 
     if (url == "") {
-        // we search for the package name and print only the name, not the description
-        alpm_list_t *pkg_cache, *syncdbs;
-        string packages_str;
-
-        syncdbs = config.repos;
+        string name = pkg.value().name;
+        sanitizeStr(config.sudo);
+        sanitizeStr(name);
         
-        log_printf(LOG_INFO, _("Synchronizing databases, This might take a while.\n"));
-        
-        alpm_list_t *dbs = alpm_get_syncdbs(config.handle);
-        int ret = alpm_db_update(config.handle, dbs, false);
-        
-        if(ret < 0) {
-            log_printf(LOG_ERROR, _("Failed to synchronize all databases (%s)\n"),
-                    alpm_strerror(alpm_errno(config.handle)));
-            return false;
-        }
-        log_printf(LOG_INFO, _("Synchronized all databases.\n"));
-        log_printf(LOG_INFO, _("Downloading package..\n"));
-
-        alpm_pkg_t * alpm_pkg;
-        bool found = false;
-
-        for (; syncdbs && !found; syncdbs = alpm_list_next(syncdbs)) {
-            for (pkg_cache = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); pkg_cache; pkg_cache = alpm_list_next(pkg_cache)) {
-                string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg_cache->data)));
-                if (name == pkg.value().name) {
-                    alpm_pkg = (alpm_pkg_t *)(pkg_cache->data);
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        if (!found) {
-            log_printf(LOG_ERROR, _("backend->search returned a system package but we couldn't find it.\n"));
-            return false;
-        }
-
-        int transCode = alpm_trans_init(config.handle, 0);
-
-        if (transCode != 0) {
-            log_printf(LOG_ERROR, _("Failed to start transaction (%s)\n"), alpm_strerror(alpm_errno(config.handle)));
-            return false;
-        }
-
-        if (alpm_add_pkg(config.handle, alpm_pkg) != 0) {
-            log_printf(LOG_ERROR, _("Failed to add package (%s)\n"), alpm_strerror(alpm_errno(config.handle)));
-            alpm_trans_release(config.handle);
-            return false;
-        }
-        
-        bool success = commitTransactionAndRelease(config.handle);
-
-        if (!success) {
-            log_printf(LOG_ERROR, _("Failed to commit and release transaction (%s)\n"), alpm_strerror(alpm_errno(config.handle)));
-            return false;
-        }
-
-        log_printf(LOG_INFO, _("Successfully installed package!\n"));
-
-        return true;
+        return system((config.sudo + " pacman -S " + name).c_str()) == 0;
     }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
@@ -254,10 +192,9 @@ bool queryPkgs(TaurBackend *backend) {
 
 // main
 int main(int argc, char* argv[]) {
-    signal(SIGINT, interruptHandler);
 
-    TaurBackend backend(&config);
-
+    TaurBackend backend(config);
+    
     if (parseargs(argc, argv))
         return 1;
 
