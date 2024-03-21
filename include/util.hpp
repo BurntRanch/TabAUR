@@ -49,6 +49,7 @@ bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);
 void log_printf(int log, string fmt, ...);
 string expandHome(string& str);
+string expandVar(string& str);
 void sanitizeStr(string& str);
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft = false);
