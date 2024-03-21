@@ -4,7 +4,7 @@
 #include "taur.hpp"
 #include "config.hpp"
 
-TaurBackend::TaurBackend(Config cfg) : config(cfg) {
+TaurBackend::TaurBackend(Config *cfg) : config(cfg) {
     git2_inits = 0;
 
     int status = git_clone_options_init(&git_opt, GIT_CLONE_OPTIONS_VERSION);
@@ -102,11 +102,11 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
+    vector<string> depends;
     if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
         const rapidjson::Value& dependsArray = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
-        vector<string> depends;
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
         for (size_t i = 0; i < makeDependsArray.Size(); i++) {
@@ -114,20 +114,13 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                 continue;
             depends.push_back(makeDependsArray[i].GetString());
         }
-
-        return (TaurPkg_t) { 
-                             .name = pkgJson["Name"].GetString(),
-                             .version = pkgJson["Version"].GetString(),
-                             .url = getUrl(pkgJson, returnGit), 
-                             .desc = pkgJson["Description"].GetString(),
-                             .depends = depends
-                           };
     }
     return (TaurPkg_t) {
                          .name = pkgJson["Name"].GetString(),
                          .version = pkgJson["Version"].GetString(),
                          .url = getUrl(pkgJson, returnGit),
-                         .desc = pkgJson["Description"].GetString()
+                         .desc = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
+                         .depends = depends
                        };
 }
 
@@ -190,13 +183,6 @@ string exec(string cmd) {
     return result;
 }
 
-bool sanitizeAndRemove(string& input) {
-    sanitizeStr(config.sudo);
-    sanitizeStr(input);
-
-    return system((config.sudo + " pacman -R " + input).c_str()) == 0;
-}
-
 bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
     /*if (!pkg) {
         std::cerr << "Failed to find your package " << pkgName << " in the TabAUR DB" << std::endl; 
@@ -204,37 +190,73 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
     }*/
     sanitizeStr(pkgName);
 
+    alpm_list_t *pkg, *syncdbs;
     string packages_str;
-    if (searchForeignPackagesOnly)
-        packages_str = exec("pacman -Qmq | grep \"" + pkgName + "\"");
-    else
-        packages_str = exec("pacman -Qq | grep \"" + pkgName + "\"");
 
-    vector<string> packages = split(packages_str, '\n');
+    syncdbs = alpm_get_syncdbs(config->handle);
 
-    if (packages.empty())
+    vector<alpm_pkg_t *> packages;
+
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)) {
+        string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+        if (name.find(pkgName) == string::npos)
+            continue;
+        if (searchForeignPackagesOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs))
+            packages.push_back((alpm_pkg_t *)(pkg->data));
+        else if (!searchForeignPackagesOnly)
+            packages.push_back((alpm_pkg_t *)(pkg->data));
+    }
+
+    if (packages.empty()) {
+        log_printf(LOG_ERROR, _("No packages found for query %s.\n"), pkgName.c_str());
         return false;
+    }
 
-    if (packages.size() == 1)
-        return sanitizeAndRemove(packages[0]);
+    int transCode = alpm_trans_init(this->config->handle, 0);
 
+    if (transCode) {
+        log_printf(LOG_ERROR, _("Failed to initialize transaction (%s)\n"), alpm_strerror(alpm_errno(this->config->handle)));
+        return false;
+    }
+
+    if (packages.size() == 1) {
+        log_printf(LOG_INFO, _("Removing package %s.\n"), pkgName.c_str());
+        if (alpm_remove_pkg(this->config->handle, packages[0])) {
+            log_printf(LOG_ERROR, _("Failed to remove package (%s)\n"), alpm_strerror(alpm_errno(this->config->handle)));
+            alpm_trans_release(this->config->handle);
+            return false;
+        }
+        
+        return commitTransactionAndRelease(this->config->handle);
+    }
 
     std::cout << "Choose packages to remove, (Seperate by spaces, type * to remove all):" << std::endl;
     for (size_t i = 0; i < packages.size(); i++)
-        std::cout << "[" << i << "] " << packages[i] << std::endl;
+        std::cout << "[" << i << "] " << alpm_pkg_get_name(packages[i]) << std::endl;
 
     string included;
     std::cin >> included;
 
     if (included == "*") {
-        string finalPackageList = "";
-        for (size_t i = 0; i < packages.size(); i++)
-            finalPackageList += packages[i] + " ";
-        return sanitizeAndRemove(finalPackageList);
+        for (size_t i = 0; i < packages.size(); i++) {
+            log_printf(LOG_INFO, _("Removing package %s.\n"), alpm_pkg_get_name(packages[i]));
+            int ret = alpm_remove_pkg(this->config->handle, packages[i]);
+            if (ret != 0) {
+                log_printf(LOG_ERROR, _("Failed to remove package, Exiting!\n"));
+                alpm_trans_release(this->config->handle);
+                return false;
+            }
+        }
+
+        if (!commitTransactionAndRelease(this->config->handle)) {
+            log_printf(LOG_ERROR, _("Failed to prepare, commit, or release alpm transaction.\n"));
+            return false;
+        }
+
+        return true;
     }
 
     vector<string> includedIndexes = split(included, ' ');
-    string finalPackageList = "";
 
     for (size_t i = 0; i < includedIndexes.size(); i++) {
         try {
@@ -243,17 +265,29 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
             if (includedIndex >= packages.size())
                 continue;
 
-            finalPackageList += packages[includedIndex] + " ";
+            log_printf(LOG_INFO, _("Removing package %s.\n"), alpm_pkg_get_name(packages[includedIndex]));
+            int ret = alpm_remove_pkg(this->config->handle, packages[includedIndex]);
+            if (ret != 0) {
+                log_printf(LOG_ERROR, _("Failed to remove package, Exiting!\n"));
+                alpm_trans_release(this->config->handle);
+                return false;
+            }
         } catch (std::invalid_argument const&) {
-            log_printf(LOG_WARN, _("Invalid argument! Assuming all.\n"));
+            log_printf(LOG_ERROR, _("Invalid argument!\n"));
+            return false;
         }
     }
 
-    return sanitizeAndRemove(finalPackageList);
+    if (!commitTransactionAndRelease(this->config->handle)) {
+        log_printf(LOG_ERROR, _("Failed to prepare, commit, or release alpm transaction.\n"));
+        return false;
+    }
+
+    return true;
 }
 
 bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit) {
-    string makepkg_bin = this->config.makepkgBin;
+    string makepkg_bin = this->config->makepkgBin;
 
     // never forget to sanitize
     sanitizeStr(extracted_path);
@@ -281,7 +315,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 
         log_printf(LOG_INFO, _("Downloading dependency %s.\n"), depend.name.c_str());
 
-        string filename = path(this->config.cacheDir) / depend.url.substr(depend.url.rfind("/") + 1);
+        string filename = path(this->config->cacheDir) / depend.url.substr(depend.url.rfind("/") + 1);
 
         if (useGit)
             filename = filename.substr(0, filename.rfind(".git"));
@@ -307,15 +341,36 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 }
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
-    string sudo = config.sudo;
+    string sudo = this->config->sudo;
     sanitizeStr(sudo);
     
-    // first thing first
-    bool pacmanUpgradeSuccess = system((sudo + " pacman -Syu").c_str()) == 0;
+    // first things first
+    log_printf(LOG_INFO, _("Upgrading system packages, This might take a while.\n"));
+    alpm_list_t *dbs = alpm_get_syncdbs(this->config->handle);
+    int ret = alpm_db_update(this->config->handle, dbs, false);
+    if(ret < 0) {
+        log_printf(LOG_ERROR, _("Failed to synchronize all databases (%s)\n"),
+                alpm_strerror(alpm_errno(config->handle)));
+        return false;
+    }
+    log_printf(LOG_INFO, _("Synchronized all databases.\n"));
 
-    if (!pacmanUpgradeSuccess)
+    if (alpm_trans_init(this->config->handle, 0) != 0) {
+        log_printf(LOG_ERROR, _("Failed to initialize transaction, (%s)\n"), alpm_strerror(alpm_errno(this->config->handle)));
+        return false;
+    }
+    if (alpm_sync_sysupgrade(this->config->handle, 0) != 0) {
+        log_printf(LOG_ERROR, _("Failed to upgrade pacman packages, error: (%s)\n"), alpm_strerror(alpm_errno(this->config->handle)));
+        return false;
+    }
+    bool alpmUpgradeSuccess = commitTransactionAndRelease(this->config->handle, true);
+
+    if (!alpmUpgradeSuccess)
         return false;
 
+    log_printf(LOG_INFO, _("Finished upgrading system packages!\n"));
+
+    // now..
     vector<TaurPkg_t> pkgs = this->get_all_local_pkgs(true);
 
     vector<string> pkgNames;
@@ -330,6 +385,9 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
 
     if (onlinePkgs.size() != pkgs.size())
         log_printf(LOG_WARN, _("Couldn't get all packages! (looked up %d AUR packages online, looked up %d AUR packages locally) Still trying to update the others.\n"), onlinePkgs.size(), pkgs.size());
+
+    // put newline!
+    std::cout << std::endl;
 
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
         size_t pkgIndex;
@@ -347,11 +405,11 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
             continue;
         }
 
-        if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
+        if (pkgs[pkgIndex].version == onlinePkgs[i].version && !hasEnding(pkgs[pkgIndex].name, "git")) {
             continue;
         }
 
-        log_printf(LOG_INFO, _("Downloading %s, This could take a bit.\n"), pkgs[pkgIndex].name.c_str());
+        std::cout << BOLD << "Downloading " + pkgs[pkgIndex].name + ", This could take a bit." << std::endl;
 
         string pkgFolder = cacheDir / onlinePkgs[i].name;
         sanitizeStr(pkgFolder);
@@ -370,8 +428,10 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
             continue;
         }
 
-        if (alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))
+        if (alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str())) {
+            log_printf(LOG_INFO, _("This package's PKGBUILD file states an older or equal version than expected, Skipping.\n\n"));
             continue;
+        }
 
         log_printf(LOG_INFO, _("Upgrading package %s from version %s to version %s!\n"), pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(), onlinePkgs[i].version.c_str());
         attemptedDownloads++;
@@ -394,13 +454,19 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
 
 // all AUR local packages
 vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
-    string pkgs_str;
-    if (aurOnly)
-        pkgs_str = exec("pacman -Qm");
-    else
-        pkgs_str = exec("pacman -Q");
+    vector<string> pkgs;
 
-    vector<string> pkgs = split(pkgs_str, '\n');
+    alpm_list_t *pkg, *syncdbs;
+
+    syncdbs = alpm_get_syncdbs(config->handle);
+
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)) {
+        if (aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) {
+            pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))) + " " + string(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data))));
+        } else if (!aurOnly) {
+            pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))) + " " + string(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data))));
+        }
+    }
 
     if (pkgs.empty())
         return {};
@@ -418,14 +484,27 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
 
 // all local packages names
 vector<string> TaurBackend::list_all_local_pkgs(bool aurOnly, bool stripVersion) {
-    string cmd = "pacman -Q";
-    if (aurOnly)
-        cmd += "m";
+    vector<string> pkgs;
 
-    if (stripVersion)
-        cmd += "q";
+    alpm_list_t *pkg, *syncdbs;
 
-    vector<string> pkgs = split(exec(cmd), '\n');
+    syncdbs = alpm_get_syncdbs(config->handle);
+
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)) {
+        if (aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) {
+            if (stripVersion) {
+                pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))));
+            } else {
+                pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))) + " " + string(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data))));
+            }
+        } else if (!aurOnly) {
+            if (stripVersion) {
+                pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))));
+            } else {
+                pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))) + " " + string(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data))));
+            }
+        }
+    }
 
     return pkgs;
 }
@@ -435,7 +514,6 @@ bool is_number(const string& s) {
     return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
-// They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
 vector<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool useGit) {
     int resultcount = doc["resultcount"].GetInt();
 
@@ -449,52 +527,34 @@ vector<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool use
 }
 
 vector<TaurPkg_t> TaurBackend::search_pac(string query) {
-    sanitizeStr(query);
     // we search for the package name and print only the name, not the description
-    string cmd = "pacman -Ss \"" + query + "\"";
-    vector<string> pkgs_string = split(exec(cmd), '\n');
-    TaurPkg_t taur_pkg;
+    alpm_list_t *pkg, *syncdbs;
+    string packages_str;
+
+    syncdbs = this->config->repos;
+
+    vector<alpm_pkg_t *> packages;
+
+    for (; syncdbs; syncdbs = alpm_list_next(syncdbs)) {
+        for (pkg = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); pkg; pkg = alpm_list_next(pkg)) {
+            string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+            if (name.find(query) == string::npos)
+                continue;
+            packages.push_back((alpm_pkg_t *)(pkg->data));
+        }
+    }
+
     vector<TaurPkg_t> out;
 
-    for (size_t i = 0; i < pkgs_string.size(); i += 2) {
-        try {
-            vector<string> pkg = split(pkgs_string[i], '/');
+    for (size_t i = 0; i < packages.size(); i++) {
+        TaurPkg_t taur_pkg = { 
+                                .name = string(alpm_pkg_get_name(packages[i])),
+                                .version = string(alpm_pkg_get_version(packages[i])),
+                                .desc = string(alpm_pkg_get_desc(packages[i])),
+                                .db_name = string(alpm_db_get_name(alpm_pkg_get_db(packages[i]))),
+                             };
 
-            if (pkg.size() < 2) {
-                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str()); 
-                continue;
-            }
-
-            taur_pkg.db_name = pkg[0];
-
-            pkg = split(pkg[1], ' ');
-
-            if (pkg.size() < 2) {
-                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str()); 
-                continue;
-            }
-
-            taur_pkg.name = pkg[0]; 
-            taur_pkg.version = pkg[1];
-
-            if (pkgs_string.size() <= (i + 1)) {
-                log_printf(LOG_ERROR, _("Pacman provided no description for package %s! Command: %s\n"), pkg[0].c_str(), cmd.c_str()); 
-                out.push_back(taur_pkg);
-                continue;
-            }
-
-            string desc = pkgs_string[i + 1];
-            
-            if (desc.size() > 4)
-                taur_pkg.desc = desc.substr(4);
-            else
-                std::cout << pkgs_string.size() << " " << i << " " << desc.size() << std::endl;
-
-            out.push_back(taur_pkg);
-        } catch (std::out_of_range const &e) {
-            log_printf(LOG_ERROR, _("Pacman did not return what we expected, Command: %s\n"), cmd.c_str());
-            exit(1);
-        }
+        out.push_back(taur_pkg);
     }
 
     return out;
@@ -511,6 +571,7 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
     rapidjson::Document json_response;
     json_response.Parse(raw_text_response.c_str());
+    db_colors db_color;
 
     if (strcmp(json_response["type"].GetString(), "error") == 0)
         return {};
@@ -520,7 +581,6 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
     vector<TaurPkg_t> aurPkgs = this->getPkgFromJson(json_response, useGit);
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
-    db_colors db_color;
 
     size_t count = aurPkgs.size() + pacPkgs.size();
     string dbColor;
@@ -542,10 +602,10 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
                 std::cout 
                     << MAGENTA << i
                     << " " << BOLDBLUE << "aur/" << BOLD << aurPkgs[i].name
-                    << "\n    " << NOCOLOR << aurPkgs[i].desc
-                    << 
+                    << " " << BOLDGREEN << aurPkgs[i].version
+                    << " " << BOLDYELLOW << aurPkgs[i].desc
+                    << NOCOLOR <<
                 std::endl;
-
             for (size_t i = 0; i < pacPkgs.size(); i++) {
                 if(pacPkgs[i].db_name == "extra")
                     dbColor = db_color.extra;
@@ -553,13 +613,12 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
                     dbColor = db_color.multilib;
                 else
                     dbColor = db_color.core;
-
                 std::cout
-                    << MAGENTA << i + aurPkgs.size() << " "
-                    << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
-                    << " " << BOLDGREEN << pacPkgs[i].version << "\n    "
-                    << NOCOLOR << pacPkgs[i].desc
-                    << NOCOLOR << 
+                    << MAGENTA << i + aurPkgs.size()
+                    << " " << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
+                    << " " << BOLDGREEN << pacPkgs[i].version
+                    << "\n    " << BOLDYELLOW << pacPkgs[i].desc
+		    << NOCOLOR <<
                 std::endl;
             }
             std::cout << "Choose a package to download: ";

@@ -4,7 +4,10 @@
 #include <string>
 #include "util.hpp"
 #define TOML_HEADER_ONLY 1
+
 #include "toml.hpp"
+#include "ini.h"
+#include "alpm.h"
 
 using std::string;
 
@@ -15,15 +18,20 @@ public:
     string makepkgBin;
     string cacheDir;
     string sudo;
+    alpm_handle_t *handle = NULL;
     bool colors;
     bool secretRecipe;
 
+    alpm_list_t *repos;
+
     Config();
+    ~Config();
     string getHomeCacheDir();
     string getCacheDir();
     string getHomeConfigDir();
     string getConfigDir();
     void   loadConfigFile(string filename); 
+    void   loadPacmanConfigFile(string filename); 
     
     // stupid c++ that wants template functions in header
     template<typename T>
@@ -43,7 +51,7 @@ extern Config config;
 
 // we comment the default config values, just like /etc/pacman.conf
 inline const string defConfig = R"#([general]
-# if true(default), then it'll uses git for downloading/updating the aur repo
+# if true(default), then it'll use git for downloading/updating the aur repo
 # else if false, then it'll use tarballs (.tar.gz) of the aur repo
 #useGit = true
 
@@ -63,6 +71,10 @@ inline const string defConfig = R"#([general]
 [storage]
 # Where we are gonna download the AUR packages (default $XDG_CACHE_HOME, else ~/.cache/TabAUR)
 #cacheDir = "$XDG_CACHE_HOME"
+
+[pacman]
+# Where is the pacman lib folder? (default: /var/lib/pacman)
+#libFolder = "/var/lib/pacman"
 )#";
 
 #endif

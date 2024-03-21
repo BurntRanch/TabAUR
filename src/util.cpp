@@ -35,6 +35,45 @@ string sanitizeStr(string& str){
     return str;
 }
 
+// Function to check if a package is from a synchronization database
+bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
+    const char *name = alpm_pkg_get_name(pkg);
+
+    for (; syncdbs; syncdbs = alpm_list_next(syncdbs))
+        for (alpm_list_t *p = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); p; p = alpm_list_next(p))
+            if (strcmp(name, alpm_pkg_get_name((alpm_pkg_t *)(p->data))) == 0)
+                return true;
+    return false;
+}
+
+// soft means it won't return false (or even try) if the list is empty
+bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
+    alpm_list_t *addPkgs    = alpm_trans_get_add(handle);
+    alpm_list_t *removePkgs = alpm_trans_get_remove(handle);
+    alpm_list_t *combined   = alpm_list_join(addPkgs, removePkgs);
+    if (soft && !combined)
+        return true;
+    bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
+    bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
+    bool releaseStatus = alpm_trans_release(handle) == 0;
+    return prepareStatus && commitStatus && releaseStatus;
+}
+
+string expandHome(std::string& str) {
+    string ret = str;
+    size_t found = ret.find("~");
+    if (found != string::npos) {
+        const char* homeDir = getenv("HOME");
+        if (homeDir != nullptr)
+            ret.replace(found, 1, homeDir);
+        else {
+            log_printf(LOG_ERROR, _("HOME environment variable is not set.\n"));
+            exit(-1);
+        } 
+    }
+    return ret;
+}
+            
 std::string expandVar(std::string& str){
     const char* env;
     if(str[0] == '~'){

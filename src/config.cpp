@@ -9,6 +9,7 @@
 using std::string;
 using std::getenv;
 using std::ofstream;
+using std::ifstream;
 
 Config::Config() {
     string configDir = this->getConfigDir();
@@ -31,6 +32,10 @@ Config::Config() {
         log_printf(LOG_WARN, _("TabAUR cache folder was not found, Creating folders at %s!\n"), cacheDir.c_str());
         std::filesystem::create_directories(cacheDir);
     }
+}
+
+Config::~Config() {
+    alpm_release(this->handle);
 }
 
 string Config::getHomeCacheDir() {
@@ -74,5 +79,67 @@ void Config::loadConfigFile(string filename) {
     this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg"); sanitizeStr(this->makepkgBin);
     this->cacheDir  = this->getCacheDir(); sanitizeStr(this->cacheDir);
     this->colors    = this->getConfigValue<bool>("general.colors", true);
+
+    alpm_errno_t err;
+    this->handle    = alpm_initialize("/", this->getConfigValue<string>("pacman.libFolder", "/var/lib/pacman").c_str(), &err);
+
+    if (!(this->handle))
+        throw std::invalid_argument("Failed to get an alpm handle! Error: " + string(alpm_strerror(err)));
+
+    this->loadPacmanConfigFile("/etc/pacman.conf");
+  
     this->secretRecipe = this->getConfigValue<bool>("secret.IwantChocolateChipMuffins", false);
+}
+
+bool addServers(alpm_db_t *db, string includeFilename, string repoName) {
+    ifstream includeFile(includeFilename);
+
+    if (!includeFile.is_open())
+        return false;
+
+    string line;
+
+    while (std::getline(includeFile, line)) {
+        if (hasStart(line, "#") || line.length() < 20)
+            continue;
+        
+        size_t repo_pos = line.find("$repo");
+        if (repo_pos != string::npos)
+            line.replace(repo_pos, 5, repoName);
+        size_t arch_pos = line.find("$arch");
+        if (arch_pos != string::npos)
+            line.replace(arch_pos, 5, "x86_64");
+
+        line = line.substr(9);
+
+        alpm_db_add_server(db, line.c_str());
+    }
+
+    return true;
+}
+
+void Config::loadPacmanConfigFile(string filename) {
+    mINI::INIFile file(filename);
+    mINI::INIStructure ini;
+
+    file.read(ini);
+    
+    for (auto const& it : ini)
+    {
+        string section = it.first;
+        if (section == "options")
+            continue;
+
+        alpm_db_t *db = alpm_register_syncdb(this->handle, section.c_str(), ALPM_SIG_USE_DEFAULT);
+        if (db == NULL)
+            continue;
+
+        bool serversStatus = addServers(db, ini[section]["Include"], section);
+        if (!serversStatus)
+            log_printf(LOG_ERROR, _("Failed to open mirrors file! (%s)\n"), ini[section]["Include"].c_str());
+
+        alpm_db_set_usage(db, ALPM_DB_USAGE_ALL);
+
+        this->repos = alpm_list_add(this->repos, db);
+    }
 }
