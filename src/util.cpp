@@ -45,6 +45,19 @@ bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
     return false;
 }
 
+// soft means it won't return false (or even try) if the list is empty
+bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
+    alpm_list_t *addPkgs    = alpm_trans_get_add(handle);
+    alpm_list_t *removePkgs = alpm_trans_get_remove(handle);
+    alpm_list_t *combined   = alpm_list_join(addPkgs, removePkgs);
+    if (soft && !combined)
+        return true;
+    bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
+    bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
+    bool releaseStatus = alpm_trans_release(handle) == 0;
+    return prepareStatus && commitStatus && releaseStatus;
+}
+
 string expandHome(std::string& str) {
     string ret = str;
     size_t found = ret.find("~");

@@ -103,11 +103,11 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
+    vector<string> depends;
     if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
         const rapidjson::Value& dependsArray = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
-        vector<string> depends;
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
         for (size_t i = 0; i < makeDependsArray.Size(); i++) {
@@ -115,20 +115,13 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                 continue;
             depends.push_back(makeDependsArray[i].GetString());
         }
-
-        return (TaurPkg_t) { 
-                             .name = pkgJson["Name"].GetString(),
-                             .version = pkgJson["Version"].GetString(),
-                             .url = getUrl(pkgJson, returnGit), 
-                             .desc = pkgJson["Description"].GetString(),
-                             .depends = depends
-                           };
     }
     return (TaurPkg_t) {
                          .name = pkgJson["Name"].GetString(),
                          .version = pkgJson["Version"].GetString(),
                          .url = getUrl(pkgJson, returnGit),
-                         .desc = pkgJson["Description"].GetString()
+                         .desc = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
+                         .depends = depends
                        };
 }
 
@@ -191,19 +184,6 @@ string exec(string cmd) {
     return result;
 }
 
-// soft means it won't return false (or even try) if the list is empty
-bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft = false) {
-    alpm_list_t *addPkgs    = alpm_trans_get_add(handle);
-    alpm_list_t *removePkgs = alpm_trans_get_remove(handle);
-    alpm_list_t *combined   = alpm_list_join(addPkgs, removePkgs);
-    if (soft && !combined)
-        return true;
-    bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
-    bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
-    bool releaseStatus = alpm_trans_release(handle) == 0;
-    return prepareStatus && commitStatus && releaseStatus;
-}
-
 bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
     /*if (!pkg) {
         std::cerr << "Failed to find your package " << pkgName << " in the TabAUR DB" << std::endl; 
@@ -228,16 +208,22 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
             packages.push_back((alpm_pkg_t *)(pkg->data));
     }
 
-    if (packages.empty())
+    if (packages.empty()) {
+        log_printf(LOG_ERROR, _("No packages found for query %s.\n"), pkgName.c_str());
         return false;
+    }
 
     int transCode = alpm_trans_init(this->config->handle, 0);
 
-    if (transCode)
+    if (transCode) {
+        log_printf(LOG_ERROR, _("Failed to initialize transaction (%s)\n"), alpm_strerror(alpm_errno(this->config->handle)));
         return false;
+    }
 
     if (packages.size() == 1) {
+        log_printf(LOG_INFO, _("Removing package %s.\n"), pkgName.c_str());
         if (alpm_remove_pkg(this->config->handle, packages[0])) {
+            log_printf(LOG_ERROR, _("Failed to remove package (%s)\n"), alpm_strerror(alpm_errno(this->config->handle)));
             alpm_trans_release(this->config->handle);
             return false;
         }
@@ -252,18 +238,23 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
     string included;
     std::cin >> included;
 
-    int ret = 0;
-
     if (included == "*") {
-        for (size_t i = 0; i < packages.size(); i++)
-            ret += alpm_remove_pkg(this->config->handle, packages[i]);
+        for (size_t i = 0; i < packages.size(); i++) {
+            log_printf(LOG_INFO, _("Removing package %s.\n"), alpm_pkg_get_name(packages[i]));
+            int ret = alpm_remove_pkg(this->config->handle, packages[i]);
+            if (ret != 0) {
+                log_printf(LOG_ERROR, _("Failed to remove package, Exiting!\n"));
+                alpm_trans_release(this->config->handle);
+                return false;
+            }
+        }
 
-        if (ret != 0) {
-            alpm_trans_release(this->config->handle);
+        if (!commitTransactionAndRelease(this->config->handle)) {
+            log_printf(LOG_ERROR, _("Failed to prepare, commit, or release alpm transaction.\n"));
             return false;
         }
 
-        return commitTransactionAndRelease(this->config->handle);
+        return true;
     }
 
     vector<string> includedIndexes = split(included, ' ');
@@ -275,19 +266,25 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
             if (includedIndex >= packages.size())
                 continue;
 
-            ret += alpm_remove_pkg(this->config->handle, packages[i]);
+            log_printf(LOG_INFO, _("Removing package %s.\n"), alpm_pkg_get_name(packages[includedIndex]));
+            int ret = alpm_remove_pkg(this->config->handle, packages[includedIndex]);
+            if (ret != 0) {
+                log_printf(LOG_ERROR, _("Failed to remove package, Exiting!\n"));
+                alpm_trans_release(this->config->handle);
+                return false;
+            }
         } catch (std::invalid_argument const&) {
             log_printf(LOG_ERROR, _("Invalid argument!\n"));
             return false;
         }
     }
 
-    if (ret != 0) {
-        alpm_trans_release(this->config->handle);
+    if (!commitTransactionAndRelease(this->config->handle)) {
+        log_printf(LOG_ERROR, _("Failed to prepare, commit, or release alpm transaction.\n"));
         return false;
     }
 
-    return commitTransactionAndRelease(this->config->handle);
+    return true;
 }
 
 bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit) {
