@@ -142,8 +142,9 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
 bool sanitizeAndRemove(string& input) {
     sanitizeStr(config.sudo);
     sanitizeStr(input);
-
-    return system((config.sudo + " pacman -R " + input).c_str()) == 0;
+    
+    cmd = {config.sudo.c_str(), "pacman", "-R", input.c_str()};
+    return taur_exec(cmd);
 }
 
 bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
@@ -257,10 +258,11 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     string sudo = config.sudo;
-    sanitizeStr(sudo);
+    sudo = sanitizeStr(sudo);
     
     // first thing first
-    bool pacmanUpgradeSuccess = system((sudo + " pacman -Syu").c_str()) == 0;
+    cmd = {sudo.c_str(), "pacman", "-Syu"};
+    bool pacmanUpgradeSuccess = taur_exec(cmd);
 
     if (!pacmanUpgradeSuccess)
         return false;

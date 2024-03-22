@@ -58,8 +58,8 @@ int installPkg(string pkgName, TaurBackend *backend) {
         string name = pkg.value().name;
         sanitizeStr(config.sudo);
         sanitizeStr(name);
-        
-        return system((config.sudo + " pacman -S " + name).c_str()) == 0;
+        cmd = {config.sudo.c_str(), "pacman", "-S", name.c_str()};
+        return taur_exec(cmd);
     }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
