@@ -41,7 +41,7 @@ operations:
     }
 }
 
-bool installPkg(string pkgName, TaurBackend *backend) { 
+int installPkg(string pkgName, TaurBackend *backend) { 
     string      	cacheDir = config.cacheDir;
     bool            useGit   = config.useGit;
     

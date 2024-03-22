@@ -1,7 +1,6 @@
 #ifndef GIT_HPP
 #define GIT_HPP
 
-#include <git2.h>
 #include <alpm.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -59,9 +58,7 @@ class TaurBackend {
     bool            update_all_pkgs(path cacheDir, bool useGit);
     vector<TaurPkg_t> get_all_local_pkgs(bool aurOnly);
     vector<string> list_all_local_pkgs(bool aurOnly, bool stripVersion);
-  private:
-    git_clone_options git_opt;
-    int               git2_inits;
+
 };
 
 #endif

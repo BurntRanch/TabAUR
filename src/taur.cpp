@@ -3,63 +3,68 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
+#include <cerrno>
+#include <sys/wait.h>
 
 TaurBackend::TaurBackend(Config cfg) : config(cfg) {
-    git2_inits = 0;
-
-    int status = git_clone_options_init(&git_opt, GIT_CLONE_OPTIONS_VERSION);
-    if (status != 0)
-        return;
-
-    git2_inits++;
-    git_libgit2_init();
 }
 
 // Wrapper for git_libgit2_shutdown, This will call the function
 // multiple times until all resources are freed.
 TaurBackend::~TaurBackend() {
-    while (git2_inits-- > 0)
-        git_libgit2_shutdown();
 }
 
 // Clone from a remote git repository, and return a bool back.
-bool clone_git(string url, string out_path) {
-    git_repository* repo = nullptr;
-    git_clone_options options = GIT_CLONE_OPTIONS_INIT;
-    int status          = git_clone(&repo, url.c_str(), out_path.c_str(), &options);
-
-    return (status == 0 && repo != nullptr);
+bool git_clone(string url, string out_path) {
+    int pid = fork();
+    if(pid < 0){
+        log_printf(LOG_ERROR, _("fork() failed: %s"), strerror(errno));
+        exit(127);
+    } 
+    if(pid == 0){
+        execlp("git", "git", "clone", url.c_str(), out_path.c_str(), nullptr);
+        log_printf(LOG_ERROR, _("Error when cloning git repo: %s"), strerror(errno));
+        exit(127);
+    }
+    if(pid > 0){ // we wait for git to finish then start executing makepkg 
+        int status;
+        waitpid(pid, &status, 0); // Wait for the child to finish
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+            return true;
+    }
+    return false;
 }
 
 // Pull from a local git repository, and return a bool back.
-bool pull_git(string path) {
-    git_repository* repo;
-    int status           = git_repository_open(&repo, path.c_str());
-    if (status != 0)
-        return false;
-
-    git_remote *remote;
-    status               = git_remote_lookup(&remote, repo, "origin");
-    if (status != 0)
-        return false;
-
-    git_fetch_options options = GIT_FETCH_OPTIONS_INIT;
-    status               = git_remote_fetch(remote, NULL, &options, NULL);
-    if (status != 0)
-        return false;
-
-    return true;
+bool git_pull(string path) {
+    int pid = fork();
+    if(pid < 0){
+        log_printf(LOG_ERROR, _("fork() failed: %s"), strerror(errno));
+        exit(127);
+    } 
+    if(pid == 0){
+        execlp("git", "git", "-C", path.c_str(), "pull", "--rebase", "--autostash", "--ff-only", nullptr);
+        log_printf(LOG_ERROR, _("Pulling %s failed: %s"), path.c_str(), strerror(errno));
+        exit(127);
+    }
+    if(pid > 0){ // we wait for git to finish then start executing makepkg
+        int status;
+        waitpid(pid, &status, 0); // Wait for the child to finish
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+            return true;
+    }
+    return false;
 }
 
 using std::filesystem::path;
 
 bool TaurBackend::download_git(string url, string out_path) {
     if (std::filesystem::exists(path(out_path) / ".git"))
-        return pull_git(out_path);
+        return git_pull(out_path);
     else {
         if (std::filesystem::exists(path(out_path)))
             std::filesystem::remove_all(out_path);
-        return clone_git(url, out_path);
+        return git_clone(url, out_path);
     }
 }
 

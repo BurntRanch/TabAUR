@@ -1,10 +1,10 @@
 CXX	?= g++
 SRC 	 = $(sort $(wildcard src/*.cpp))
 OBJ 	 = $(SRC:.cpp=.o)
-LIBS 	?= -lgit2 -lcpr -lalpm
+LIBS 	?= -lcpr -lalpm
 LDFLAGS  = ${LIBS}
 TARGET   = taur
-CPPFLAGS = -isystem include -Wall -std=c++17
+CPPFLAGS = -g -isystem include -Wall -std=c++17
 
 cpr_installed := $(shell test -s /usr/lib/libcpr.so.1 || test -s /usr/local/lib/libcpr.so.1 && echo -n yes)
 
