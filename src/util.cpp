@@ -54,8 +54,14 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     if (soft && !combined)
         return true;
     bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
+    if (!prepareStatus)
+        log_printf(LOG_ERROR, _("Failed to prepare transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
     bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
+    if (!commitStatus)
+        log_printf(LOG_ERROR, _("Failed to commit transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
     bool releaseStatus = alpm_trans_release(handle) == 0;
+    if (!releaseStatus)
+        log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
     return prepareStatus && commitStatus && releaseStatus;
 }
 
