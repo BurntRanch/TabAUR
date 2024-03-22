@@ -47,6 +47,9 @@ bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);
 void log_printf(int log, string fmt, ...);
 string expandVar(string& str);
+string execGet(string cmd);
+bool is_number(const string& s);
+bool taur_exec(std::vector<const char*> cmd);
 string sanitizeStr(string& str);
 std::vector<string> split(string text, char delim);
 

@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <string>
 #include <array>
+#include <sys/wait.h>
 
 #include "util.hpp"
 #include "config.hpp"
@@ -43,7 +44,6 @@ class TaurBackend {
   public:
     Config config;
     TaurBackend(Config cfg);
-    ~TaurBackend();
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
     vector<TaurPkg_t>            getPkgFromJson(rapidjson::Document& doc, bool useGit);
     vector<TaurPkg_t>            search_pac(string query);
@@ -59,6 +59,9 @@ class TaurBackend {
     vector<TaurPkg_t> get_all_local_pkgs(bool aurOnly);
     vector<string> list_all_local_pkgs(bool aurOnly, bool stripVersion);
 
+
 };
+
+inline std::vector<const char*> cmd;
 
 #endif

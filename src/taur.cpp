@@ -3,68 +3,24 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
-#include <cerrno>
 #include <sys/wait.h>
+using std::filesystem::path;
+
 
 TaurBackend::TaurBackend(Config cfg) : config(cfg) {
 }
 
-// Wrapper for git_libgit2_shutdown, This will call the function
-// multiple times until all resources are freed.
-TaurBackend::~TaurBackend() {
-}
-
-// Clone from a remote git repository, and return a bool back.
-bool git_clone(string url, string out_path) {
-    int pid = fork();
-    if(pid < 0){
-        log_printf(LOG_ERROR, _("fork() failed: %s"), strerror(errno));
-        exit(127);
-    } 
-    if(pid == 0){
-        execlp("git", "git", "clone", url.c_str(), out_path.c_str(), nullptr);
-        log_printf(LOG_ERROR, _("Error when cloning git repo: %s"), strerror(errno));
-        exit(127);
-    }
-    if(pid > 0){ // we wait for git to finish then start executing makepkg 
-        int status;
-        waitpid(pid, &status, 0); // Wait for the child to finish
-        if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-            return true;
-    }
-    return false;
-}
-
-// Pull from a local git repository, and return a bool back.
-bool git_pull(string path) {
-    int pid = fork();
-    if(pid < 0){
-        log_printf(LOG_ERROR, _("fork() failed: %s"), strerror(errno));
-        exit(127);
-    } 
-    if(pid == 0){
-        execlp("git", "git", "-C", path.c_str(), "pull", "--rebase", "--autostash", "--ff-only", nullptr);
-        log_printf(LOG_ERROR, _("Pulling %s failed: %s"), path.c_str(), strerror(errno));
-        exit(127);
-    }
-    if(pid > 0){ // we wait for git to finish then start executing makepkg
-        int status;
-        waitpid(pid, &status, 0); // Wait for the child to finish
-        if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
-            return true;
-    }
-    return false;
-}
-
-using std::filesystem::path;
 
 bool TaurBackend::download_git(string url, string out_path) {
-    if (std::filesystem::exists(path(out_path) / ".git"))
-        return git_pull(out_path);
+    if (std::filesystem::exists(path(out_path) / ".git")){
+        cmd = {"git", "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"};
+        return taur_exec(cmd);
+    }
     else {
+        cmd = {"git", "clone", url.c_str(), out_path.c_str()};
         if (std::filesystem::exists(path(out_path)))
             std::filesystem::remove_all(out_path);
-        return git_clone(url, out_path);
+        return taur_exec(cmd);
     }
 }
 
@@ -73,7 +29,7 @@ bool TaurBackend::download_tar(string url, string out_path) {
     std::ofstream out(out_path);
     if (!out.is_open())
         return false;
-
+    
     cpr::Session session;
     session.SetUrl(cpr::Url(url));
     cpr::Response response = session.Download(out);
@@ -82,12 +38,15 @@ bool TaurBackend::download_tar(string url, string out_path) {
 
     // if this is in a directory, it will change to that directory first.
     bool isNested = out_path.find("/") != (size_t)-1;
-
     sanitizeStr(out_path);
     if (isNested)
-    	return system(("cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\"").c_str()) == 0;
+        return system(("cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\"").c_str()) == 0; // i'm sorry, i'm too tired for this bs
+        //cmd = {"bash", "-c", "cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\""};
     else
-    	return system((string("tar -xf \"") + out_path + string("\"")).c_str()) == 0;
+        cmd = {"tar", "-xf", out_path.c_str()};
+    
+    return taur_exec(cmd);
+        //return system((string("tar -xf \"") + out_path + string("\"")).c_str()) == 0;
 
 }
 
@@ -180,21 +139,6 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     return out;
 }
 
-// http://stackoverflow.com/questions/478898/ddg#478960
-string exec(string cmd) {
-    std::array<char, 128> buffer;
-    string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
-        throw std::runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
-
-    return result;
-}
-
 bool sanitizeAndRemove(string& input) {
     sanitizeStr(config.sudo);
     sanitizeStr(input);
@@ -211,9 +155,9 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
 
     string packages_str;
     if (searchForeignPackagesOnly)
-        packages_str = exec("pacman -Qmq | grep \"" + pkgName + "\"");
+        packages_str = execGet("pacman -Qmq | grep \"" + pkgName + "\"");
     else
-        packages_str = exec("pacman -Qq | grep \"" + pkgName + "\"");
+        packages_str = execGet("pacman -Qq | grep \"" + pkgName + "\"");
 
     vector<string> packages = split(packages_str, '\n');
 
@@ -368,7 +312,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
             continue;
         }
 
-        string versionInfo = exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+        string versionInfo = execGet("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
         
         if (versionInfo.empty()) {
             log_printf(LOG_WARN, _("Failed to parse version information from %s's PKGBUILD, You might be able to ignore this safely.\n"), pkgs[pkgIndex].name.c_str());
@@ -401,9 +345,9 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
 vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     string pkgs_str;
     if (aurOnly)
-        pkgs_str = exec("pacman -Qm");
+        pkgs_str = execGet("pacman -Qm");
     else
-        pkgs_str = exec("pacman -Q");
+        pkgs_str = execGet("pacman -Q");
 
     vector<string> pkgs = split(pkgs_str, '\n');
 
@@ -430,14 +374,9 @@ vector<string> TaurBackend::list_all_local_pkgs(bool aurOnly, bool stripVersion)
     if (stripVersion)
         cmd += "q";
 
-    vector<string> pkgs = split(exec(cmd), '\n');
+    vector<string> pkgs = split(execGet(cmd), '\n');
 
     return pkgs;
-}
-
-// https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_number(const string& s) {
-    return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
 // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
@@ -457,7 +396,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
     sanitizeStr(query);
     // we search for the package name and print only the name, not the description
     string cmd = "pacman -Ss \"" + query + "\"";
-    vector<string> pkgs_string = split(exec(cmd), '\n');
+    vector<string> pkgs_string = split(execGet(cmd), '\n');
     TaurPkg_t taur_pkg;
     vector<TaurPkg_t> out;
 
