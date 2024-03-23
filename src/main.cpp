@@ -131,7 +131,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     string real_uid = getenv("SUDO_UID");
     int realuid = std::stoi(real_uid);
     if (!real_uid.empty() && realuid > 0) {
-        log_printf(LOG_WARN, _("You are trying to install an AUR package with sudo, This is unsupported by makepkg.\nWe will try to reduce your privilege, but there is no guarantee it'll work."));
+        log_printf(LOG_WARN, _("You are trying to install an AUR package with sudo, This is unsupported by makepkg. We will try to reduce your privilege, but there is no guarantee it'll work.\n"));
         setuid(realuid);
         setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
         config->initializeVars();
