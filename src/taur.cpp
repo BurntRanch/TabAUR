@@ -91,7 +91,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                          .name = pkgJson["Name"].GetString(),
                          .version = pkgJson["Version"].GetString(),
                          .url = getUrl(pkgJson, returnGit),
-                         .desc = pkgJson["Description"].GetString()
+                         .desc = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : ""
                        };
 }
 
@@ -141,9 +141,6 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
 
 bool remove_pkgs(string input) {
     vector<string> pkgs = split(input, ' ');
-    vector<const char*> pkgs_char;
-    for(auto& str : pkgs)
-        pkgs_char.push_back(str.c_str());
 
     cmd = {config.sudo.c_str(), "pacman", "-R"};
     for(auto& str : pkgs)
