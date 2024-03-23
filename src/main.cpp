@@ -98,7 +98,7 @@ bool updateAll(TaurBackend *backend) {
 }
 
 bool execPacman(int argc, char* argv[]){
-    char* args[argc+1];
+    char* args[argc];
     args[0] = _("pacman"); // Set the command name to pacman
     for(int i = 1; i < argc; ++i) {
         args[i] = argv[i];
@@ -192,8 +192,6 @@ bool queryPkgs(TaurBackend *backend) {
 
 // main
 int main(int argc, char* argv[]) {
-    signal(SIGINT, interruptHandler);
-
     TaurBackend backend(config);
     
     if (parseargs(argc, argv))

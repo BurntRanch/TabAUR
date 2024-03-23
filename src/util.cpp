@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include "util.hpp"
 #include "taur.hpp"
@@ -31,9 +33,12 @@ void log_printf(int log, string fmt, ...){
     std::cout << NOCOLOR;
 }
 
-string sanitizeStr(string& str){
-    str.erase(sanitize(str.begin(), str.end()), str.end());
-    return str;
+bool isInvalid(char c) {
+    return !isprint(c);
+}
+
+void sanitizeStr(string& str){
+    str.erase(std::remove_if(str.begin(), str.end(), isInvalid), str.end());
 }
 
 // Function to check if a package is from a synchronization database
@@ -54,15 +59,45 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     alpm_list_t *combined   = alpm_list_join(addPkgs, removePkgs);
     if (soft && !combined)
         return true;
+
+    log_printf(LOG_INFO, _("Packages to add:\n"));
+    for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next)
+        std::cout << "\t++ " << alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)) << std::endl;
+
+    log_printf(LOG_INFO, _("Packages to remove:\n"));
+    for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next)
+        std::cout << "\t-- " << alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)) << std::endl;
+
+    std::cout << "Would you like to proceed with this transaction? [Y/n]" << std::endl;
+    
+    string response;
+    std::cin >> response;
+
+    for (char &c : response) { 
+        c = tolower(c); 
+    }
+    
+    if (!response.empty() && response != "y") {
+        bool releaseStatus = alpm_trans_release(handle) == 0;
+        if (!releaseStatus)
+            log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+
+        log_printf(LOG_INFO, _("Cancelled transaction."));
+        return soft;
+    }
+
     bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
     if (!prepareStatus)
         log_printf(LOG_ERROR, _("Failed to prepare transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+
     bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
     if (!commitStatus)
         log_printf(LOG_ERROR, _("Failed to commit transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+
     bool releaseStatus = alpm_trans_release(handle) == 0;
     if (!releaseStatus)
         log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+
     return prepareStatus && commitStatus && releaseStatus;
 }
 
@@ -100,7 +135,7 @@ std::string expandVar(std::string& str){
 }
 
 // http://stackoverflow.com/questions/478898/ddg#478960
-string execGet(string cmd) {
+string shell_exec(string cmd) {
     std::array<char, 128> buffer;
     string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);

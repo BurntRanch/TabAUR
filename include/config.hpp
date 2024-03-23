@@ -1,6 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <alpm.h>
 #include <string>
 #include "util.hpp"
 #define TOML_HEADER_ONLY 1
@@ -15,15 +16,20 @@ public:
     string makepkgBin;
     string cacheDir;
     string sudo;
+    alpm_handle_t *handle;
+    alpm_list_t *repos;
     bool colors;
     bool secretRecipe;
 
     Config();
+    ~Config();
+
     string getHomeCacheDir();
     string getCacheDir();
     string getHomeConfigDir();
     string getConfigDir();
     void   loadConfigFile(string filename); 
+    void   loadPacmanConfigFile(string filename);
     
     // stupid c++ that wants template functions in header
     template<typename T>
