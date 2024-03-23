@@ -192,6 +192,7 @@ bool queryPkgs(TaurBackend *backend) {
 
 // main
 int main(int argc, char* argv[]) {
+    signal(SIGINT, interruptHandler);
 
     TaurBackend backend(config);
     

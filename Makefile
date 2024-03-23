@@ -4,7 +4,7 @@ OBJ 	 = $(SRC:.cpp=.o)
 LIBS 	?= -lcpr -lalpm
 LDFLAGS  = ${LIBS}
 TARGET   = taur
-CPPFLAGS = -g -isystem include -Wall -std=c++17
+CPPFLAGS = -O3 -isystem include -Wall -std=c++17
 
 cpr_installed := $(shell test -s /usr/lib/libcpr.so.1 || test -s /usr/local/lib/libcpr.so.1 && echo -n yes)
 
