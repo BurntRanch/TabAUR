@@ -11,16 +11,10 @@ If the compilation time is too slow, use `make -j$(nproc)` and it will use 100% 
 To clean, run `make clean`.
 
 ## Dependencies
-you need to install libgit2 and [cpr](https://github.com/libcpr/cpr).
-
-For `libgit2` can be installed by this command
-```
-sudo pacman -S libgit2
-```
-For cpr,
+you need to install [cpr](https://github.com/libcpr/cpr)
 TabAUR offers the choice to either use the [AUR version](https://aur.archlinux.org/packages/cpr) (recommended)
 
-Or by compiling and installing from source with the following command:
+Or by compiling and installing from here with the following command:
 ```bash
 make cpr && make
 ```

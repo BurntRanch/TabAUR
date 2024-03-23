@@ -1,7 +1,7 @@
 CXX	?= g++
 SRC 	 = $(sort $(wildcard src/*.cpp))
 OBJ 	 = $(SRC:.cpp=.o)
-LIBS 	?= -lgit2 -lcpr -lalpm
+LIBS 	?= -lcpr -lalpm
 LDFLAGS  = ${LIBS}
 TARGET   = taur
 CPPFLAGS = -O3 -isystem include -Wall -std=c++17

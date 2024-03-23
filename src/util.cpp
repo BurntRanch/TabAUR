@@ -1,5 +1,6 @@
 #include <cstdio>
 #include "util.hpp"
+#include "taur.hpp"
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, std::string const& ending) {
@@ -96,6 +97,48 @@ std::string expandVar(std::string& str){
     }
     
     return str;
+}
+
+// http://stackoverflow.com/questions/478898/ddg#478960
+string execGet(string cmd) {
+    std::array<char, 128> buffer;
+    string result;
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+
+    return result;
+}
+
+// https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
+bool is_number(const string& s) {
+    return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
+}
+
+bool taur_exec(vector<const char*> cmd){
+    cmd.push_back(nullptr);
+    int pid = fork();
+
+    if(pid < 0){
+        log_printf(LOG_ERROR, _("fork() failed: %s\n"), strerror(errno));
+        exit(127);
+    } 
+    if(pid == 0){
+        execvp(cmd[0], const_cast<char* const*>(cmd.data()));
+        log_printf(LOG_ERROR, _("An error as occured: %s\n"), strerror(errno));
+        exit(127);
+    }
+    if(pid > 0){ // we wait for the command to finish then start executing the rest
+        int status;
+        waitpid(pid, &status, 0); // Wait for the child to finish
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+            return true;
+    }
+    return false;
 }
 
 std::vector<string> split(std::string text, char delim) {
