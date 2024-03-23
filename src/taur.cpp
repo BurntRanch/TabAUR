@@ -139,11 +139,16 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     return out;
 }
 
-bool sanitizeAndRemove(string& input) {
-    sanitizeStr(config.sudo);
-    sanitizeStr(input);
-    
-    cmd = {config.sudo.c_str(), "pacman", "-R", input.c_str()};
+bool remove_pkgs(string input) {
+    vector<string> pkgs = split(input, ' ');
+    vector<const char*> pkgs_char;
+    for(auto& str : pkgs)
+        pkgs_char.push_back(str.c_str());
+
+    cmd = {config.sudo.c_str(), "pacman", "-R"};
+    for(auto& str : pkgs)
+        cmd.push_back(str.c_str());
+
     return taur_exec(cmd);
 }
 
@@ -166,7 +171,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
         return false;
 
     if (packages.size() == 1)
-        return sanitizeAndRemove(packages[0]);
+        return remove_pkgs(packages[0]);
 
 
     std::cout << "Choose packages to remove, (Seperate by spaces, type * to remove all):" << std::endl;
@@ -180,7 +185,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
         string finalPackageList = "";
         for (size_t i = 0; i < packages.size(); i++)
             finalPackageList += packages[i] + " ";
-        return sanitizeAndRemove(finalPackageList);
+        return remove_pkgs(finalPackageList);
     }
 
     vector<string> includedIndexes = split(included, ' ');
@@ -199,7 +204,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
         }
     }
 
-    return sanitizeAndRemove(finalPackageList);
+    return remove_pkgs(finalPackageList);
 }
 
 bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit) {
