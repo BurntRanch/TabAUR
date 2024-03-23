@@ -16,8 +16,8 @@ public:
     string makepkgBin;
     string cacheDir;
     string sudo;
-    alpm_handle_t *handle;
-    alpm_list_t *repos;
+    alpm_handle_t *handle = nullptr;
+    alpm_list_t *repos = nullptr;
     bool colors;
     bool secretRecipe;
 
@@ -45,7 +45,7 @@ private:
     toml::table tbl;
 };
 
-extern Config config;
+extern std::unique_ptr<Config> config;
 
 // we comment the default config values, just like /etc/pacman.conf
 inline const string defConfig = R"#([general]

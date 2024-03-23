@@ -60,13 +60,12 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     if (soft && !combined)
         return true;
 
-    log_printf(LOG_INFO, _("Packages to add:\n"));
+    log_printf(LOG_INFO, _("Changes to be made:\n"));
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next)
-        std::cout << "\t++ " << alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)) << std::endl;
+        std::cout << "    ++ " << alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)) << std::endl;
 
-    log_printf(LOG_INFO, _("Packages to remove:\n"));
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next)
-        std::cout << "\t-- " << alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)) << std::endl;
+        std::cout << "    -- " << alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)) << std::endl;
 
     std::cout << "Would you like to proceed with this transaction? [Y/n]" << std::endl;
     
@@ -82,7 +81,7 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
         if (!releaseStatus)
             log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
 
-        log_printf(LOG_INFO, _("Cancelled transaction."));
+        log_printf(LOG_INFO, _("Cancelled transaction.\n"));
         return soft;
     }
 
@@ -98,7 +97,13 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     if (!releaseStatus)
         log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
 
-    return prepareStatus && commitStatus && releaseStatus;
+
+    if (prepareStatus && commitStatus && releaseStatus) {
+        log_printf(LOG_INFO, _("Successfully finished transaction."));
+        return true;
+    }
+
+    return false;
 }
 
 string expandHome(std::string& str) {

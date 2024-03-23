@@ -178,7 +178,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
 
     std::cout << "Choose packages to remove, (Seperate by spaces, type * to remove all):" << std::endl;
     for (size_t i = 0; i < packages.size(); i++)
-        std::cout << "[" << i << "] " << packages[i] << std::endl;
+        std::cout << "[" << i << "] " << alpm_pkg_get_name(packages[i]) << std::endl;
 
     string included;
     std::cin >> included;
