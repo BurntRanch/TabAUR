@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <memory>
 #include <stdbool.h>
+#include <string>
 #include <unistd.h>
 #include <signal.h>
 
@@ -52,7 +53,6 @@ operations:
 }
 
 int installPkg(string pkgName, TaurBackend *backend) { 
-    string      	cacheDir = config->cacheDir;
     bool            useGit   = config->useGit;
     
     optional<TaurPkg_t>  pkg = backend->search(pkgName, useGit);
@@ -127,6 +127,17 @@ int installPkg(string pkgName, TaurBackend *backend) {
 
         return true;
     }
+
+    string real_uid = getenv("SUDO_UID");
+    int realuid = std::stoi(real_uid);
+    if (!real_uid.empty() && realuid > 0) {
+        log_printf(LOG_WARN, _("You are trying to install an AUR package with sudo, This is unsupported by makepkg.\nWe will try to reduce your privilege, but there is no guarantee it'll work."));
+        setuid(realuid);
+        setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
+        config->initializeVars();
+    }
+
+    string      	cacheDir = config->cacheDir;
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 

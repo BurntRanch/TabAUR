@@ -28,6 +28,7 @@ public:
     string getCacheDir();
     string getHomeConfigDir();
     string getConfigDir();
+    void   initializeVars();
     void   loadConfigFile(string filename); 
     void   loadPacmanConfigFile(string filename);
     

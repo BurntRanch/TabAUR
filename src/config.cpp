@@ -67,6 +67,15 @@ string Config::getConfigDir() {
     return this->getHomeConfigDir() + "/TabAUR";
 }
 
+void Config::initializeVars() {
+    this->sudo      = this->getConfigValue<string>("general.sudo", "sudo"); sanitizeStr(this->sudo);
+    this->useGit    = this->getConfigValue<bool>("general.useGit", true);
+    this->aurOnly   = this->getConfigValue<bool>("general.aurOnly", false);
+    this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg"); sanitizeStr(this->makepkgBin);
+    this->cacheDir  = this->getCacheDir(); sanitizeStr(this->cacheDir);
+    this->colors    = this->getConfigValue<bool>("general.colors", true);
+}
+
 void Config::loadConfigFile(string filename) {
     try {
         this->tbl = toml::parse_file(filename);
@@ -75,13 +84,7 @@ void Config::loadConfigFile(string filename) {
         std::cerr << err << std::endl;
         exit(-1);
     }
-    
-    this->sudo      = this->getConfigValue<string>("general.sudo", "sudo"); sanitizeStr(this->sudo);
-    this->useGit    = this->getConfigValue<bool>("general.useGit", true);
-    this->aurOnly   = this->getConfigValue<bool>("general.aurOnly", false);
-    this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg"); sanitizeStr(this->makepkgBin);
-    this->cacheDir  = this->getCacheDir(); sanitizeStr(this->cacheDir);
-    this->colors    = this->getConfigValue<bool>("general.colors", true);
+    this->initializeVars();
 
     alpm_errno_t err;
     this->handle    = alpm_initialize("/", this->getConfigValue<string>("pacman.libFolder", "/var/lib/pacman").c_str(), &err);
