@@ -38,6 +38,7 @@ Config::Config() {
 Config::~Config() {
     alpm_trans_release(this->handle);
     alpm_release(this->handle);
+    alpm_list_free(this->repos);
 }
 
 string Config::getHomeCacheDir() {
