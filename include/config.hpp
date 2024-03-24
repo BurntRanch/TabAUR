@@ -1,6 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <alpm.h>
 #include <string>
 #define TOML_HEADER_ONLY 1
 #include "toml.hpp"
@@ -16,18 +17,24 @@ public:
     string makepkgBin;
     string cacheDir;
     string sudo;
-    bool   colors;
-    bool   secretRecipe;
+    alpm_handle_t *handle = nullptr;
+    alpm_list_t *repos = nullptr;
+    bool colors;
+    bool secretRecipe;
     bool   debug;
 
     Config();
+    ~Config();
+
     string getHomeCacheDir();
     string getCacheDir();
     string getHomeConfigDir();
     string getConfigDir();
-    void   loadConfigFile(string filename);
+    void   initializeVars();
+    void   loadConfigFile(string filename); 
     void   loadColors();
-
+    void   loadPacmanConfigFile(string filename);
+    
     // stupid c++ that wants template functions in header
     template <typename T>
     T getConfigValue(string value, T fallback) {
@@ -42,7 +49,7 @@ private:
     toml::table tbl;
 };
 
-extern Config config;
+extern std::unique_ptr<Config> config;
 
 // we comment the default config values, just like /etc/pacman.conf
 inline const string defConfig = R"#([general]

@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include "util.hpp"
 #include "taur.hpp"
@@ -36,11 +38,94 @@ void log_printf(int log, string fmt, ...) {
     std::cout << NOCOLOR;
 }
 
-string sanitizeStr(string& str) {
-    str.erase(sanitize(str.begin(), str.end()), str.end());
-    return str;
+bool isInvalid(char c) {
+    return !isprint(c);
 }
 
+void sanitizeStr(string& str){
+    str.erase(std::remove_if(str.begin(), str.end(), isInvalid), str.end());
+}
+
+// Function to check if a package is from a synchronization database
+bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
+    const char *name = alpm_pkg_get_name(pkg);
+
+    for (; syncdbs; syncdbs = alpm_list_next(syncdbs))
+        for (alpm_list_t *p = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); p; p = alpm_list_next(p))
+            if (strcmp(name, alpm_pkg_get_name((alpm_pkg_t *)(p->data))) == 0)
+                return true;
+    return false;
+}
+
+// soft means it won't return false (or even try) if the list is empty
+bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
+    alpm_list_t *addPkgs    = alpm_trans_get_add(handle);
+    alpm_list_t *removePkgs = alpm_trans_get_remove(handle);
+    alpm_list_t *combined   = alpm_list_join(addPkgs, removePkgs);
+    if (soft && !combined)
+        return true;
+
+    log_printf(LOG_INFO, _("Changes to be made:\n"));
+    for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next)
+        std::cout << "    ++ " << alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)) << std::endl;
+
+    for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next)
+        std::cout << "    -- " << alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)) << std::endl;
+
+    std::cout << "Would you like to proceed with this transaction? [Y/n]" << std::endl;
+    
+    string response;
+    std::cin >> response;
+
+    for (char &c : response) { 
+        c = tolower(c); 
+    }
+    
+    if (!response.empty() && response != "y") {
+        bool releaseStatus = alpm_trans_release(handle) == 0;
+        if (!releaseStatus)
+            log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+
+        log_printf(LOG_INFO, _("Cancelled transaction.\n"));
+        return soft;
+    }
+
+    bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
+    if (!prepareStatus)
+        log_printf(LOG_ERROR, _("Failed to prepare transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+
+    bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
+    if (!commitStatus)
+        log_printf(LOG_ERROR, _("Failed to commit transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+
+    bool releaseStatus = alpm_trans_release(handle) == 0;
+    if (!releaseStatus)
+        log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+
+
+    if (prepareStatus && commitStatus && releaseStatus) {
+        log_printf(LOG_INFO, _("Successfully finished transaction."));
+        return true;
+    }
+
+    return false;
+}
+
+string expandHome(std::string& str) {
+    string ret = str;
+    size_t found = ret.find("~");
+    if (found != string::npos) {
+        const char* homeDir = getenv("HOME");
+        if (homeDir != nullptr)
+            ret.replace(found, 1, homeDir);
+        else {
+            log_printf(LOG_ERROR, _("HOME environment variable is not set.\n"));
+            exit(-1);
+        } 
+    }
+    return ret;
+}
+            
 std::string expandVar(std::string& str) {
     const char* env;
     if (str[0] == '~') {
@@ -60,7 +145,7 @@ std::string expandVar(std::string& str) {
 }
 
 // http://stackoverflow.com/questions/478898/ddg#478960
-string execGet(string cmd) {
+string shell_exec(string cmd) {
     std::array<char, 128> buffer;
     string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);

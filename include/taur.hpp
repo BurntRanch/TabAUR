@@ -43,9 +43,9 @@ struct db_colors {
 };
 
 class TaurBackend {
-public:
-    Config config;
-    TaurBackend(Config cfg);
+  public:
+    Config& config;
+    TaurBackend(Config& cfg);
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
     vector<TaurPkg_t>   getPkgFromJson(rapidjson::Document& doc, bool useGit);
     vector<TaurPkg_t>   search_pac(string query);

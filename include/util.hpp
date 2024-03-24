@@ -1,6 +1,7 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
+#include <alpm.h>
 #include <cstdarg>
 #include <string>
 #include <vector>
@@ -20,14 +21,16 @@ enum log_level {
 };
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
-bool    hasEnding(string const& fullString, string const& ending);
-bool    hasStart(string const& fullString, string const& start);
-void    log_printf(int log, string fmt, ...);
-string  expandVar(string& str);
-string  execGet(string cmd);
-bool    is_number(const string& s);
-bool    taur_exec(std::vector<const char*> cmd);
-string  sanitizeStr(string& str);
+bool hasEnding(string const& fullString, string const& ending);
+bool hasStart(string const& fullString, string const& start);
+void log_printf(int log, string fmt, ...);
+string expandVar(string& str);
+bool is_number(const string& s);
+bool taur_exec(std::vector<const char*> cmd);
+void sanitizeStr(string& str);
+bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
+bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft = false);
+string shell_exec(string cmd);
 std::vector<string> split(string text, char delim);
 
 template <typename T>

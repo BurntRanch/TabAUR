@@ -1,5 +1,10 @@
+#include <csignal>
+#include <cstdlib>
+#include <memory>
 #include <stdbool.h>
+#include <string>
 #include <unistd.h>
+#include <signal.h>
 
 #include "util.hpp"
 #include "args.hpp"
@@ -11,8 +16,14 @@ using std::vector;
 using std::string;
 using std::optional;
 
-Config config;
+std::unique_ptr<Config> config;
 struct Operation_t operation;
+
+void interruptHandler(int) {
+    log_printf(LOG_WARN, _("Caught CTRL-C, Exiting!\n"));
+
+    std::exit(-1);
+}
 
 void usage() {
     string help_op = R"#(
@@ -30,7 +41,7 @@ operations:
     cout << "TabAUR usage: taur <operation> [...]" << endl;
     cout << help_op << endl;
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
-    if (config.secretRecipe) {
+    if (config->secretRecipe) {
         log_printf(LOG_INFO, _("Loading secret recipe...\n"));
         for (auto const& i : secret) {
             cout << i << endl;
@@ -39,11 +50,10 @@ operations:
     }
 }
 
-int installPkg(string pkgName, TaurBackend* backend) {
-    string              cacheDir = config.cacheDir;
-    bool                useGit   = config.useGit;
-
-    optional<TaurPkg_t> pkg = backend->search(pkgName, useGit);
+int installPkg(string pkgName, TaurBackend *backend) { 
+    bool            useGit   = config->useGit;
+    
+    optional<TaurPkg_t>  pkg = backend->search(pkgName, useGit);
 
     if (!pkg) {
         log_printf(LOG_ERROR, _("An error has occurred and we could not search for your package.\n"));
@@ -53,11 +63,79 @@ int installPkg(string pkgName, TaurBackend* backend) {
     string url = pkg.value().url;
 
     if (url == "") {
-        string name = pkg.value().name;
-        sanitizeStr(config.sudo);
-        sanitizeStr(name);
-        return taur_exec({config.sudo.c_str(), "pacman", "-S", name.c_str()});
+        // we search for the package name and print only the name, not the description
+        alpm_list_t *pkg_cache, *syncdbs;
+        string packages_str;
+
+        syncdbs = config->repos;
+        
+        log_printf(LOG_INFO, _("Synchronizing databases, This might take a while.\n"));
+        
+        alpm_list_t *dbs = alpm_get_syncdbs(config->handle);
+        int ret = alpm_db_update(config->handle, dbs, false);
+        
+        if(ret < 0) {
+            log_printf(LOG_ERROR, _("Failed to synchronize all databases (%s)\n"),
+                    alpm_strerror(alpm_errno(config->handle)));
+            return false;
+        }
+        log_printf(LOG_INFO, _("Synchronized all databases.\n"));
+        log_printf(LOG_INFO, _("Downloading package..\n"));
+
+        alpm_pkg_t * alpm_pkg;
+        bool found = false;
+
+        for (; syncdbs && !found; syncdbs = alpm_list_next(syncdbs)) {
+            for (pkg_cache = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); pkg_cache; pkg_cache = alpm_list_next(pkg_cache)) {
+                string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg_cache->data)));
+                if (name == pkg.value().name) {
+                    alpm_pkg = (alpm_pkg_t *)(pkg_cache->data);
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!found) {
+            log_printf(LOG_ERROR, _("backend->search returned a system package but we couldn't find it.\n"));
+            return false;
+        }
+
+        int transCode = alpm_trans_init(config->handle, 0);
+
+        if (transCode != 0) {
+            log_printf(LOG_ERROR, _("Failed to start transaction (%s)\n"), alpm_strerror(alpm_errno(config->handle)));
+            return false;
+        }
+
+        if (alpm_add_pkg(config->handle, alpm_pkg) != 0) {
+            log_printf(LOG_ERROR, _("Failed to add package (%s)\n"), alpm_strerror(alpm_errno(config->handle)));
+            alpm_trans_release(config->handle);
+            return false;
+        }
+        
+        bool success = commitTransactionAndRelease(config->handle);
+
+        if (!success) {
+            log_printf(LOG_ERROR, _("Failed to prepare, commit, or release transaction!\n"));
+            return false;
+        }
+
+        log_printf(LOG_INFO, _("Successfully installed package!\n"));
+
+        return true;
     }
+
+    string real_uid = getenv("SUDO_UID");
+    int realuid = std::stoi(real_uid);
+    if (!real_uid.empty() && realuid > 0) {
+        log_printf(LOG_WARN, _("You are trying to install an AUR package with sudo, This is unsupported by makepkg. We will try to reduce your privilege, but there is no guarantee it'll work.\n"));
+        setuid(realuid);
+        setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
+        config->initializeVars();
+    }
+
+    string      	cacheDir = config->cacheDir;
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
@@ -84,25 +162,26 @@ int installPkg(string pkgName, TaurBackend* backend) {
     return true;
 }
 
-bool removePkg(string pkgName, TaurBackend* backend) {
-    return backend->remove_pkg(pkgName, config.aurOnly);
+bool removePkg(string pkgName, TaurBackend *backend) {
+    return backend->remove_pkg(pkgName, config->aurOnly);
 }
 
-bool updateAll(TaurBackend* backend) {
-    string cacheDir = config.cacheDir;
+bool updateAll(TaurBackend *backend) {
+    string cacheDir = config->cacheDir;
 
-    return backend->update_all_pkgs(path(cacheDir), config.useGit);
+    return backend->update_all_pkgs(path(cacheDir), config->useGit);
 }
 
-bool execPacman(int argc, char* argv[]) {
-    char* args[argc + 1];
+bool execPacman(int argc, char* argv[]){
+    char* args[argc];
+  
     args[0] = _("pacman"); // Set the command name to pacman
     for (int i = 1; i < argc; ++i) {
         args[i] = argv[i];
     }
+  
     args[argc] = nullptr; // null-terminate the array
-    for (int i = 0; i < argc; ++i)
-        cout << "args: " << args[i] << endl;
+  
     execvp(args[0], args);
 
     // If execvp returns, it means an error occurred
@@ -178,8 +257,8 @@ int parseargs(int argc, char* argv[]) {
     return 0;
 }
 
-bool queryPkgs(TaurBackend* backend) {
-    vector<string> pkgs = backend->list_all_local_pkgs(config.aurOnly, false);
+bool queryPkgs(TaurBackend *backend) {
+    vector<string> pkgs = backend->list_all_local_pkgs(config->aurOnly, false);
 
     for (size_t i = 0; i < pkgs.size(); i++)
         cout << pkgs[i] << endl;
@@ -189,9 +268,12 @@ bool queryPkgs(TaurBackend* backend) {
 
 // main
 int main(int argc, char* argv[]) {
+    config = std::make_unique<Config>();
 
-    TaurBackend backend(config);
+    signal(SIGINT, &interruptHandler);
 
+    TaurBackend backend(*config);
+    
     if (parseargs(argc, argv))
         return 1;
 
