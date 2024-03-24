@@ -67,7 +67,7 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next)
         std::cout << "    -- " << alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)) << std::endl;
 
-    std::cout << "Would you like to proceed with this transaction? [Y/n]" << std::endl;
+    std::cout << "Would you like to proceed with this transaction? [Y/n] ";
     
     string response;
     std::cin >> response;
@@ -99,7 +99,7 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
 
 
     if (prepareStatus && commitStatus && releaseStatus) {
-        log_printf(LOG_INFO, _("Successfully finished transaction."));
+        log_printf(LOG_INFO, _("Successfully finished transaction.\n"));
         return true;
     }
 
