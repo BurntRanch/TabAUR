@@ -25,6 +25,8 @@ using std::filesystem::path;
 using std::vector;
 using std::optional;
 
+namespace fs = std::filesystem;
+
 struct TaurPkg_t {
     string         name;
     string         version;
@@ -62,6 +64,5 @@ class TaurBackend {
 
 };
 
-inline std::vector<const char*> cmd;
 
 #endif

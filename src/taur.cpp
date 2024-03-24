@@ -4,23 +4,19 @@
 #include "taur.hpp"
 #include "config.hpp"
 #include <sys/wait.h>
-using std::filesystem::path;
-
 
 TaurBackend::TaurBackend(Config cfg) : config(cfg) {
 }
 
 
 bool TaurBackend::download_git(string url, string out_path) {
-    if (std::filesystem::exists(path(out_path) / ".git")){
-        cmd = {"git", "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"};
-        return taur_exec(cmd);
+    if (fs::exists(path(out_path) / ".git")){
+        return taur_exec({"git", "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
     }
     else {
-        cmd = {"git", "clone", url.c_str(), out_path.c_str()};
-        if (std::filesystem::exists(path(out_path)))
-            std::filesystem::remove_all(out_path);
-        return taur_exec(cmd);
+        if (fs::exists(path(out_path)))
+            fs::remove_all(out_path);
+        return taur_exec({"git", "clone", url.c_str(), out_path.c_str()});
     }
 }
 
@@ -39,15 +35,12 @@ bool TaurBackend::download_tar(string url, string out_path) {
     // if this is in a directory, it will change to that directory first.
     bool isNested = out_path.find("/") != (size_t)-1;
     sanitizeStr(out_path);
-    if (isNested)
-        return system(("cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\"").c_str()) == 0; // i'm sorry, i'm too tired for this bs
-        //cmd = {"bash", "-c", "cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\""};
-    else
-        cmd = {"tar", "-xf", out_path.c_str()};
-    
-    return taur_exec(cmd);
-        //return system((string("tar -xf \"") + out_path + string("\"")).c_str()) == 0;
 
+    if (isNested){
+        fs::current_path(out_path.substr(0, out_path.rfind("/")));
+        return taur_exec({"tar", "-xf", out_path.c_str()});
+    }
+    return taur_exec({"tar", "-xf", out_path.c_str()});
 }
 
 bool TaurBackend::download_pkg(string url, string out_path) {
@@ -83,7 +76,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                              .name = pkgJson["Name"].GetString(),
                              .version = pkgJson["Version"].GetString(),
                              .url = getUrl(pkgJson, returnGit), 
-                             .desc = pkgJson["Description"].GetString(),
+                             .desc = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
                              .depends = depends
                            };
     }
@@ -140,6 +133,7 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
 }
 
 bool remove_pkgs(string input) {
+    vector<const char*> cmd;
     vector<string> pkgs = split(input, ' ');
 
     cmd = {config.sudo.c_str(), "pacman", "-R"};
@@ -211,8 +205,10 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
     sanitizeStr(extracted_path);
     sanitizeStr(makepkg_bin);
 
-    if (pkg.depends.empty())
-        return system(("cd \"" + extracted_path + "\" && " + makepkg_bin + " -si").c_str()) == 0;
+    if (pkg.depends.empty()){
+        fs::current_path(extracted_path);
+        return taur_exec({makepkg_bin.c_str(), "-si"});
+    }
 
     vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
     for (size_t i = 0; i < pkg.depends.size(); i++) {
@@ -255,7 +251,8 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         }
     }
 
-    return system(("cd \"" + extracted_path + "\" && " + makepkg_bin + " -si").c_str()) == 0;
+    fs::current_path(extracted_path);
+    return taur_exec({makepkg_bin.c_str(), "-si"});
 }
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
@@ -263,8 +260,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     sudo = sanitizeStr(sudo);
     
     // first thing first
-    cmd = {sudo.c_str(), "pacman", "-Syu"};
-    bool pacmanUpgradeSuccess = taur_exec(cmd);
+    bool pacmanUpgradeSuccess = taur_exec({sudo.c_str(), "pacman", "-Syu"});
 
     if (!pacmanUpgradeSuccess)
         return false;

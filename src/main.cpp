@@ -4,11 +4,9 @@
 #include "util.hpp"
 #include "args.hpp"
 #include "taur.hpp"
-#include "config.hpp"
 
 using std::cout;
 using std::endl;
-using std::filesystem::path;
 using std::vector;
 using std::string;
 using std::optional;
@@ -58,8 +56,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
         string name = pkg.value().name;
         sanitizeStr(config.sudo);
         sanitizeStr(name);
-        cmd = {config.sudo.c_str(), "pacman", "-S", name.c_str()};
-        return taur_exec(cmd);
+        return taur_exec({config.sudo.c_str(), "pacman", "-S", name.c_str()});
     }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
