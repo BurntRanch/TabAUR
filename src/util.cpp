@@ -17,16 +17,21 @@ bool hasStart(string const& fullString, std::string const& start) {
     return (0 == fullString.compare(0, start.length(), start));
 }
 
-void log_printf(int log, string fmt, ...){
+void log_printf(int log, string fmt, ...) {
     va_list args;
     va_start(args, fmt);
     switch(log){
         case LOG_ERROR:
-            std::cerr << BOLDRED << "====[ ERROR ]==== " << std::endl << NOCOLOR << BOLD; break;
+            std::cerr << BOLDRED << "====[ ERROR ]==== " << std::endl << BOLD; break;
         case LOG_WARN:
-            std::cout << BOLDYELLOW << "Warning: " << NOCOLOR << BOLD; break;
+            std::cout << BOLDYELLOW << "Warning: " << BOLD; break;
         case LOG_INFO:
-            std::cout << BOLDBLUE << "Info: " << NOCOLOR << BOLD; break;
+            std::cout << BOLDBLUE << "Info: " << BOLD; break;
+        case LOG_DEBUG:
+            if (config.debug)
+                std::cout << BOLDMAGENTA << "[DEBUG]: " << BOLD;
+            else
+                return;
     }
     vprintf(fmt.c_str(), args);
     va_end(args);
@@ -121,10 +126,10 @@ string expandHome(std::string& str) {
     return ret;
 }
             
-std::string expandVar(std::string& str){
+std::string expandVar(std::string& str) {
     const char* env;
-    if(str[0] == '~'){
-        env = getenv("HOME"); // it's likely impossible for not having the $HOME env var setup 
+    if (str[0] == '~') {
+        env = getenv("HOME");   // it's likely impossible for not having the $HOME env var setup
         str.replace(0, 1, env); // replace ~ with the $HOME value
     } else if (str[0] == '$') {
         str.erase(0, 1); // erase from str[0] to str[1]
@@ -132,10 +137,10 @@ std::string expandVar(std::string& str){
         if (env == nullptr) {
             log_printf(LOG_ERROR, _("No such enviroment variable: %s\n"), str.c_str());
             exit(-1);
-        } 
+        }
         str = std::string(env);
     }
-    
+
     return str;
 }
 
@@ -159,20 +164,20 @@ bool is_number(const string& s) {
     return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
-bool taur_exec(vector<const char*> cmd){
+bool taur_exec(vector<const char*> cmd) {
     cmd.push_back(nullptr);
     int pid = fork();
 
-    if(pid < 0){
+    if (pid < 0) {
         log_printf(LOG_ERROR, _("fork() failed: %s\n"), strerror(errno));
         exit(127);
-    } 
-    if(pid == 0){
+    }
+    if (pid == 0) {
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
         log_printf(LOG_ERROR, _("An error as occured: %s\n"), strerror(errno));
         exit(127);
     }
-    if(pid > 0){ // we wait for the command to finish then start executing the rest
+    if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
         waitpid(pid, &status, 0); // Wait for the child to finish
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
@@ -182,12 +187,11 @@ bool taur_exec(vector<const char*> cmd){
 }
 
 std::vector<string> split(std::string text, char delim) {
-    string line;
+    string              line;
     std::vector<string> vec;
-    std::stringstream ss(text);
-    while(std::getline(ss, line, delim)) {
+    std::stringstream   ss(text);
+    while (std::getline(ss, line, delim)) {
         vec.push_back(line);
     }
     return vec;
 }
-

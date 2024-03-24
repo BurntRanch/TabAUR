@@ -7,9 +7,9 @@
 #include <getopt.h>
 
 enum OperationType {
-    OP_SYNC = 1, // when you run taur -S[args]
-    OP_REM = 2, // when you run taur -R[args]
-    OP_QUERY = 3,
+    OP_SYNC  = 1, // when you run taur -S[args]
+    OP_REM,       // when you run taur -R[args]
+    OP_QUERY,
     OP_SYSUPGRADE,
     OP_PACMAN // when it's different from -S,R,Q we gonna use pacman
 };
