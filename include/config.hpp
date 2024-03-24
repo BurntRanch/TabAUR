@@ -11,14 +11,14 @@ namespace fs = std::filesystem;
 
 class Config {
 public:
-    bool useGit;
-    bool aurOnly;
+    bool   useGit;
+    bool   aurOnly;
     string makepkgBin;
     string cacheDir;
     string sudo;
-    bool colors;
-    bool secretRecipe;
-    bool debug;
+    bool   colors;
+    bool   secretRecipe;
+    bool   debug;
 
     Config();
     string getHomeCacheDir();
@@ -27,9 +27,9 @@ public:
     string getConfigDir();
     void   loadConfigFile(string filename);
     void   loadColors();
-    
+
     // stupid c++ that wants template functions in header
-    template<typename T>
+    template <typename T>
     T getConfigValue(string value, T fallback) {
         toml::optional<T> ret = this->tbl.at_path(value).value<T>();
         if constexpr (toml::is_string<T>) // if we want to get a value that's a string

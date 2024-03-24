@@ -37,32 +37,29 @@ struct TaurPkg_t {
 };
 
 struct db_colors {
-    const string extra = BOLDGREEN;
+    const string extra    = BOLDGREEN;
     const string multilib = BOLDCYAN;
-    const string core = BOLDYELLOW;
+    const string core     = BOLDYELLOW;
 };
 
 class TaurBackend {
-  public:
+public:
     Config config;
     TaurBackend(Config cfg);
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
-    vector<TaurPkg_t>            getPkgFromJson(rapidjson::Document& doc, bool useGit);
-    vector<TaurPkg_t>            search_pac(string query);
-    optional<TaurPkg_t>          search(string query, bool useGit);
-    bool            download_tar(string url, string out_path);
-    bool            download_git(string url, string out_path);
-    bool            download_pkg(string url, string out_path);
+    vector<TaurPkg_t>   getPkgFromJson(rapidjson::Document& doc, bool useGit);
+    vector<TaurPkg_t>   search_pac(string query);
+    optional<TaurPkg_t> search(string query, bool useGit);
+    bool                download_tar(string url, string out_path);
+    bool                download_git(string url, string out_path);
+    bool                download_pkg(string url, string out_path);
     optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
-    vector<TaurPkg_t> fetch_pkgs(vector<string> pkgs, bool returnGit);
-    bool            remove_pkg(string name, bool searchForeignPackages);
-    bool            install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit);
-    bool            update_all_pkgs(path cacheDir, bool useGit);
-    vector<TaurPkg_t> get_all_local_pkgs(bool aurOnly);
-    vector<string> list_all_local_pkgs(bool aurOnly, bool stripVersion);
-
-
+    vector<TaurPkg_t>   fetch_pkgs(vector<string> pkgs, bool returnGit);
+    bool                remove_pkg(string name, bool searchForeignPackages);
+    bool                install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit);
+    bool                update_all_pkgs(path cacheDir, bool useGit);
+    vector<TaurPkg_t>   get_all_local_pkgs(bool aurOnly);
+    vector<string>      list_all_local_pkgs(bool aurOnly, bool stripVersion);
 };
-
 
 #endif

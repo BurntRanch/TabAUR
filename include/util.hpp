@@ -10,7 +10,7 @@
 
 using std::string;
 // taken from pacman
-#define _(str) (char *)str
+#define _(str) (char*)str
 
 enum log_level {
     LOG_ERROR,
@@ -20,16 +20,15 @@ enum log_level {
 };
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
-bool hasEnding(string const& fullString, string const& ending);
-bool hasStart(string const& fullString, string const& start);
-void log_printf(int log, string fmt, ...);
-string expandVar(string& str);
-string execGet(string cmd);
-bool is_number(const string& s);
-bool taur_exec(std::vector<const char*> cmd);
-string sanitizeStr(string& str);
+bool    hasEnding(string const& fullString, string const& ending);
+bool    hasStart(string const& fullString, string const& start);
+void    log_printf(int log, string fmt, ...);
+string  expandVar(string& str);
+string  execGet(string cmd);
+bool    is_number(const string& s);
+bool    taur_exec(std::vector<const char*> cmd);
+string  sanitizeStr(string& str);
 std::vector<string> split(string text, char delim);
-
 
 template <typename T>
 T sanitize(T beg, T end) {
@@ -44,7 +43,7 @@ T sanitize(T beg, T end) {
     return dest;
 }
 
-static inline const std::vector<string> secret = {
+static inline std::vector<string> secret = {
     {"Ingredients:"},
     {R"#(
     3/4 cup milk

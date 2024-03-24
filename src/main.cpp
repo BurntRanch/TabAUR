@@ -30,20 +30,20 @@ operations:
     cout << "TabAUR usage: taur <operation> [...]" << endl;
     cout << help_op << endl;
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
-    if(config.secretRecipe){
+    if (config.secretRecipe) {
         log_printf(LOG_INFO, _("Loading secret recipe...\n"));
-        for(auto const& i : secret){
+        for (auto const& i : secret) {
             cout << i << endl;
             usleep(650000); // 0.65 seconds
         }
     }
 }
 
-int installPkg(string pkgName, TaurBackend *backend) { 
-    string      	cacheDir = config.cacheDir;
-    bool            useGit   = config.useGit;
-    
-    optional<TaurPkg_t>  pkg = backend->search(pkgName, useGit);
+int installPkg(string pkgName, TaurBackend* backend) {
+    string              cacheDir = config.cacheDir;
+    bool                useGit   = config.useGit;
+
+    optional<TaurPkg_t> pkg = backend->search(pkgName, useGit);
 
     if (!pkg) {
         log_printf(LOG_ERROR, _("An error has occurred and we could not search for your package.\n"));
@@ -84,60 +84,60 @@ int installPkg(string pkgName, TaurBackend *backend) {
     return true;
 }
 
-bool removePkg(string pkgName, TaurBackend *backend) {
+bool removePkg(string pkgName, TaurBackend* backend) {
     return backend->remove_pkg(pkgName, config.aurOnly);
 }
 
-bool updateAll(TaurBackend *backend) {
-    string          cacheDir = config.cacheDir;
+bool updateAll(TaurBackend* backend) {
+    string cacheDir = config.cacheDir;
 
     return backend->update_all_pkgs(path(cacheDir), config.useGit);
 }
 
-bool execPacman(int argc, char* argv[]){
-    char* args[argc+1];
+bool execPacman(int argc, char* argv[]) {
+    char* args[argc + 1];
     args[0] = _("pacman"); // Set the command name to pacman
-    for(int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
         args[i] = argv[i];
     }
     args[argc] = nullptr; // null-terminate the array
-    for(int i = 0; i < argc; ++i)
-            cout << "args: " << args[i] << endl;
+    for (int i = 0; i < argc; ++i)
+        cout << "args: " << args[i] << endl;
     execvp(args[0], args);
 
     // If execvp returns, it means an error occurred
     perror("execvp");
-    return false;    
+    return false;
 }
 
-int parsearg_op(int opt){
-    switch(opt){
+int parsearg_op(int opt) {
+    switch (opt) {
         case 'S':
-            operation.op = OP_SYNC; operation.args.push_back(optarg); break;
+            operation.op = OP_SYNC;
+            operation.args.push_back(optarg);
+            break;
         case 'R':
-            operation.op = OP_REM; operation.args.push_back(optarg); break;
-        case 'Q':
-            operation.op = OP_QUERY; break;
-        case 'a':
-            config.aurOnly = true; break;
+            operation.op = OP_REM;
+            operation.args.push_back(optarg);
+            break;
+        case 'Q': operation.op = OP_QUERY; break;
+        case 'a': config.aurOnly = true; break;
         case 'h':
-            usage(); exit(0); break;
-        case 'V':
-            std::cout << "TabAUR version 0.0.1" << std::endl; break;
+            usage();
+            exit(0);
+            break;
+        case 'V': std::cout << "TabAUR version 0.0.1" << std::endl; break;
         case 'D':
         case 'T':
         case 'U':
-        case 'F':
-            operation.op = OP_PACMAN; break;
-        case ':':
-            std::cerr << "Option requires an argument!" << std::endl; break;
-        default:
-            return 1;
+        case 'F': operation.op = OP_PACMAN; break;
+        case ':': std::cerr << "Option requires an argument!" << std::endl; break;
+        default: return 1;
     }
     return 0;
 }
 
-int parseargs(int argc, char* argv[]){
+int parseargs(int argc, char* argv[]) {
     // default
     operation.op = OP_SYSUPGRADE;
 
@@ -161,24 +161,24 @@ int parseargs(int argc, char* argv[]){
     };
 
     /* parse operation */
-	while((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
-		if(opt == 0) {
-			continue;
-		} else if(opt == '?') {
-			return 1;
-		}
-		parsearg_op(opt);
-	}
+    while ((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
+        if (opt == 0) {
+            continue;
+        } else if (opt == '?') {
+            return 1;
+        }
+        parsearg_op(opt);
+    }
 
     if ((operation.op == OP_SYNC || operation.op == OP_REM) && operation.args.size() < 1) {
-       usage(); 
-       return 1;
+        usage();
+        return 1;
     }
 
     return 0;
 }
 
-bool queryPkgs(TaurBackend *backend) {
+bool queryPkgs(TaurBackend* backend) {
     vector<string> pkgs = backend->list_all_local_pkgs(config.aurOnly, false);
 
     for (size_t i = 0; i < pkgs.size(); i++)
@@ -191,7 +191,7 @@ bool queryPkgs(TaurBackend *backend) {
 int main(int argc, char* argv[]) {
 
     TaurBackend backend(config);
-    
+
     if (parseargs(argc, argv))
         return 1;
 

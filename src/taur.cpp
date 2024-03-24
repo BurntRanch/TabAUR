@@ -5,27 +5,23 @@
 #include "config.hpp"
 #include <sys/wait.h>
 
-TaurBackend::TaurBackend(Config cfg) : config(cfg) {
-}
-
+TaurBackend::TaurBackend(Config cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string url, string out_path) {
-    if (fs::exists(path(out_path) / ".git")){
+    if (fs::exists(path(out_path) / ".git")) {
         return taur_exec({"git", "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
-    }
-    else {
+    } else {
         if (fs::exists(path(out_path)))
-            fs::remove_all(out_path);
+                fs::remove_all(out_path);
         return taur_exec({"git", "clone", url.c_str(), out_path.c_str()});
     }
 }
-
 
 bool TaurBackend::download_tar(string url, string out_path) {
     std::ofstream out(out_path);
     if (!out.is_open())
         return false;
-    
+
     cpr::Session session;
     session.SetUrl(cpr::Url(url));
     cpr::Response response = session.Download(out);
@@ -36,7 +32,7 @@ bool TaurBackend::download_tar(string url, string out_path) {
     bool isNested = out_path.find("/") != (size_t)-1;
     sanitizeStr(out_path);
 
-    if (isNested){
+    if (isNested) {
         fs::current_path(out_path.substr(0, out_path.rfind("/")));
         return taur_exec({"tar", "-xf", out_path.c_str()});
     }
@@ -55,15 +51,15 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
     if (returnGit)
         return ("https://aur.archlinux.org/" + string(pkgJson["Name"].GetString()) + ".git");
     else
-	    return ("https://aur.archlinux.org" + string(pkgJson["URLPath"].GetString()));
+        return ("https://aur.archlinux.org" + string(pkgJson["URLPath"].GetString()));
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
     if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
-        const rapidjson::Value& dependsArray = pkgJson["Depends"].GetArray();
+        const rapidjson::Value& dependsArray     = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
-        vector<string> depends;
+        vector<string>          depends;
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
         for (size_t i = 0; i < makeDependsArray.Size(); i++) {
@@ -72,27 +68,23 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
             depends.push_back(makeDependsArray[i].GetString());
         }
 
-        return (TaurPkg_t) { 
-                             .name = pkgJson["Name"].GetString(),
-                             .version = pkgJson["Version"].GetString(),
-                             .url = getUrl(pkgJson, returnGit), 
-                             .desc = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
-                             .depends = depends
-                           };
+        return (TaurPkg_t){.name    = pkgJson["Name"].GetString(),
+                           .version = pkgJson["Version"].GetString(),
+                           .url     = getUrl(pkgJson, returnGit),
+                           .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
+                           .depends = depends};
     }
-    return (TaurPkg_t) {
-                         .name = pkgJson["Name"].GetString(),
-                         .version = pkgJson["Version"].GetString(),
-                         .url = getUrl(pkgJson, returnGit),
-                         .desc = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : ""
-                       };
+    return (TaurPkg_t){.name    = pkgJson["Name"].GetString(),
+                       .version = pkgJson["Version"].GetString(),
+                       .url     = getUrl(pkgJson, returnGit),
+                       .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : ""};
 }
 
 optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
-    std::string  urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg);
+    std::string   urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg);
 
-    cpr::Url        url = cpr::Url(urlStr);
-    cpr::Response  resp = cpr::Get(url);
+    cpr::Url      url  = cpr::Url(urlStr);
+    cpr::Response resp = cpr::Get(url);
 
     if (resp.status_code != 200)
         return {};
@@ -109,15 +101,15 @@ optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
 vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     if (pkgs.empty())
         return vector<TaurPkg_t>();
-    
+
     std::string varName = cpr::util::urlEncode("arg[]");
-    std::string  urlStr = "https://aur.archlinux.org/rpc/v5/info?" + varName + "=" + pkgs[0];
+    std::string urlStr  = "https://aur.archlinux.org/rpc/v5/info?" + varName + "=" + pkgs[0];
 
     for (size_t i = 1; i < pkgs.size(); i++)
         urlStr += ("&" + varName + "=" + pkgs[i]);
 
-    cpr::Url        url = cpr::Url(urlStr);
-    cpr::Response  resp = cpr::Get(url);
+    cpr::Url      url  = cpr::Url(urlStr);
+    cpr::Response resp = cpr::Get(url);
 
     if (resp.status_code != 200)
         return vector<TaurPkg_t>();
@@ -134,10 +126,10 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
 
 bool remove_pkgs(string input) {
     vector<const char*> cmd;
-    vector<string> pkgs = split(input, ' ');
+    vector<string>      pkgs = split(input, ' ');
 
     cmd = {config.sudo.c_str(), "pacman", "-R"};
-    for(auto& str : pkgs)
+    for (auto& str : pkgs)
         cmd.push_back(str.c_str());
 
     return taur_exec(cmd);
@@ -164,7 +156,6 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
     if (packages.size() == 1)
         return remove_pkgs(packages[0]);
 
-
     std::cout << "Choose packages to remove, (Seperate by spaces, type * to remove all):" << std::endl;
     for (size_t i = 0; i < packages.size(); i++)
         std::cout << "[" << i << "] " << packages[i] << std::endl;
@@ -179,8 +170,8 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
         return remove_pkgs(finalPackageList);
     }
 
-    vector<string> includedIndexes = split(included, ' ');
-    string finalPackageList = "";
+    vector<string> includedIndexes  = split(included, ' ');
+    string         finalPackageList = "";
 
     for (size_t i = 0; i < includedIndexes.size(); i++) {
         try {
@@ -205,7 +196,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
     sanitizeStr(extracted_path);
     sanitizeStr(makepkg_bin);
 
-    if (pkg.depends.empty()){
+    if (pkg.depends.empty()) {
         fs::current_path(extracted_path);
         return taur_exec({makepkg_bin.c_str(), "-si"});
     }
@@ -213,7 +204,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
     vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
     for (size_t i = 0; i < pkg.depends.size(); i++) {
         optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg.depends[i], useGit);
-        
+
         if (!oDepend)
             continue;
 
@@ -233,7 +224,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 
         if (useGit)
             filename = filename.substr(0, filename.rfind(".git"));
-        
+
         bool downloadStatus = this->download_pkg(depend.url, filename);
 
         if (!downloadStatus) {
@@ -242,8 +233,8 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         }
 
         string out_path = path(extracted_path.substr(0, extracted_path.rfind("/"))) / depend.name;
-        
-        bool installStatus = this->install_pkg(depend, out_path, useGit);
+
+        bool   installStatus = this->install_pkg(depend, out_path, useGit);
 
         if (!installStatus) {
             log_printf(LOG_ERROR, _("Failed to install dependency of %s (%s)\n"), pkg.name.c_str(), depend.name.c_str());
@@ -256,18 +247,16 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 }
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
-    string sudo = config.sudo;
-    sudo = sanitizeStr(sudo);
-    
+
     // first thing first
-    bool pacmanUpgradeSuccess = taur_exec({sudo.c_str(), "pacman", "-Syu"});
+    bool pacmanUpgradeSuccess = taur_exec({config.sudo.c_str(), "pacman", "-Syu"});
 
     if (!pacmanUpgradeSuccess)
         return false;
 
     vector<TaurPkg_t> pkgs = this->get_all_local_pkgs(true);
 
-    vector<string> pkgNames;
+    vector<string>    pkgNames;
     for (size_t i = 0; i < pkgs.size(); i++)
         pkgNames.push_back(pkgs[i].name);
 
@@ -278,11 +267,12 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     int attemptedDownloads = 0;
 
     if (onlinePkgs.size() != pkgs.size())
-        log_printf(LOG_WARN, _("Couldn't get all packages! (looked up %d AUR packages online, looked up %d AUR packages locally) Still trying to update the others.\n"), onlinePkgs.size(), pkgs.size());
+        log_printf(LOG_WARN, _("Couldn't get all packages! (looked up %d AUR packages online, looked up %d AUR packages locally) Still trying to update the others.\n"),
+                   onlinePkgs.size(), pkgs.size());
 
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
         size_t pkgIndex;
-        bool found = false;
+        bool   found = false;
 
         for (pkgIndex = 0; pkgIndex < pkgs.size(); pkgIndex++) {
             if (pkgs[pkgIndex].name == onlinePkgs[i].name) {
@@ -313,7 +303,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         }
 
         string versionInfo = execGet("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
-        
+
         if (versionInfo.empty()) {
             log_printf(LOG_WARN, _("Failed to parse version information from %s's PKGBUILD, You might be able to ignore this safely.\n"), pkgs[pkgIndex].name.c_str());
             continue;
@@ -322,7 +312,8 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         if (alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))
             continue;
 
-        log_printf(LOG_INFO, _("Upgrading package %s from version %s to version %s!\n"), pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(), onlinePkgs[i].version.c_str());
+        log_printf(LOG_INFO, _("Upgrading package %s from version %s to version %s!\n"), pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(),
+                   onlinePkgs[i].version.c_str());
         attemptedDownloads++;
 
         bool installSuccess = this->install_pkg(onlinePkgs[i], pkgFolder, useGit);
@@ -336,7 +327,8 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     log_printf(LOG_INFO, _("Upgraded %d/%d packages.\n"), updatedPkgs, attemptedDownloads);
 
     if (attemptedDownloads > updatedPkgs)
-        log_printf(LOG_WARN, _("Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.\n"));
+        log_printf(LOG_WARN,
+                   _("Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.\n"));
 
     return true;
 }
@@ -359,7 +351,7 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
         vector<string> pkg = split(pkgs[i], ' ');
         if (pkg.size() < 2)
             continue;
-        out.push_back((TaurPkg_t) { pkg[0], pkg[1], "https://aur.archlinux.org/" + cpr::util::urlEncode(pkg[0]) + ".git" });
+        out.push_back((TaurPkg_t){pkg[0], pkg[1], "https://aur.archlinux.org/" + cpr::util::urlEncode(pkg[0]) + ".git"});
     }
 
     return out;
@@ -389,15 +381,14 @@ vector<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool use
     }
 
     return out;
-
 }
 
 vector<TaurPkg_t> TaurBackend::search_pac(string query) {
     sanitizeStr(query);
     // we search for the package name and print only the name, not the description
-    string cmd = "pacman -Ss \"" + query + "\"";
-    vector<string> pkgs_string = split(execGet(cmd), '\n');
-    TaurPkg_t taur_pkg;
+    string            cmd         = "pacman -Ss \"" + query + "\"";
+    vector<string>    pkgs_string = split(execGet(cmd), '\n');
+    TaurPkg_t         taur_pkg;
     vector<TaurPkg_t> out;
 
     for (size_t i = 0; i < pkgs_string.size(); i += 2) {
@@ -405,7 +396,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
             vector<string> pkg = split(pkgs_string[i], '/');
 
             if (pkg.size() < 2) {
-                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str()); 
+                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str());
                 continue;
             }
 
@@ -414,28 +405,28 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
             pkg = split(pkg[1], ' ');
 
             if (pkg.size() < 2) {
-                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str()); 
+                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str());
                 continue;
             }
 
-            taur_pkg.name = pkg[0]; 
+            taur_pkg.name    = pkg[0];
             taur_pkg.version = pkg[1];
 
             if (pkgs_string.size() <= (i + 1)) {
-                log_printf(LOG_ERROR, _("Pacman provided no description for package %s! Command: %s\n"), pkg[0].c_str(), cmd.c_str()); 
+                log_printf(LOG_ERROR, _("Pacman provided no description for package %s! Command: %s\n"), pkg[0].c_str(), cmd.c_str());
                 out.push_back(taur_pkg);
                 continue;
             }
 
             string desc = pkgs_string[i + 1];
-            
+
             if (desc.size() > 4)
                 taur_pkg.desc = desc.substr(4);
             else
                 std::cout << pkgs_string.size() << " " << i << " " << desc.size() << std::endl;
 
             out.push_back(taur_pkg);
-        } catch (std::out_of_range const &e) {
+        } catch (std::out_of_range const& e) {
             log_printf(LOG_ERROR, _("Pacman did not return what we expected, Command: %s\n"), cmd.c_str());
             exit(1);
         }
@@ -451,7 +442,7 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
     cpr::Url            url(("https://aur.archlinux.org/rpc/v5/search/" + cpr::util::urlEncode(query) + "?by=name"));
     cpr::Response       r = cpr::Get(url);
 
-    string         raw_text_response = r.text;
+    string              raw_text_response = r.text;
 
     rapidjson::Document json_response;
     json_response.Parse(raw_text_response.c_str());
@@ -464,13 +455,13 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
     vector<TaurPkg_t> aurPkgs = this->getPkgFromJson(json_response, useGit);
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
-    db_colors db_color;
+    db_colors         db_color;
 
-    size_t count = aurPkgs.size() + pacPkgs.size();
-    string dbColor;
+    size_t            count = aurPkgs.size() + pacPkgs.size();
+    string            dbColor;
 
     if (count == 1) {
-	    return aurPkgs.size() == 1 ? this->fetch_pkg(aurPkgs[0].name, useGit) : pacPkgs[0];
+        return aurPkgs.size() == 1 ? this->fetch_pkg(aurPkgs[0].name, useGit) : pacPkgs[0];
     } else if (count > 1) {
         log_printf(LOG_INFO, _("TabAUR has found multiple packages relating to your search query, Please pick one.\n"));
         string input;
@@ -491,9 +482,9 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
                 std::endl;
 
             for (size_t i = 0; i < pacPkgs.size(); i++) {
-                if(pacPkgs[i].db_name == "extra")
+                if (pacPkgs[i].db_name == "extra")
                     dbColor = db_color.extra;
-                else if(pacPkgs[i].db_name == "multilib")
+                else if (pacPkgs[i].db_name == "multilib")
                     dbColor = db_color.multilib;
                 else
                     dbColor = db_color.core;
