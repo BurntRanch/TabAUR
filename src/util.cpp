@@ -28,7 +28,7 @@ void log_printf(int log, string fmt, ...) {
         case LOG_INFO:
             std::cout << BOLDBLUE << "Info: " << BOLD; break;
         case LOG_DEBUG:
-            if (config.debug)
+            if (config->debug)
                 std::cout << BOLDMAGENTA << "[DEBUG]: " << BOLD;
             else
                 return;

@@ -9,8 +9,6 @@ using std::filesystem::path;
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
-TaurBackend::TaurBackend(Config cfg) : config(cfg) {}
-
 bool TaurBackend::download_git(string url, string out_path) {
     if (fs::exists(path(out_path) / ".git")) {
         return taur_exec({"git", "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
@@ -35,7 +33,9 @@ bool TaurBackend::download_tar(string url, string out_path) {
     // if this is in a directory, it will change to that directory first.
     bool isNested = out_path.find("/") != (size_t)-1;
     sanitizeStr(out_path);
-  
+    
+    vector<const char *> cmd;
+
     if (isNested) {
         chdir(out_path.substr(0, out_path.rfind("/")).c_str());
         cmd = {"tar", "-xf", out_path.substr(out_path.rfind("/") + 1).c_str()};

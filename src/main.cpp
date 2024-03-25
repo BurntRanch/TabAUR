@@ -126,16 +126,18 @@ int installPkg(string pkgName, TaurBackend *backend) {
         return true;
     }
 
-    string real_uid = getenv("SUDO_UID");
-    int realuid = std::stoi(real_uid);
-    if (!real_uid.empty() && realuid > 0) {
-        log_printf(LOG_WARN, _("You are trying to install an AUR package with sudo, This is unsupported by makepkg. We will try to reduce your privilege, but there is no guarantee it'll work.\n"));
-        setuid(realuid);
-        setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
-        config->initializeVars();
+    char *real_uid = getenv("SUDO_UID");
+    if (real_uid) {
+        int realuid = std::atoi(real_uid);
+        if (realuid > 0) {
+            log_printf(LOG_WARN, _("You are trying to install an AUR package with sudo, This is unsupported by makepkg. We will try to reduce your privilege, but there is no guarantee it'll work.\n"));
+            setuid(realuid);
+            setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
+            config->initializeVars();
+        }
     }
 
-    string      	cacheDir = config->cacheDir;
+    string cacheDir = config->cacheDir;
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
@@ -200,7 +202,7 @@ int parsearg_op(int opt) {
             operation.args.push_back(optarg);
             break;
         case 'Q': operation.op = OP_QUERY; break;
-        case 'a': config.aurOnly = true; break;
+        case 'a': config->aurOnly = true; break;
         case 'h':
             usage();
             exit(0);
