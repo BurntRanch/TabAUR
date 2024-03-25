@@ -1,3 +1,5 @@
+#define BRANCH "libalpm-test"
+
 #include <csignal>
 #include <cstdlib>
 #include <memory>
@@ -50,82 +52,46 @@ operations:
     }
 }
 
+bool execPacman(int argc, char* argv[]) {
+    char* args[argc+2];
+  
+    args[0] = _("sudo"); // Set the command to sudo
+    args[1] = _("pacman"); // The command to run as superuser (pacman)
+    for (int i = 0; i < argc; ++i)
+        args[i+2] = argv[i];
+  
+    args[argc] = nullptr; // null-terminate the array
+  
+    execvp(args[0], args);
+
+    // If execvp returns, it means an error occurred
+    perror("execvp");
+    return false;
+}
+
 int installPkg(string pkgName, TaurBackend *backend) { 
     bool            useGit   = config->useGit;
     
-    optional<TaurPkg_t>  pkg = backend->search(pkgName, useGit);
+    optional<TaurPkg_t>  oPkg = backend->search(pkgName, useGit);
 
-    if (!pkg) {
+    if (!oPkg) {
         log_printf(LOG_ERROR, _("An error has occurred and we could not search for your package.\n"));
         return -1;
     }
 
-    string url = pkg.value().url;
+    TaurPkg_t pkg = oPkg.value();
+
+    string url = pkg.url;
 
     if (url == "") {
-        // we search for the package name and print only the name, not the description
-        alpm_list_t *pkg_cache, *syncdbs;
-        string packages_str;
-
-        syncdbs = config->repos;
-        
-        log_printf(LOG_INFO, _("Synchronizing databases, This might take a while.\n"));
-        
-        alpm_list_t *dbs = alpm_get_syncdbs(config->handle);
-        int ret = alpm_db_update(config->handle, dbs, false);
-        
-        if(ret < 0) {
-            log_printf(LOG_ERROR, _("Failed to synchronize all databases (%s)\n"),
-                    alpm_strerror(alpm_errno(config->handle)));
-            return false;
-        }
-        log_printf(LOG_INFO, _("Synchronized all databases.\n"));
-        log_printf(LOG_INFO, _("Downloading package..\n"));
-
-        alpm_pkg_t * alpm_pkg;
-        bool found = false;
-
-        for (; syncdbs && !found; syncdbs = alpm_list_next(syncdbs)) {
-            for (pkg_cache = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); pkg_cache; pkg_cache = alpm_list_next(pkg_cache)) {
-                string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg_cache->data)));
-                if (name == pkg.value().name) {
-                    alpm_pkg = (alpm_pkg_t *)(pkg_cache->data);
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        if (!found) {
-            log_printf(LOG_ERROR, _("backend->search returned a system package but we couldn't find it.\n"));
-            return false;
-        }
-
-        int transCode = alpm_trans_init(config->handle, 0);
-
-        if (transCode != 0) {
-            log_printf(LOG_ERROR, _("Failed to start transaction (%s)\n"), alpm_strerror(alpm_errno(config->handle)));
-            return false;
-        }
-
-        if (alpm_add_pkg(config->handle, alpm_pkg) != 0) {
-            log_printf(LOG_ERROR, _("Failed to add package (%s)\n"), alpm_strerror(alpm_errno(config->handle)));
-            alpm_trans_release(config->handle);
-            return false;
-        }
-        
-        bool success = commitTransactionAndRelease(config->handle);
-
-        if (!success) {
-            log_printf(LOG_ERROR, _("Failed to prepare, commit, or release transaction!\n"));
-            return false;
-        }
-
-        log_printf(LOG_INFO, _("Successfully installed package!\n"));
-
-        return true;
+        // -S <pkg name>
+        char *argv[2] = {(char *)"-S", (char *)pkg.name.c_str()};
+        return execPacman(2, argv);
     }
 
+    // This was here because in past versions, libalpm was being used next to makepkg, which one requires sudo, and the other requires normal user privileges.
+    // I'll keep this here as it's convenient for some users.
+    // TODO: Add an option to suppress its messages or disable it entirely.
     char *real_uid = getenv("SUDO_UID");
     if (real_uid) {
         int realuid = std::atoi(real_uid);
@@ -152,9 +118,9 @@ int installPkg(string pkgName, TaurBackend *backend) {
     }
 
     if (!useGit)
-        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")), useGit);
+        stat = backend->install_pkg(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
     else
-        stat = backend->install_pkg(pkg.value(), filename, useGit);
+        stat = backend->install_pkg(pkg, filename, useGit);
 
     if (!stat) {
         log_printf(LOG_ERROR, _("Building/Installing your package has failed.\n"));
@@ -174,23 +140,6 @@ bool updateAll(TaurBackend *backend) {
     return backend->update_all_pkgs(path(cacheDir), config->useGit);
 }
 
-bool execPacman(int argc, char* argv[]){
-    char* args[argc];
-  
-    args[0] = _("pacman"); // Set the command name to pacman
-    for (int i = 1; i < argc; ++i) {
-        args[i] = argv[i];
-    }
-  
-    args[argc] = nullptr; // null-terminate the array
-  
-    execvp(args[0], args);
-
-    // If execvp returns, it means an error occurred
-    perror("execvp");
-    return false;
-}
-
 int parsearg_op(int opt) {
     switch (opt) {
         case 'S':
@@ -207,7 +156,7 @@ int parsearg_op(int opt) {
             usage();
             exit(0);
             break;
-        case 'V': std::cout << "TabAUR version 0.0.1" << std::endl; break;
+        case 'V': std::cout << "TabAUR version 0.1.0 (" << BRANCH << " branch)" << std::endl; break;
         case 'D':
         case 'T':
         case 'U':

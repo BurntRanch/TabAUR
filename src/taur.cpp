@@ -519,21 +519,21 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
     rapidjson::Document json_response;
     json_response.Parse(raw_text_response.c_str());
 
-    if (strcmp(json_response["type"].GetString(), "error") == 0)
-        return {};
-
-    if (json_response["resultcount"].GetInt() == 0)
-        return {};
-
-    vector<TaurPkg_t> aurPkgs = this->getPkgFromJson(json_response, useGit);
+    vector<TaurPkg_t> aurPkgs;
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
-    db_colors         db_color;
+    
+    if (json_response["resultcount"].GetInt() > 0)
+        aurPkgs = this->getPkgFromJson(json_response, useGit);
 
     size_t            count = aurPkgs.size() + pacPkgs.size();
-    string            dbColor;
 
-    if (count == 1) {
-        return aurPkgs.size() == 1 ? this->fetch_pkg(aurPkgs[0].name, useGit) : pacPkgs[0];
+    db_colors         db_color;
+    string            dbColorStr;
+
+    if (count == 0) {
+        return {};
+    } else if (count == 1) {
+        return aurPkgs.size( )>= 1 ? this->fetch_pkg(aurPkgs[0].name, useGit) : pacPkgs[0];
     } else if (count > 1) {
         log_printf(LOG_INFO, _("TabAUR has found multiple packages relating to your search query, Please pick one.\n"));
         string input;
@@ -556,15 +556,15 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
             for (size_t i = 0; i < pacPkgs.size(); i++) {
                 if (pacPkgs[i].db_name == "extra")
-                    dbColor = db_color.extra;
+                    dbColorStr = db_color.extra;
                 else if (pacPkgs[i].db_name == "multilib")
-                    dbColor = db_color.multilib;
+                    dbColorStr = db_color.multilib;
                 else
-                    dbColor = db_color.core;
+                    dbColorStr = db_color.core;
 
                 std::cout
                     << MAGENTA << i + aurPkgs.size()
-                    << " " << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
+                    << " " << dbColorStr << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
                     << " " << BOLDGREEN << pacPkgs[i].version
                     << "\n    " << NOCOLOR << BOLD << pacPkgs[i].desc
 		            << NOCOLOR <<
