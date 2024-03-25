@@ -2,6 +2,7 @@
 #include <cctype>
 #include <cstdio>
 #include "util.hpp"
+#include "config.hpp"
 #include "taur.hpp"
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
@@ -67,10 +68,10 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
 
     log_printf(LOG_INFO, _("Changes to be made:\n"));
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next)
-        std::cout << "    ++ " << alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)) << std::endl;
+        std::cout << "    " << BOLDGREEN << "++ " << NOCOLOR << alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)) << std::endl;
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next)
-        std::cout << "    -- " << alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)) << std::endl;
+        std::cout << "    " << BOLDRED << "-- " << NOCOLOR << alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)) << std::endl;
 
     std::cout << "Would you like to proceed with this transaction? [Y/n] ";
     
