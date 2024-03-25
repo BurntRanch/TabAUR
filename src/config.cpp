@@ -68,12 +68,14 @@ string Config::getConfigDir() {
 }
 
 void Config::initializeVars() {
-    this->sudo      = this->getConfigValue<string>("general.sudo", "sudo"); sanitizeStr(this->sudo);
-    this->useGit    = this->getConfigValue<bool>("general.useGit", true);
-    this->aurOnly   = this->getConfigValue<bool>("general.aurOnly", false);
-    this->makepkgBin = this->getConfigValue<string>("bins.makepkgBin", "makepkg"); sanitizeStr(this->makepkgBin);
-    this->cacheDir  = this->getCacheDir(); sanitizeStr(this->cacheDir);
-    this->colors    = this->getConfigValue<bool>("general.colors", true);
+    this->sudo         = this->getConfigValue<string>("general.sudo", "sudo"); sanitizeStr(this->sudo);
+    this->useGit       = this->getConfigValue<bool>("general.useGit", true);
+    this->aurOnly      = this->getConfigValue<bool>("general.aurOnly", false);
+    this->debug        = this->getConfigValue<bool>("general.debug", false);
+    this->makepkgBin   = this->getConfigValue<string>("bins.makepkgBin", "makepkg"); sanitizeStr(this->makepkgBin);
+    this->cacheDir     = this->getCacheDir(); sanitizeStr(this->cacheDir);
+    this->colors       = this->getConfigValue<bool>("general.colors", true);
+    this->secretRecipe = this->getConfigValue<bool>("secret.IwantChocolateChipMuffins", false);
 }
 
 void Config::loadConfigFile(string filename) {
@@ -93,11 +95,6 @@ void Config::loadConfigFile(string filename) {
         throw std::invalid_argument("Failed to get an alpm handle! Error: " + string(alpm_strerror(err)));
 
     this->loadPacmanConfigFile("/etc/pacman.conf");
-  
-    this->secretRecipe = this->getConfigValue<bool>("secret.IwantChocolateChipMuffins", false);
-    this->makepkgBin   = this->getConfigValue<string>("bins.makepkgBin", "makepkg");
-    this->sudo         = this->getConfigValue<string>("general.sudo", "sudo");
-    this->cacheDir     = this->getCacheDir();
 }
 
 void Config::loadColors() {

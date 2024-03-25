@@ -53,14 +53,17 @@ operations:
 }
 
 bool execPacman(int argc, char* argv[]) {
-    char* args[argc+2];
+    log_printf(LOG_DEBUG, _("Passing command to pacman! (argc: %d)\n"), argc);
+    char* args[argc+3]; // sudo + pacman + null terminator
   
     args[0] = _("sudo"); // Set the command to sudo
     args[1] = _("pacman"); // The command to run as superuser (pacman)
-    for (int i = 0; i < argc; ++i)
+    for (int i = 0; i < argc; ++i) {
+        log_printf(LOG_DEBUG, _("args[%d] = argv[%d] (%s)\n"), i + 2, i, argv[i]);
         args[i+2] = argv[i];
+    }
   
-    args[argc] = nullptr; // null-terminate the array
+    args[argc+2] = nullptr; // null-terminate the array
   
     execvp(args[0], args);
 
