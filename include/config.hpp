@@ -79,24 +79,24 @@ inline const string defConfig = R"#([general]
 #cacheDir = "$XDG_CACHE_HOME"
 )#";
 
-static string NOCOLOR;
-static string BOLD;
+inline string NOCOLOR;
+inline string BOLD;
 
-static string BLACK;
-static string GREEN;
-static string YELLOW;
-static string BLUE;
-static string RED;
-static string MAGENTA;
-static string CYAN;
-static string WHITE;
+inline string BLACK;
+inline string GREEN;
+inline string YELLOW;
+inline string BLUE;
+inline string RED;
+inline string MAGENTA;
+inline string CYAN;
+inline string WHITE;
 
-static string BOLDBLACK;
-static string BOLDGREEN;
-static string BOLDYELLOW;
-static string BOLDBLUE;
-static string BOLDRED;
-static string BOLDMAGENTA;
-static string BOLDCYAN;
-static string BOLDWHITE;
+inline string BOLDBLACK;
+inline string BOLDGREEN;
+inline string BOLDYELLOW;
+inline string BOLDBLUE;
+inline string BOLDRED;
+inline string BOLDMAGENTA;
+inline string BOLDCYAN;
+inline string BOLDWHITE;
 #endif

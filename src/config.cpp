@@ -100,7 +100,7 @@ void Config::loadConfigFile(string filename) {
 void Config::loadColors() {
     if (this->colors) {
         NOCOLOR = "\033[0m";
-        BOLD    = "\033[0;1m";
+        BOLD    = "\033[1m";
         BLACK   = "\033[0;30m";
         RED     = "\033[0;31m";
         GREEN   = "\033[0;32m";

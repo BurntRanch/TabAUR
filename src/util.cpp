@@ -1,6 +1,3 @@
-#include <algorithm>
-#include <cctype>
-#include <cstdio>
 #include "util.hpp"
 #include "config.hpp"
 #include "taur.hpp"
