@@ -50,7 +50,7 @@ std::string expandVar(std::string& str) {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
         if (env == nullptr) {
-            log_printf(LOG_ERROR, _("No such enviroment variable: %s\n"), str.c_str());
+            log_printf(LOG_ERROR, "No such enviroment variable: %s\n", str.c_str());
             exit(-1);
         }
         str = std::string(env);
@@ -84,12 +84,12 @@ bool taur_exec(vector<const char*> cmd) {
     int pid = fork();
 
     if (pid < 0) {
-        log_printf(LOG_ERROR, _("fork() failed: %s\n"), strerror(errno));
+        log_printf(LOG_ERROR, "fork() failed: %s\n", strerror(errno));
         exit(127);
     }
     if (pid == 0) {
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
-        log_printf(LOG_ERROR, _("An error as occured: %s\n"), strerror(errno));
+        log_printf(LOG_ERROR, "An error as occured: %s\n", strerror(errno));
         exit(127);
     }
     if (pid > 0) { // we wait for the command to finish then start executing the rest

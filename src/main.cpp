@@ -31,7 +31,7 @@ operations:
     cout << help_op << endl;
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
     if (config.secretRecipe) {
-        log_printf(LOG_INFO, _("Loading secret recipe...\n"));
+        log_printf(LOG_INFO, "Loading secret recipe...\n");
         for (auto const& i : secret) {
             cout << i << endl;
             usleep(650000); // 0.65 seconds
@@ -46,7 +46,7 @@ int installPkg(string pkgName, TaurBackend* backend) {
     optional<TaurPkg_t> pkg = backend->search(pkgName, useGit);
 
     if (!pkg) {
-        log_printf(LOG_ERROR, _("An error has occurred and we could not search for your package.\n"));
+        log_printf(LOG_ERROR, "An error has occurred and we could not search for your package.\n");
         return -1;
     }
 
@@ -67,7 +67,7 @@ int installPkg(string pkgName, TaurBackend* backend) {
     bool stat = backend->download_pkg(url, filename);
 
     if (!stat) {
-        log_printf(LOG_ERROR, _("An error has occurred and we could not download your package.\n"));
+        log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
         return false;
     }
 
@@ -77,7 +77,7 @@ int installPkg(string pkgName, TaurBackend* backend) {
         stat = backend->install_pkg(pkg.value(), filename, useGit);
 
     if (!stat) {
-        log_printf(LOG_ERROR, _("Building/Installing your package has failed.\n"));
+        log_printf(LOG_ERROR, "Building/Installing your package has failed.\n");
         return false;
     }
 
