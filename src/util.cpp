@@ -23,11 +23,11 @@ void log_printf(int log, string fmt, ...) {
     va_start(args, fmt);
     switch(log){
         case LOG_ERROR:
-            std::cerr << BOLDRED << "====[ ERROR ]==== " << std::endl << BOLD; break;
+            std::cerr << BOLDRED << "====[ ERROR ]==== " << std::endl << NOCOLOR << BOLD; break;
         case LOG_WARN:
-            std::cout << BOLDYELLOW << "Warning: " << BOLD; break;
+            std::cout << BOLDYELLOW << "Warning: " << NOCOLOR << BOLD; break;
         case LOG_INFO:
-            std::cout << BOLDBLUE << "Info: " << BOLD; break;
+            std::cout << BOLDBLUE << "Info: " << NOCOLOR << BOLD; break;
         case LOG_DEBUG:
             if (config->debug)
                 std::cout << BOLDMAGENTA << "[DEBUG]: " << BOLD;
@@ -67,7 +67,7 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     if (soft && !combined)
         return true;
 
-    log_printf(LOG_INFO, _("Changes to be made:\n"));
+    log_printf(LOG_INFO, "Changes to be made:\n");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next)
         std::cout << "    " << BOLDGREEN << "++ " << NOCOLOR << alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)) << std::endl;
 
@@ -86,27 +86,27 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     if (!response.empty() && response != "y") {
         bool releaseStatus = alpm_trans_release(handle) == 0;
         if (!releaseStatus)
-            log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+            log_printf(LOG_ERROR, "Failed to release transaction (%s).\n", alpm_strerror(alpm_errno(handle)));
 
-        log_printf(LOG_INFO, _("Cancelled transaction.\n"));
+        log_printf(LOG_INFO, "Cancelled transaction.\n");
         return soft;
     }
 
     bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
     if (!prepareStatus)
-        log_printf(LOG_ERROR, _("Failed to prepare transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+        log_printf(LOG_ERROR, "Failed to prepare transaction (%s).\n", alpm_strerror(alpm_errno(handle)));
 
     bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
     if (!commitStatus)
-        log_printf(LOG_ERROR, _("Failed to commit transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+        log_printf(LOG_ERROR, "Failed to commit transaction (%s).\n", alpm_strerror(alpm_errno(handle)));
 
     bool releaseStatus = alpm_trans_release(handle) == 0;
     if (!releaseStatus)
-        log_printf(LOG_ERROR, _("Failed to release transaction (%s).\n"), alpm_strerror(alpm_errno(handle)));
+        log_printf(LOG_ERROR, "Failed to release transaction (%s).\n", alpm_strerror(alpm_errno(handle)));
 
 
     if (prepareStatus && commitStatus && releaseStatus) {
-        log_printf(LOG_INFO, _("Successfully finished transaction.\n"));
+        log_printf(LOG_INFO, "Successfully finished transaction.\n");
         return true;
     }
 
@@ -121,7 +121,7 @@ string expandHome(std::string& str) {
         if (homeDir != nullptr)
             ret.replace(found, 1, homeDir);
         else {
-            log_printf(LOG_ERROR, _("HOME environment variable is not set.\n"));
+            log_printf(LOG_ERROR, "HOME environment variable is not set.\n");
             exit(-1);
         } 
     }
@@ -137,7 +137,7 @@ std::string expandVar(std::string& str) {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
         if (env == nullptr) {
-            log_printf(LOG_ERROR, _("No such enviroment variable: %s\n"), str.c_str());
+            log_printf(LOG_ERROR, "No such enviroment variable: %s\n", str.c_str());
             exit(-1);
         }
         str = std::string(env);
@@ -171,12 +171,12 @@ bool taur_exec(vector<const char*> cmd) {
     int pid = fork();
 
     if (pid < 0) {
-        log_printf(LOG_ERROR, _("fork() failed: %s\n"), strerror(errno));
+        log_printf(LOG_ERROR, "fork() failed: %s\n", strerror(errno));
         exit(127);
     }
     if (pid == 0) {
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
-        log_printf(LOG_ERROR, _("An error as occured: %s\n"), strerror(errno));
+        log_printf(LOG_ERROR, "An error as occured: %s\n", strerror(errno));
         exit(127);
     }
     if (pid > 0) { // we wait for the command to finish then start executing the rest
