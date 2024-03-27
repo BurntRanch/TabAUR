@@ -55,6 +55,7 @@ bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
         for (alpm_list_t *p = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); p; p = alpm_list_next(p))
             if (strcmp(name, alpm_pkg_get_name((alpm_pkg_t *)(p->data))) == 0)
                 return true;
+            
     return false;
 }
 

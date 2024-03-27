@@ -19,6 +19,8 @@ struct Operation_t {
     u_short op_sync;
     u_short op_upgrade;
 
+    bool    requires_root = false;
+
     std::vector<std::string> args;
 };
 

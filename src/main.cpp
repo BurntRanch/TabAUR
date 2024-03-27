@@ -1,3 +1,4 @@
+#include <alpm.h>
 #define BRANCH "libalpm-test"
 
 #include <csignal>
@@ -151,6 +152,7 @@ int parsearg_op(int opt) {
             break;
         case 'R':
             operation.op = OP_REM;
+            operation.requires_root = true;
             operation.args.push_back(optarg);
             break;
         case 'Q': operation.op = OP_QUERY; break;
@@ -159,7 +161,7 @@ int parsearg_op(int opt) {
             usage();
             exit(0);
             break;
-        case 'V': std::cout << "TabAUR version 0.1.0 (" << BRANCH << " branch)" << std::endl; break;
+        case 'V': std::cout << "TabAUR version 0.1.0 (" << BRANCH << " branch)" << std::endl; exit(0); break;
         case 'D':
         case 'T':
         case 'U':
@@ -212,10 +214,30 @@ int parseargs(int argc, char* argv[]) {
 }
 
 bool queryPkgs(TaurBackend *backend) {
-    vector<string> pkgs = backend->list_all_local_pkgs(config->aurOnly, false);
+    alpm_list_t *pkg, *syncdbs;
 
-    for (size_t i = 0; i < pkgs.size(); i++)
-        cout << pkgs[i] << endl;
+    syncdbs = alpm_get_syncdbs(config->handle);
+
+    if (!syncdbs) {
+        log_printf(LOG_ERROR, _("Failed to get syncdbs!\n"));
+        return false;
+    }
+
+    vector<const char *> pkgs;
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg))
+        pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+    
+    if (config->aurOnly)
+        for (; syncdbs; syncdbs = syncdbs->next)
+            for (size_t i = 0; i < pkgs.size(); i++)
+                if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i]))
+                    pkgs[i] = NULL; // wont be printed
+    
+    for (size_t i = 0; i < pkgs.size(); i++) {
+        if (!pkgs[i])
+            continue;
+        std::cout << pkgs[i] << std::endl;
+    }
 
     return true;
 }
@@ -230,6 +252,11 @@ int main(int argc, char* argv[]) {
     
     if (parseargs(argc, argv))
         return 1;
+
+    if (operation.requires_root && geteuid() != 0) {
+        log_printf(LOG_ERROR, _("You need to be root to do this.\n"));
+        return 1;
+    }
 
     switch (operation.op) {
     case OP_SYNC:

@@ -288,31 +288,12 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     // first things first
-    log_printf(LOG_INFO, _("Upgrading system packages, This might take a while.\n"));
-    alpm_list_t *dbs = alpm_get_syncdbs(this->config.handle);
-    int ret = alpm_db_update(this->config.handle, dbs, false);
-    if(ret < 0) {
-        log_printf(LOG_ERROR, _("Failed to synchronize all databases (%s)\n"),
-                alpm_strerror(alpm_errno(config.handle)));
-        return false;
-    }
-    log_printf(LOG_INFO, _("Synchronized all databases.\n"));
+    bool pacmanSuccess = taur_exec({"sudo", "pacman", "-Syu"});
 
-    if (alpm_trans_init(this->config.handle, 0) != 0) {
-        log_printf(LOG_ERROR, _("Failed to initialize transaction, (%s)\n"), alpm_strerror(alpm_errno(this->config.handle)));
+    if (!pacmanSuccess) {
+        log_printf(LOG_ERROR, _("Failed to run 'sudo pacman -Syu', Check your PATH.\n"));
         return false;
     }
-    if (alpm_sync_sysupgrade(this->config.handle, 0) != 0) {
-        log_printf(LOG_ERROR, _("Failed to upgrade system packages, error: (%s)\n"), alpm_strerror(alpm_errno(this->config.handle)));
-        return false;
-    }
-    bool alpmUpgradeSuccess = commitTransactionAndRelease(this->config.handle, true);
-
-    if (!alpmUpgradeSuccess) {
-        log_printf(LOG_ERROR, _("Failed to prepare, commit, or release transaction!\n"));
-        return false;
-    }
-    log_printf(LOG_INFO, _("Successfully upgraded any system packages.\n\n"));
 
     vector<TaurPkg_t> pkgs = this->get_all_local_pkgs(true);
 
