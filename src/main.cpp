@@ -1,12 +1,8 @@
 #include <alpm.h>
 #define BRANCH "libalpm-test"
+#define VERSION "0.1.0"
 
-#include <csignal>
-#include <cstdlib>
-#include <memory>
 #include <stdbool.h>
-#include <string>
-#include <unistd.h>
 #include <signal.h>
 
 #include "util.hpp"
@@ -58,7 +54,7 @@ bool execPacman(int argc, char* argv[]) {
     log_printf(LOG_DEBUG, "Passing command to pacman! (argc: %d)\n", argc);
     char* args[argc+3]; // sudo + pacman + null terminator
   
-    args[0] = _("sudo"); // Set the command to sudo
+    args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
     for (int i = 0; i < argc; ++i) {
         log_printf(LOG_DEBUG, "args[%d] = argv[%d] (%s)\n", i + 2, i, argv[i]);
@@ -101,7 +97,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     if (real_uid) {
         int realuid = std::atoi(real_uid);
         if (realuid > 0) {
-            log_printf(LOG_WARN, "You are trying to install an AUR package with sudo, This is unsupported by makepkg. We will try to reduce your privilege, but there is no guarantee it'll work.\n");
+            log_printf(LOG_WARN, "You are trying to install an AUR package with sudo, This is unsupported by makepkg.\n We will try to reduce your privilege, but there is no guarantee it'll work.\n");
             setuid(realuid);
             setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
             config->initializeVars();
@@ -162,7 +158,7 @@ int parsearg_op(int opt) {
             usage();
             exit(0);
             break;
-        case 'V': std::cout << "TabAUR version 0.1.0 (" << BRANCH << " branch)" << std::endl; exit(0); break;
+        case 'V': std::cout << "TabAUR version " << VERSION << " (" << BRANCH << " branch)" << std::endl; exit(0); break;
         case 'D':
         case 'T':
         case 'U':

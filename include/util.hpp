@@ -2,11 +2,9 @@
 #define UTIL_HPP
 
 #include <alpm.h>
-#include <cstdarg>
 #include <string>
 #include <vector>
 #include <iostream>
-#include <sstream>
 #include <filesystem>
 
 using std::string;

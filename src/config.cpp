@@ -1,8 +1,4 @@
 #define TOML_IMPLEMENTATION
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-
 #include "config.hpp"
 #include "util.hpp"
 #include "ini.h"
@@ -51,7 +47,7 @@ string Config::getHomeCacheDir() {
 }
 
 string Config::getCacheDir() {
-    return this->getConfigValue<string>("storage.cacheDir", this->getHomeCacheDir() + "/TabAUR");
+    return this->getConfigValue<string>("general.cacheDir", this->getHomeCacheDir() + "/TabAUR");
 }
 
 string Config::getHomeConfigDir() {
@@ -68,14 +64,20 @@ string Config::getConfigDir() {
 }
 
 void Config::initializeVars() {
-    this->sudo         = this->getConfigValue<string>("general.sudo", "sudo"); sanitizeStr(this->sudo);
+    this->cacheDir     = this->getCacheDir();
+    this->makepkgBin   = this->getConfigValue<string>("bins.makepkg", "makepkg");
+    this->git          = this->getConfigValue<string>("bins.git", "git");
+    this->sudo         = this->getConfigValue<string>("general.sudo", "sudo");
     this->useGit       = this->getConfigValue<bool>("general.useGit", true);
     this->aurOnly      = this->getConfigValue<bool>("general.aurOnly", false);
     this->debug        = this->getConfigValue<bool>("general.debug", false);
-    this->makepkgBin   = this->getConfigValue<string>("bins.makepkgBin", "makepkg"); sanitizeStr(this->makepkgBin);
-    this->cacheDir     = this->getCacheDir(); sanitizeStr(this->cacheDir);
     this->colors       = this->getConfigValue<bool>("general.colors", true);
     this->secretRecipe = this->getConfigValue<bool>("secret.IwantChocolateChipMuffins", false);
+
+    sanitizeStr(this->sudo);
+    sanitizeStr(this->makepkgBin);
+    sanitizeStr(this->cacheDir);
+    sanitizeStr(this->git);
 }
 
 void Config::loadConfigFile(string filename) {
@@ -89,18 +91,18 @@ void Config::loadConfigFile(string filename) {
     this->initializeVars();
 
     alpm_errno_t err;
-    this->handle    = alpm_initialize("/", this->getConfigValue<string>("pacman.libFolder", "/var/lib/pacman").c_str(), &err);
+    this->handle    = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
 
     if (!(this->handle))
         throw std::invalid_argument("Failed to get an alpm handle! Error: " + string(alpm_strerror(err)));
 
-    this->loadPacmanConfigFile("/etc/pacman.conf");
+    this->loadPacmanConfigFile(this->getConfigValue("pacman.ConfigFile", "/etc/pacman.conf"));
 }
 
 void Config::loadColors() {
     if (this->colors) {
         NOCOLOR = "\033[0m";
-        BOLD    = "\033[1m";
+        BOLD    = "\033[0;1m";
         BLACK   = "\033[0;30m";
         RED     = "\033[0;31m";
         GREEN   = "\033[0;32m";

@@ -20,11 +20,11 @@ void log_printf(int log, string fmt, ...) {
     va_start(args, fmt);
     switch(log){
         case LOG_ERROR:
-            std::cerr << BOLDRED << "====[ ERROR ]==== " << std::endl << NOCOLOR << BOLD; break;
+            std::cerr << BOLDRED << "====[ ERROR ]====" << std::endl << BOLD; break;
         case LOG_WARN:
-            std::cout << BOLDYELLOW << "Warning: " << NOCOLOR << BOLD; break;
+            std::cout << BOLDYELLOW << "Warning: " << BOLD; break;
         case LOG_INFO:
-            std::cout << BOLDBLUE << "Info: " << NOCOLOR << BOLD; break;
+            std::cout << BOLDBLUE << "Info: " << BOLD; break;
         case LOG_DEBUG:
             if (config->debug)
                 std::cout << BOLDMAGENTA << "[DEBUG]: " << BOLD;
@@ -109,22 +109,7 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
 
     return false;
 }
-
-string expandHome(std::string& str) {
-    string ret = str;
-    size_t found = ret.find("~");
-    if (found != string::npos) {
-        const char* homeDir = getenv("HOME");
-        if (homeDir != nullptr)
-            ret.replace(found, 1, homeDir);
-        else {
-            log_printf(LOG_ERROR, "HOME environment variable is not set.\n");
-            exit(-1);
-        } 
-    }
-    return ret;
-}
-            
+     
 std::string expandVar(std::string& str) {
     const char* env;
     if (str[0] == '~') {

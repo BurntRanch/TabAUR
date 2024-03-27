@@ -1,9 +1,7 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
-#include <alpm.h>
-#include <string>
-#define TOML_HEADER_ONLY 1
+#define TOML_HEADER_ONLY 0
 #include "toml.hpp"
 #include "util.hpp"
 
@@ -12,16 +10,17 @@ namespace fs = std::filesystem;
 
 class Config {
 public:
-    bool   useGit;
-    bool   aurOnly;
+    alpm_handle_t *handle = nullptr;
+    alpm_list_t *repos = nullptr;
     string makepkgBin;
     string cacheDir;
     string sudo;
-    alpm_handle_t *handle = nullptr;
-    alpm_list_t *repos = nullptr;
+    string git;
+    bool aurOnly;
+    bool useGit;
     bool colors;
     bool secretRecipe;
-    bool   debug;
+    bool debug;
 
     Config();
     ~Config();
@@ -53,30 +52,39 @@ extern std::unique_ptr<Config> config;
 
 // we comment the default config values, just like /etc/pacman.conf
 inline const string defConfig = R"#([general]
-# if true(default), then it'll uses git for downloading/updating the aur repo
-# else if false, then it'll use tarballs (.tar.gz) of the aur repo
+# All options are commented out with their default values listed.
+# If you wish to use different options values, uncomment and update those.
+# It's safe to remove any options you want, just remember their default value
+
+# If true(default), then it'll uses git for downloading/updating the aur repo.
+# Else if false, then it'll use tarballs (.tar.gz) of the aur repo.
 #useGit = true
 
-# If you use sudo or doas
+# If you use sudo or doas.
 #sudo = "sudo"
 
-# Optional pretty prints, because some terminals don't suport them
+# Optional pretty prints, because some terminals don't suport them.
 #colors = true
 
 # If false (default), it'll allow you to operate on system packages as well as AUR.
-# this option can be overrided by the --aur-only long option or running "-Ra" instead of "-R".
+# This option can be overrided by the --aur-only long option or running "-Ra" instead of "-R".
 #aurOnly = false
 
-# Useful for knowing more about TabAUR operations
-# please activate this before reporting bugs on our Github repo, thank you :)
+# Useful for knowing more about TabAUR operations.
+# Please activate this before reporting bugs on our Github repo, thank you :)
 #debug = false
 
-[bins]
-#makepkgBin = "makepkg"
-
-[storage]
 # Where we are gonna download the AUR packages (default $XDG_CACHE_HOME, else ~/.cache/TabAUR)
 #cacheDir = "$XDG_CACHE_HOME"
+
+[bins]
+#makepkg = "makepkg"
+#git = "git"
+
+[pacman]
+#RootDir = "/"
+#DBPath = "/var/lib/pacman"
+#ConfigFile = "/etc/pacman.conf"
 )#";
 
 inline string NOCOLOR;

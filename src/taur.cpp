@@ -3,19 +3,17 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
-#include <sys/wait.h>
-#include <unistd.h>
 using std::filesystem::path;
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string url, string out_path) {
     if (fs::exists(path(out_path) / ".git")) {
-        return taur_exec({"git", "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
+        return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
     } else {
         if (fs::exists(path(out_path)))
                 fs::remove_all(out_path);
-        return taur_exec({"git", "clone", url.c_str(), out_path.c_str()});
+        return taur_exec({config.git.c_str(), "clone", url.c_str(), out_path.c_str()});
     }
 }
 
@@ -34,16 +32,6 @@ bool TaurBackend::download_tar(string url, string out_path) {
     bool isNested = out_path.find("/") != (size_t)-1;
     sanitizeStr(out_path);
     
-    vector<const char *> cmd;
-
-    if (isNested) {
-        chdir(out_path.substr(0, out_path.rfind("/")).c_str());
-        cmd = {"tar", "-xf", out_path.substr(out_path.rfind("/") + 1).c_str()};
-    } else
-        cmd = {"tar", "-xf", out_path.c_str()};
-    
-    return taur_exec(cmd);
-
     if (isNested) {
         fs::current_path(out_path.substr(0, out_path.rfind("/")));
         return taur_exec({"tar", "-xf", out_path.c_str()});
@@ -288,10 +276,10 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     // first things first
-    bool pacmanSuccess = taur_exec({"sudo", "pacman", "-Syu"});
+    bool pacmanSuccess = taur_exec({config.sudo.c_str(), "pacman", "-Syu"});
 
     if (!pacmanSuccess) {
-        log_printf(LOG_ERROR, "Failed to run 'sudo pacman -Syu', Check your PATH.\n");
+        log_printf(LOG_ERROR, "Failed to run 'pacman -Syu', Check your PATH.\n");
         return false;
     }
 

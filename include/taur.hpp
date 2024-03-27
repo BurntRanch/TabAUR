@@ -9,12 +9,7 @@
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
 #include <cpr/cpr.h>
-#include <cstdio>
 #include <iostream>
-#include <memory>
-#include <stdexcept>
-#include <string>
-#include <array>
 #include <sys/wait.h>
 
 #include "util.hpp"
