@@ -220,9 +220,11 @@ bool queryPkgs(TaurBackend *backend) {
         return false;
     }
 
-    vector<const char *> pkgs;
-    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg))
+    vector<const char *> pkgs, pkgs_ver;
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)){
         pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+        pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
+    }
     
     if (config->aurOnly)
         for (; syncdbs; syncdbs = syncdbs->next)
@@ -233,7 +235,7 @@ bool queryPkgs(TaurBackend *backend) {
     for (size_t i = 0; i < pkgs.size(); i++) {
         if (!pkgs[i])
             continue;
-        std::cout << pkgs[i] << std::endl;
+        std::cout << BOLD << pkgs[i] << " " << BOLDGREEN << pkgs_ver[i] << std::endl;
     }
 
     return true;
