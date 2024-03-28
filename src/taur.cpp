@@ -219,14 +219,14 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
 
 bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit) {
     string makepkg_bin = this->config.makepkgBin;
-
     // never forget to sanitize
     sanitizeStr(extracted_path);
-    sanitizeStr(makepkg_bin);
 
+    vector<const char*> makepkg_cmd = {makepkg_bin.c_str(), "-si", "--verifysource"};
+    
     if (pkg.depends.empty()) {
         fs::current_path(extracted_path);
-        return taur_exec({makepkg_bin.c_str(), "-si"});
+        return taur_exec(makepkg_cmd);
     }
 
     vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
@@ -271,7 +271,7 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
     }
 
     fs::current_path(extracted_path);
-    return taur_exec({makepkg_bin.c_str(), "-si"});
+    return taur_exec(makepkg_cmd);
 }
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
@@ -323,6 +323,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
 
         string pkgFolder = cacheDir / onlinePkgs[i].name;
         sanitizeStr(pkgFolder);
+        log_printf(LOG_DEBUG, "extracted_path = %s", pkgFolder.c_str());
 
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgFolder);
 
@@ -332,7 +333,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         }
 
         // get the pkgver, but because cut is dumb we have to strip the newline.
-        string versionInfo = shell_exec("OUTPUT=$(grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2); echo -n ${OUTPUT//[$'\\\\n']}");
+        string versionInfo = shell_exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
         
         if (versionInfo.empty()) {
             log_printf(LOG_WARN, "Failed to parse version information from %s's PKGBUILD, You might be able to ignore this safely.", pkgs[pkgIndex].name.c_str());
@@ -344,7 +345,10 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         if (!pkgrel.empty())
             versionInfo += "-" + pkgrel;
 
-        if (alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))
+        log_printf(LOG_DEBUG, "pkg %s versions: local %s vs online %s", pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(),
+                   onlinePkgs[i].version.c_str());
+
+        if (!alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))
             continue;
 
         log_printf(LOG_INFO, "Upgrading package %s from version %s to version %s!", pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(),
