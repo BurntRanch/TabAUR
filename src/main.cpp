@@ -19,7 +19,7 @@ std::unique_ptr<Config> config;
 struct Operation_t operation;
 
 void interruptHandler(int) {
-    log_printf(LOG_WARN, "Caught CTRL-C, Exiting!\n");
+    log_printf(LOG_WARN, "Caught CTRL-C, Exiting!");
 
     std::exit(-1);
 }
@@ -42,7 +42,7 @@ operations:
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
     
     if (config->secretRecipe) {
-        log_printf(LOG_INFO, "Loading secret recipe...\n");
+        log_printf(LOG_INFO, "Loading secret recipe...");
         for (auto const& i : secret) {
             cout << i << endl;
             usleep(650000); // 0.65 seconds
@@ -51,13 +51,13 @@ operations:
 }
 
 bool execPacman(int argc, char* argv[]) {
-    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: %d)\n", argc);
+    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: %d)", argc);
     char* args[argc+3]; // sudo + pacman + null terminator
   
     args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
     for (int i = 0; i < argc; ++i) {
-        log_printf(LOG_DEBUG, "args[%d] = argv[%d] (%s)\n", i + 2, i, argv[i]);
+        log_printf(LOG_DEBUG, "args[%d] = argv[%d] (%s)", i + 2, i, argv[i]);
         args[i+2] = argv[i];
     }
   
@@ -76,7 +76,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     optional<TaurPkg_t>  oPkg = backend->search(pkgName, useGit);
 
     if (!oPkg) {
-        log_printf(LOG_ERROR, "An error has occurred and we could not search for your package.\n");
+        log_printf(LOG_ERROR, "An error has occurred and we could not search for your package.");
         return -1;
     }
 
@@ -97,7 +97,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     if (real_uid) {
         int realuid = std::atoi(real_uid);
         if (realuid > 0) {
-            log_printf(LOG_WARN, "You are trying to install an AUR package with sudo, This is unsupported by makepkg.\n We will try to reduce your privilege, but there is no guarantee it'll work.\n");
+            log_printf(LOG_WARN, "You are trying to install an AUR package with sudo, This is unsupported by makepkg.\n We will try to reduce your privilege, but there is no guarantee it'll work.");
             setuid(realuid);
             setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
             config->initializeVars();
@@ -114,7 +114,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     bool stat = backend->download_pkg(url, filename);
 
     if (!stat) {
-        log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
+        log_printf(LOG_ERROR, "An error has occurred and we could not download your package.");
         return false;
     }
 
@@ -124,7 +124,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
         stat = backend->install_pkg(pkg, filename, useGit);
 
     if (!stat) {
-        log_printf(LOG_ERROR, "Building/Installing your package has failed.\n");
+        log_printf(LOG_ERROR, "Building/Installing your package has failed.");
         return false;
     }
 
@@ -216,7 +216,7 @@ bool queryPkgs(TaurBackend *backend) {
     syncdbs = alpm_get_syncdbs(config->handle);
 
     if (!syncdbs) {
-        log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
+        log_printf(LOG_ERROR, "Failed to get syncdbs!");
         return false;
     }
 
@@ -251,7 +251,7 @@ int main(int argc, char* argv[]) {
         return 1;
 
     if (operation.requires_root && geteuid() != 0) {
-        log_printf(LOG_ERROR, "You need to be root to do this.\n");
+        log_printf(LOG_ERROR, "You need to be root to do this.");
         return 1;
     }
 

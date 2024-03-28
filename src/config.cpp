@@ -11,11 +11,11 @@ Config::Config() {
     string configDir = this->getConfigDir();
     string filename  = configDir + "/config.toml";
     if (!fs::exists(configDir)) {
-        log_printf(LOG_WARN, "TabAUR config folder was not found, Creating folders at %s!\n", configDir.c_str());
+        log_printf(LOG_WARN, "TabAUR config folder was not found, Creating folders at %s!", configDir.c_str());
         fs::create_directories(configDir);
     }
     if (!fs::exists(filename)) {
-        log_printf(LOG_WARN, "config.toml not found, generating new one\n");
+        log_printf(LOG_WARN, "config.toml not found, generating new one");
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         ofstream configFile(filename, std::ios::trunc);
         configFile << defConfig;
@@ -26,7 +26,7 @@ Config::Config() {
 
     string cacheDir = this->getCacheDir();
     if (!fs::exists(cacheDir)) {
-        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at %s!\n", cacheDir.c_str());
+        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at %s!", cacheDir.c_str());
         fs::create_directories(cacheDir);
     }
 }
@@ -84,7 +84,7 @@ void Config::loadConfigFile(string filename) {
     try {
         this->tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_printf(LOG_ERROR, "Parsing config.toml failed:\n");
+        log_printf(LOG_ERROR, "Parsing config.toml failed:");
         std::cerr << err << std::endl;
         exit(-1);
     }
@@ -188,7 +188,7 @@ void Config::loadPacmanConfigFile(string filename) {
 
         bool serversStatus = addServers(db, ini[section]["Include"], section);
         if (!serversStatus)
-            log_printf(LOG_ERROR, "Failed to open mirrors file! (%s)\n", ini[section]["Include"].c_str());
+            log_printf(LOG_ERROR, "Failed to open mirrors file! (%s)", ini[section]["Include"].c_str());
 
         alpm_db_set_usage(db, ALPM_DB_USAGE_ALL);
 
