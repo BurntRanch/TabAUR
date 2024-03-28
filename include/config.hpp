@@ -72,7 +72,7 @@ inline const string defConfig = R"#([general]
 
 # Useful for knowing more about TabAUR operations.
 # Please activate this before reporting bugs on our Github repo, thank you :)
-#debug = false
+#debug = true
 
 # Where we are gonna download the AUR packages (default $XDG_CACHE_HOME, else ~/.cache/TabAUR)
 #cacheDir = "$XDG_CACHE_HOME"

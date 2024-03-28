@@ -33,7 +33,7 @@ void log_printf(int log, string fmt, ...) {
     }
     vprintf(fmt.c_str(), args);
     va_end(args);
-    std::cout << NOCOLOR;
+    std::cout << NOCOLOR << std::endl;
 }
 
 bool isInvalid(char c) {

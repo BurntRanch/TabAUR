@@ -275,13 +275,9 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
 }
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
-    // first things first
-    bool pacmanSuccess = taur_exec({config.sudo.c_str(), "pacman", "-Syu"});
-
-    if (!pacmanSuccess) {
-        log_printf(LOG_ERROR, "Failed to run 'pacman -Syu', Check your PATH.\n");
-        return false;
-    }
+    // let's not run pacman -Syu if I we just want to update AUR packages 
+    if (!config.aurOnly)
+        taur_exec({config.sudo.c_str(), "pacman", "-Syu"});
 
     vector<TaurPkg_t> pkgs = this->get_all_local_pkgs(true);
 
@@ -323,7 +319,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
             continue;
         }
 
-        log_printf(LOG_INFO, "Downloading %s, This could take a bit.\n", pkgs[pkgIndex].name.c_str());
+        log_printf(LOG_INFO, "Downloading %s.\n", pkgs[pkgIndex].name.c_str());
 
         string pkgFolder = cacheDir / onlinePkgs[i].name;
         sanitizeStr(pkgFolder);

@@ -40,7 +40,7 @@ operations:
     cout << "TabAUR usage: taur <operation> [...]" << endl;
     cout << help_op << endl;
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
-    log_printf(LOG_INFO, "test");
+    
     if (config->secretRecipe) {
         log_printf(LOG_INFO, "Loading secret recipe...\n");
         for (auto const& i : secret) {

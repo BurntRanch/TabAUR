@@ -70,7 +70,7 @@ void Config::initializeVars() {
     this->sudo         = this->getConfigValue<string>("general.sudo", "sudo");
     this->useGit       = this->getConfigValue<bool>("general.useGit", true);
     this->aurOnly      = this->getConfigValue<bool>("general.aurOnly", false);
-    this->debug        = this->getConfigValue<bool>("general.debug", false);
+    this->debug        = this->getConfigValue<bool>("general.debug", true);
     this->colors       = this->getConfigValue<bool>("general.colors", true);
     this->secretRecipe = this->getConfigValue<bool>("secret.IwantChocolateChipMuffins", false);
 
