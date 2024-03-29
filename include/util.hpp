@@ -24,11 +24,8 @@ bool hasStart(string const& fullString, string const& start);
 void log_printf(int log, string fmt, ...);
 string expandVar(string& str);
 bool is_number(const string& s);
-<<<<<<< HEAD
 bool taur_read_exec(std::vector<const char*> cmd, string *output);
-=======
 void interruptHandler(int);
->>>>>>> 1a2a141 (Big Breaking News: TabAUR now has pacman-like options)
 bool taur_exec(std::vector<const char*> cmd);
 void sanitizeStr(string& str);
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
