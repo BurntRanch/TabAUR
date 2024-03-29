@@ -36,7 +36,7 @@ options:
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
     
     if (config->secretRecipe) {
-        log_printf(LOG_INFO, "Loading secret recipe...");
+        log_printf(LOG_INFO, "Loading secret recipe...\n");
         for (auto const& i : secret) {
             cout << i << endl;
             usleep(650000); // 0.65 seconds
@@ -45,13 +45,13 @@ options:
 }
 
 bool execPacman(int argc, char* argv[]) {
-    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: %d)", argc);
+    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: %d)\n", argc);
     char* args[argc+3]; // sudo + pacman + null terminator
   
     args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
     for (int i = 0; i < argc; ++i) {
-        log_printf(LOG_DEBUG, "args[%d] = argv[%d] (%s)", i + 2, i, argv[i]);
+        log_printf(LOG_DEBUG, "args[%d] = argv[%d] (%s)\n", i + 2, i, argv[i]);
         args[i+2] = argv[i];
     }
   
@@ -71,7 +71,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
 
     if (pkgs.empty() && !op.op_s_upgrade) {
-        log_printf(LOG_WARN, "No results found, Exiting!");
+        log_printf(LOG_WARN, "No results found, Exiting!\n");
         return -1;
     } else if (pkgs.empty()) {
         vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
@@ -119,7 +119,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     bool stat = backend->download_pkg(url, filename);
 
     if (!stat) {
-        log_printf(LOG_ERROR, "An error has occurred and we could not download your package.");
+        log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
         return false;
     }
 
@@ -133,12 +133,12 @@ int installPkg(string pkgName, TaurBackend *backend) {
     }
 
     if (!stat) {
-        log_printf(LOG_ERROR, "Building/Installing your package has failed.");
+        log_printf(LOG_ERROR, "Building/Installing your package has failed.\n");
         return false;
     }
 
     if (op.op_s_upgrade) {
-        log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.");
+        log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.\n");
         return backend->update_all_pkgs(cacheDir, useGit);
     }
 
@@ -161,7 +161,7 @@ bool queryPkgs(TaurBackend *backend) {
     syncdbs = alpm_get_syncdbs(config->handle);
 
     if (!syncdbs) {
-        log_printf(LOG_ERROR, "Failed to get syncdbs!");
+        log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
         return false;
     }
 
@@ -226,7 +226,7 @@ int parseargs(int argc, char* argv[]) {
     }
     
     if(op.op == 0) {
-		log_printf(LOG_ERROR, "only one operation may be used at a time");
+		log_printf(LOG_ERROR, "only one operation may be used at a time\n");
 		return 1;
 	}
     if(op.help) {
@@ -266,9 +266,9 @@ int parseargs(int argc, char* argv[]) {
 			if(result == 1) {
 			/* global option parsing failed, abort */
 				if(opt < 100) {
-					log_printf(LOG_ERROR, "invalid option '-%c'", opt);
+					log_printf(LOG_ERROR, "invalid option '-%c'\n", opt);
 				} else {
-					log_printf(LOG_ERROR, "invalid option '--%s'", opts[option_index].name);
+					log_printf(LOG_ERROR, "invalid option '--%s'\n", opts[option_index].name);
 				}
 			}
 			return 1;
@@ -297,7 +297,7 @@ int main(int argc, char* argv[]) {
         return 1;
 
     if (op.requires_root && geteuid() != 0) {
-        log_printf(LOG_ERROR, "You need to be root to do this.");
+        log_printf(LOG_ERROR, "You need to be root to do this.\n");
         return 1;
     // doesn't need root, still gets it anyway.
     } else if (!op.requires_root && geteuid() == 0) {
@@ -308,7 +308,7 @@ int main(int argc, char* argv[]) {
         if (real_uid) {
             int realuid = std::atoi(real_uid);
             if (realuid > 0) {
-                log_printf(LOG_WARN, "You are trying to run TabAUR with sudo when it doesn't need it, This has security & safety implications.\n We will try to reduce your privilege, but there is no guarantee it'll work.");
+                log_printf(LOG_WARN, "You are trying to run TabAUR with sudo when it doesn't need it, This has security & safety implications.\n We will try to reduce your privilege, but there is no guarantee it'll work.\n");
                 setuid(realuid);
                 setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
                 config->initializeVars();
