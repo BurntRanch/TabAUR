@@ -5,7 +5,7 @@ pkgdesc="A lightweight AUR helper, designed to be simple but powerful."
 arch=('x86_64' 'aarch64')
 url="https://example.com/"
 license=('GPL3')
-depends=('pacman' 'tar' 'libgit2')
+depends=('pacman' 'tar')
 optdepends=(
   'sudo: privilege elevation'
   'doas: privilege elevation'

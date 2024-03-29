@@ -1,4 +1,3 @@
-#include <alpm.h>
 #define BRANCH "libalpm-test"
 #define VERSION "0.1.0"
 
@@ -118,10 +117,14 @@ int installPkg(string pkgName, TaurBackend *backend) {
         return false;
     }
 
-    if (!useGit)
-        stat = backend->install_pkg(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
-    else
-        stat = backend->install_pkg(pkg, filename, useGit);
+    if (!useGit){
+        stat = backend->handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
+        stat = backend->install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")));
+    }
+    else {
+        stat = backend->handle_aur_depends(pkg, filename, useGit);
+        stat = backend->install_pkg(pkg.name, filename);
+    }
 
     if (!stat) {
         log_printf(LOG_ERROR, "Building/Installing your package has failed.");

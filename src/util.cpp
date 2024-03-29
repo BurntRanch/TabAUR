@@ -140,7 +140,8 @@ string shell_exec(string cmd) {
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
         result += buffer.data();
     }
-
+    // why there is a \n ??
+    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
     return result;
 }
 
@@ -167,6 +168,13 @@ bool taur_exec(vector<const char*> cmd) {
         waitpid(pid, &status, 0); // Wait for the child to finish
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
+        else {
+            std::cerr << BOLDRED << "====[ ERROR ]====" << std::endl << BOLD << "Failed to execute the command: " << NOCOLOR;
+            for(auto& i : cmd)
+                std::cout << i << " ";
+            std::cout << NOCOLOR << std::endl;
+            exit(127);
+        }
     }
     return false;
 }
