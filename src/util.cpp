@@ -45,6 +45,12 @@ void sanitizeStr(string& str){
     str.erase(std::remove_if(str.begin(), str.end(), isInvalid), str.end());
 }
 
+void interruptHandler(int) {
+    log_printf(LOG_WARN, "Caught CTRL-C, Exiting!");
+
+    std::exit(-1);
+}
+
 // Function to check if a package is from a synchronization database
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
     const char *name = alpm_pkg_get_name(pkg);

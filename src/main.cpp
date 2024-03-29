@@ -8,24 +8,13 @@
 #include "args.hpp"
 #include "taur.hpp"
 
-using std::cout;
-using std::endl;
-using std::vector;
-using std::string;
-using std::optional;
+using namespace std;
 
 std::unique_ptr<Config> config;
-struct Operation_t operation;
 
-void interruptHandler(int) {
-    log_printf(LOG_WARN, "Caught CTRL-C, Exiting!");
-
-    std::exit(-1);
-}
-
-void usage() {
+void usage(int op) {
     string help_op = R"#(
-operations:
+options:
     taur {-h --help}
     taur {-V --version}
     taur {-D --database} <options> <package(s)>
@@ -36,8 +25,11 @@ operations:
     taur {-T --deptest}  [options] [package(s)]
     taur {-U --upgrade}  [options] <file(s)>
     )#";
-    cout << "TabAUR usage: taur <operation> [...]" << endl;
-    cout << help_op << endl;
+    cout << "TabAUR usage: taur <op> [...]" << endl;
+    if(op == OP_MAIN)
+        cout << help_op << endl;
+    else if (op == OP_SYNC)
+        cout << "-S,--sync test" << endl;
     cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
     
     if (config->secretRecipe) {
@@ -116,6 +108,16 @@ int installPkg(string pkgName, TaurBackend *backend) {
         log_printf(LOG_ERROR, "An error has occurred and we could not download your package.");
         return false;
     }
+    
+    vector<const char*> cmd = {config->sudo.c_str(), "pacman", "-S"};
+        if(op.op_s_upgrade)
+            cmd.push_back("-u");
+        if(op.op_s_sync)
+            cmd.push_back("-y");
+        log_printf(LOG_DEBUG, "running cmd: ");
+        for(auto& i : cmd)
+            std::cout << i << " ";
+    taur_exec(cmd);
 
     if (!useGit){
         stat = backend->handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
@@ -142,75 +144,6 @@ bool updateAll(TaurBackend *backend) {
     string cacheDir = config->cacheDir;
 
     return backend->update_all_pkgs(path(cacheDir), config->useGit);
-}
-
-int parsearg_op(int opt) {
-    switch (opt) {
-        case 'S':
-            operation.op = OP_SYNC;
-            operation.args.push_back(optarg);
-            break;
-        case 'R':
-            operation.op = OP_REM;
-            operation.requires_root = true;
-            operation.args.push_back(optarg);
-            break;
-        case 'Q': operation.op = OP_QUERY; break;
-        case 'a': config->aurOnly = true; break;
-        case 'h':
-            usage();
-            exit(0);
-            break;
-        case 'V': std::cout << "TabAUR version " << VERSION << " (" << BRANCH << " branch)" << std::endl; exit(0); break;
-        case 'D':
-        case 'T':
-        case 'U':
-        case 'F': operation.op = OP_PACMAN; break;
-        case ':': std::cerr << "Option requires an argument!" << std::endl; break;
-        default: return 1;
-    }
-    return 0;
-}
-
-int parseargs(int argc, char* argv[]) {
-    // default
-    operation.op = OP_SYSUPGRADE;
-
-    int opt;
-    int option_index = 0;
-	const char *optstring = "S:R:QVD:F:T:U:ah";
-	static const struct option opts[] = 
-    {
-        {"sync",       required_argument, 0, 'S'},
-        {"remove",     required_argument, 0, 'R'},
-        {"query",      required_argument, 0, 'Q'},
-        {"version",    required_argument, 0, 'V'},
-        {"database",   required_argument, 0, 'D'},
-        {"files",      required_argument, 0, 'F'},
-        {"deptest",    required_argument, 0, 'T'}, /* used by makepkg */
-		{"upgrade",    required_argument, 0, 'U'},
-
-        {"aur-only",   no_argument,       0, 'a'},
-        {"help",       no_argument,       0, 'h'},
-        {0,0,0,0}
-    };
-
-    /* parse operation */
-    while ((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
-        if (opt == 0) {
-            continue;
-        } else if (opt == '?') {
-            return 1;
-        }
-        parsearg_op(opt);
-    }
-
-    if ((operation.op == OP_SYNC || operation.op == OP_REM) && operation.args.size() < 1) {
-        usage();
-        return 1;
-    }
-
-    return 0;
 }
 
 bool queryPkgs(TaurBackend *backend) {
@@ -244,6 +177,102 @@ bool queryPkgs(TaurBackend *backend) {
     return true;
 }
 
+int parseargs(int argc, char* argv[]) {
+    // default
+    op.op = OP_MAIN;
+
+    int opt = 0;
+    int option_index = 0;
+    int result = 0;
+	const char *optstring = "SRQVDFTUahyu";
+	static const struct option opts[] = 
+    {
+        {"database",   no_argument,       0, 'D'},
+		{"files",      no_argument,       0, 'F'},
+		{"query",      no_argument,       0, 'Q'},
+		{"remove",     no_argument,       0, 'R'},
+		{"sync",       no_argument,       0, 'S'},
+		{"deptest",    no_argument,       0, 'T'}, /* used by makepkg */
+		{"upgrade",    no_argument,       0, 'U'},
+		{"version",    no_argument,       0, 'V'},
+        {"aur-only",   no_argument,       0, 'a'},
+        {"help",       no_argument,       0, 'h'},
+
+        {"refresh",    no_argument,       0, OP_REFRESH},
+        {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
+        {0,0,0,0}
+    };
+
+    /* parse operation */
+    while ((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
+        if (opt == 0) {
+            continue;
+        } else if (opt == '?') {
+            return 1;
+        }
+        parsearg_op(opt, 0);
+    }
+    
+    if(op.op == 0) {
+		log_printf(LOG_ERROR, "only one operation may be used at a time");
+		return 1;
+	}
+    if(op.help) {
+		usage(op.op);
+		exit(0);
+	}
+
+    /* parse all other options */
+	optind = 1;
+	while((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
+		if(opt == 0) {
+			continue;
+		} else if(opt == '?') {
+			/* this should have failed during first pass already */
+			return 1;
+		} else if(parsearg_op(opt, 1) == 0) {
+			/* opt is an operation */
+			continue;
+		}
+
+		switch(op.op) {
+            case OP_SYNC:
+                result = parsearg_sync(opt);
+                break;
+            default:
+				result = 1;
+				break;
+        }
+        
+        if(result == 0) {
+			continue;
+		}
+
+        /* fall back to global options */
+		result = parsearg_global(opt);
+		if(result != 0) {
+			if(result == 1) {
+			/* global option parsing failed, abort */
+				if(opt < 100) {
+					log_printf(LOG_ERROR, "invalid option '-%c'", opt);
+				} else {
+					log_printf(LOG_ERROR, "invalid option '--%s'", opts[option_index].name);
+				}
+			}
+			return 1;
+		}
+
+    }
+
+    while(optind < argc) {
+		/* add the target to our target array */
+		taur_targets = alpm_list_add(taur_targets, strdup(argv[optind]));
+		optind++;
+	}
+
+    return 0;
+}
+
 // main
 int main(int argc, char* argv[]) {
     config = std::make_unique<Config>();
@@ -255,22 +284,22 @@ int main(int argc, char* argv[]) {
     if (parseargs(argc, argv))
         return 1;
 
-    if (operation.requires_root && geteuid() != 0) {
+    if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.");
         return 1;
     }
 
-    switch (operation.op) {
+    switch (op.op) {
     case OP_SYNC:
-        return (installPkg(operation.args[0], &backend)) ? 0 : 1;
+        return (installPkg("cproton-git", &backend)) ? 0 : 1;
     case OP_REM:
-        return (removePkg(operation.args[0], &backend)) ? 0 : 1;
+        return (removePkg("cproton-git", &backend)) ? 0 : 1;
     case OP_QUERY:
         return (queryPkgs(&backend)) ? 0 : 1;
     case OP_SYSUPGRADE:
         return (updateAll(&backend)) ? 0 : 1;
     case OP_PACMAN:
-        // we are gonna use pacman to other operations than -S,-R,-Q
+        // we are gonna use pacman to other ops than -S,-R,-Q
         return execPacman(argc, argv);
     }
 
