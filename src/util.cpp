@@ -2,6 +2,8 @@
 #include "config.hpp"
 #include "taur.hpp"
 
+#include <iostream>
+
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, std::string const& ending) {
     if (ending.length() > fullString.length())
@@ -243,6 +245,61 @@ bool taur_exec(vector<const char*> cmd) {
     }
 
     return false;
+}
+
+string getColorFromDBName(string db_name) {
+    if (db_name == "aur")
+        return db_color_aur;
+    else if (db_name == "extra")
+        return db_color_extra;
+    else if (db_name == "multilib")
+        return db_color_multilib;
+    else
+        return db_color_core;
+}
+
+// Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
+void printPkgInfo(TaurPkg_t pkg, int index) {
+    if (index > 0)
+        std::cout 
+            << MAGENTA << index << " ";
+    std::cout
+        << getColorFromDBName(pkg.db_name) << pkg.db_name << "/" << BOLD << pkg.name
+        << " " << BOLDGREEN << pkg.version
+        << "\n    " << NOCOLOR << BOLD << pkg.desc
+        << NOCOLOR <<
+    std::endl;
+}
+
+optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs) {
+    if (pkgs.size() == 1) {
+        return pkgs[0];
+    } else if (pkgs.size() > 1) {
+        log_printf(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
+        string input;
+        do {
+            // CTRL-D
+            if (!std::cin) {
+                log_printf(LOG_WARN, "Exiting due to CTRL-D!");
+                return {};
+            }
+
+            if (!input.empty())
+                log_printf(LOG_WARN, "Invalid input!");
+
+            for (size_t i = 0; i < pkgs.size(); i++)
+                printPkgInfo(pkgs[i], i);
+
+            std::cout << "Choose a package to download: ";
+            std::cin >> input;
+        } while (!is_number(input) || (size_t)std::stoi(input) >= pkgs.size());
+
+        size_t selected = std::stoi(input);
+
+        return pkgs[selected];
+    }
+
+    return {};
 }
 
 std::vector<string> split(std::string text, char delim) {

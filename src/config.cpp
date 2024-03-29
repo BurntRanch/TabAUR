@@ -3,9 +3,14 @@
 #include "util.hpp"
 #include "ini.h"
 
+#include <iostream>
+#include <filesystem>
+
 using std::getenv;
 using std::ofstream;
 using std::ifstream;
+
+namespace fs = std::filesystem;
 
 Config::Config() {
     string configDir = this->getConfigDir();

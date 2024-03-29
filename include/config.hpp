@@ -6,7 +6,6 @@
 #include "util.hpp"
 
 using std::string;
-namespace fs = std::filesystem;
 
 class Config {
 public:

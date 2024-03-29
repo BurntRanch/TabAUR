@@ -1,14 +1,17 @@
+#include <vector>
 #define BRANCH "libalpm-test"
 #define VERSION "0.1.0"
 
 #include <stdbool.h>
 #include <signal.h>
+#include <iostream>
 
 #include "util.hpp"
 #include "args.hpp"
 #include "taur.hpp"
 
-using namespace std;
+using std::cout;
+using std::endl;
 
 std::unique_ptr<Config> config;
 
@@ -63,39 +66,50 @@ bool execPacman(int argc, char* argv[]) {
 
 int installPkg(string pkgName, TaurBackend *backend) { 
     bool            useGit   = config->useGit;
+    string          cacheDir = config->cacheDir;
     
-    optional<TaurPkg_t>  oPkg = backend->search(pkgName, useGit);
+    vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
 
-    if (!oPkg) {
-        log_printf(LOG_ERROR, "An error has occurred and we could not search for your package.");
+    if (pkgs.empty() && !op.op_s_upgrade) {
+        log_printf(LOG_WARN, "No results found, Exiting!");
         return -1;
+    } else if (pkgs.empty()) {
+        vector<const char *> cmd = {"sudo", "pacman", "-S"};
+        if(op.op_s_sync)
+            cmd.push_back("-y");
+        if(op.op_s_upgrade)
+            cmd.push_back("-u");
+
+        return taur_exec(cmd) && backend->update_all_pkgs(cacheDir, useGit);
     }
+
+    // ./taur -Ss -- list only, don't install.
+    if (op.op_s_search) {
+        for (size_t i = 0; i < pkgs.size(); i++)
+            printPkgInfo(pkgs[i]);
+        return true;
+    }
+
+    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs);
+
+    if (!oPkg)
+        return false;
 
     TaurPkg_t pkg = oPkg.value();
 
     string url = pkg.url;
 
     if (url == "") {
-        // -S <pkg name>
-        char *argv[2] = {(char *)"-S", (char *)pkg.name.c_str()};
-        return execPacman(2, argv);
-    }
+        vector<const char*> cmd = {"-S"};
+        if(op.op_s_sync)
+            cmd.push_back("-y");
+        if(op.op_s_upgrade)
+            cmd.push_back("-u");
 
-    // This was here because in past versions, libalpm was being used next to makepkg, which one requires sudo, and the other requires normal user privileges.
-    // I'll keep this here as it's convenient for some users.
-    // TODO: Add an option to suppress its messages or disable it entirely.
-    char *real_uid = getenv("SUDO_UID");
-    if (real_uid) {
-        int realuid = std::atoi(real_uid);
-        if (realuid > 0) {
-            log_printf(LOG_WARN, "You are trying to install an AUR package with sudo, This is unsupported by makepkg.\n We will try to reduce your privilege, but there is no guarantee it'll work.");
-            setuid(realuid);
-            setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
-            config->initializeVars();
-        }
-    }
+        cmd.push_back(pkg.name.c_str());
 
-    string cacheDir = config->cacheDir;
+        return execPacman(cmd.size(), (char **)cmd.data()), backend->update_all_pkgs(config->cacheDir, useGit);
+    }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
@@ -108,16 +122,6 @@ int installPkg(string pkgName, TaurBackend *backend) {
         log_printf(LOG_ERROR, "An error has occurred and we could not download your package.");
         return false;
     }
-    
-    vector<const char*> cmd = {config->sudo.c_str(), "pacman", "-S"};
-        if(op.op_s_upgrade)
-            cmd.push_back("-u");
-        if(op.op_s_sync)
-            cmd.push_back("-y");
-        log_printf(LOG_DEBUG, "running cmd: ");
-        for(auto& i : cmd)
-            std::cout << i << " ";
-    taur_exec(cmd);
 
     if (!useGit){
         stat = backend->handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
@@ -131,6 +135,11 @@ int installPkg(string pkgName, TaurBackend *backend) {
     if (!stat) {
         log_printf(LOG_ERROR, "Building/Installing your package has failed.");
         return false;
+    }
+
+    if (op.op_s_upgrade) {
+        log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.");
+        return backend->update_all_pkgs(cacheDir, useGit);
     }
 
     return true;
@@ -184,7 +193,7 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-	const char *optstring = "SRQVDFTUahyu";
+	const char *optstring = "SRQVDFTUahyus";
 	static const struct option opts[] = 
     {
         {"database",   no_argument,       0, 'D'},
@@ -200,6 +209,7 @@ int parseargs(int argc, char* argv[]) {
 
         {"refresh",    no_argument,       0, OP_REFRESH},
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
+        {"search", no_argument,       0, OP_SEARCH},
         {0,0,0,0}
     };
 
@@ -287,13 +297,28 @@ int main(int argc, char* argv[]) {
     if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.");
         return 1;
+    // doesn't need root, still gets it anyway.
+    } else if (!op.requires_root && geteuid() == 0) {
+        // This was here because in past versions, libalpm was being used next to makepkg, which one requires sudo, and the other requires normal user privileges.
+        // I'll keep this here as it's convenient for some users.
+        // TODO: Add an option to suppress its messages or disable it entirely.
+        char *real_uid = getenv("SUDO_UID");
+        if (real_uid) {
+            int realuid = std::atoi(real_uid);
+            if (realuid > 0) {
+                log_printf(LOG_WARN, "You are trying to run TabAUR with sudo when it doesn't need it, This has security & safety implications.\n We will try to reduce your privilege, but there is no guarantee it'll work.");
+                setuid(realuid);
+                setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
+                config->initializeVars();
+            }
+        }
     }
 
     switch (op.op) {
     case OP_SYNC:
-        return (installPkg("cproton-git", &backend)) ? 0 : 1;
+        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "", &backend)) ? 0 : 1;
     case OP_REM:
-        return (removePkg("cproton-git", &backend)) ? 0 : 1;
+        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "", &backend)) ? 0 : 1;
     case OP_QUERY:
         return (queryPkgs(&backend)) ? 0 : 1;
     case OP_SYSUPGRADE:

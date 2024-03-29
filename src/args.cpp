@@ -97,6 +97,10 @@ int parsearg_sync(int opt)
 		case 'y':
 			(op.op_s_sync)++;
 			break;
+		case OP_SEARCH:
+		case 's':
+			(op.op_s_search)++;
+			break;
 		default:
 			return 1;
 	}

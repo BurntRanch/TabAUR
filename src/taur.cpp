@@ -1,10 +1,12 @@
 // Functions for TabAUR, These include printing stuff and others.
 // main.cpp simply pieces each function together to make the program work.
-#include "args.hpp"
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
-using std::filesystem::path;
+
+#include <iostream>
+
+namespace fs = std::filesystem;
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
@@ -500,7 +502,9 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
 
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
+vector<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
+    if (query.empty())
+        return vector<TaurPkg_t>();
     // link to AUR API
     cpr::Url            url(("https://aur.archlinux.org/rpc/v5/search/" + cpr::util::urlEncode(query) + "?by=name"));
     cpr::Response       r = cpr::Get(url);
@@ -518,60 +522,14 @@ optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
 
     size_t            count = aurPkgs.size() + pacPkgs.size();
 
-    db_colors         db_color;
-    string            dbColorStr;
+    vector<TaurPkg_t> combined;
 
-    if (count == 0) {
-        return {};
-    } else if (count == 1) {
-        return aurPkgs.size( )>= 1 ? this->fetch_pkg(aurPkgs[0].name, useGit) : pacPkgs[0];
-    } else if (count > 1) {
-        log_printf(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
-        string input;
-        do {
-            // CTRL-D
-            if (!std::cin)
-                return {};
+    combined.reserve(count);
 
-            if (!input.empty())
-                log_printf(LOG_WARN, "Invalid input!");
+    if (!aurPkgs.empty())
+        combined.insert(combined.end(), aurPkgs.begin(), aurPkgs.end());
+    if (!pacPkgs.empty())
+        combined.insert(combined.end(), pacPkgs.begin(), pacPkgs.end());
 
-            for (size_t i = 0; i < aurPkgs.size(); i++)
-                std::cout 
-                    << MAGENTA << i
-                    << " " << BOLDBLUE << "aur/" << BOLD << aurPkgs[i].name
-                    << " " << BOLDGREEN << aurPkgs[i].version
-                    << "\n    " << NOCOLOR << BOLD << aurPkgs[i].desc
-                    << NOCOLOR <<
-                std::endl;
-
-            for (size_t i = 0; i < pacPkgs.size(); i++) {
-                if (pacPkgs[i].db_name == "extra")
-                    dbColorStr = db_color.extra;
-                else if (pacPkgs[i].db_name == "multilib")
-                    dbColorStr = db_color.multilib;
-                else
-                    dbColorStr = db_color.core;
-
-                std::cout
-                    << MAGENTA << i + aurPkgs.size()
-                    << " " << dbColorStr << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
-                    << " " << BOLDGREEN << pacPkgs[i].version
-                    << "\n    " << NOCOLOR << BOLD << pacPkgs[i].desc
-		            << NOCOLOR <<
-                std::endl;
-            }
-            std::cout << "Choose a package to download: ";
-            std::cin >> input;
-        } while (!is_number(input) || (size_t)std::stoi(input) >= count);
-
-        size_t selected = std::stoi(input);
-
-        if (selected >= aurPkgs.size())
-            return pacPkgs[selected - aurPkgs.size()];
-        else
-            return this->fetch_pkg(aurPkgs[selected].name, useGit);
-    }
-
-    return {};
+    return combined;
 }

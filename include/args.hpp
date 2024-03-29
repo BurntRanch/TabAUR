@@ -23,13 +23,15 @@ enum {
     OP_SYSUPGRADE,
     OP_NOCOLOR,
     OP_COLOR,
-    OP_DEBUG
+    OP_DEBUG,
+    OP_SEARCH,
 };
 
 struct Operation_t {
     u_short op;
     u_short op_s_sync;
     u_short op_s_upgrade;
+    u_short op_s_search;
     u_short op_s_pacman;
 
     bool    requires_root = false;
