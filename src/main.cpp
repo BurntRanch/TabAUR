@@ -183,6 +183,8 @@ bool queryPkgs(TaurBackend *backend) {
         std::cout << BOLD << pkgs[i] << " " << BOLDGREEN << pkgs_ver[i] << std::endl;
     }
 
+    std::cout << NOCOLOR;
+
     return true;
 }
 
