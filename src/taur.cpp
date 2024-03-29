@@ -57,11 +57,11 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
+    vector<string>          depends;
     if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
         const rapidjson::Value& dependsArray     = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
-        vector<string>          depends;
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
         for (size_t i = 0; i < makeDependsArray.Size(); i++) {
@@ -69,17 +69,12 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                 continue;
             depends.push_back(makeDependsArray[i].GetString());
         }
-
-        return (TaurPkg_t){.name    = pkgJson["Name"].GetString(),
-                           .version = pkgJson["Version"].GetString(),
-                           .url     = getUrl(pkgJson, returnGit),
-                           .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
-                           .depends = depends};
     }
     return (TaurPkg_t){.name    = pkgJson["Name"].GetString(),
                        .version = pkgJson["Version"].GetString(),
                        .url     = getUrl(pkgJson, returnGit),
-                       .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : ""};
+                       .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
+                       .depends = depends};
 }
 
 optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
@@ -327,7 +322,6 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     for (size_t i = 0; i < pkgs.size(); i++)
         pkgNames.push_back(pkgs[i].name);
 
-    // we don't care about url so lets set useGit to true
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
 
     int updatedPkgs = 0;

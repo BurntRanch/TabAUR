@@ -150,22 +150,81 @@ bool is_number(const string& s) {
     return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
+bool taur_read_exec(vector<const char*> cmd, string *output) {
+    cmd.push_back(nullptr);
+    int pipeout[2];
+
+    if (pipe(pipeout) < 0) {
+        log_printf(LOG_ERROR, "pipe() failed: %s", strerror(errno));
+        exit(127);
+    }
+
+    int pid = fork();
+    
+    if (pid > 0) { // we wait for the command to finish then start executing the rest
+        close(pipeout[1]);
+
+        int status;
+        waitpid(pid, &status, 0); // Wait for the child to finish
+
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            // read stdout
+            if (output) {
+                char c;
+                while (read(pipeout[0], &c, 1) == 1) {
+                    (*output) += c;
+                }
+            }
+
+            close(pipeout[0]);
+
+            return true;
+        }
+    } else if (pid == 0) {
+        if (dup2(pipeout[1], STDOUT_FILENO) == -1)
+            exit(127);
+        
+        close(pipeout[0]);
+        close(pipeout[1]);
+
+        execvp(cmd[0], const_cast<char* const*>(cmd.data()));
+
+        log_printf(LOG_ERROR, "An error has occurred: %s", strerror(errno));
+        exit(127);
+    } else {
+        log_printf(LOG_ERROR, "fork() failed: %s", strerror(errno));
+
+        close(pipeout[0]);
+        close(pipeout[1]);
+
+        exit(127);
+    }
+
+    close(pipeout[0]);
+    close(pipeout[1]);
+
+    return false;
+}
+
 bool taur_exec(vector<const char*> cmd) {
     cmd.push_back(nullptr);
+
     int pid = fork();
 
     if (pid < 0) {
         log_printf(LOG_ERROR, "fork() failed: %s", strerror(errno));
         exit(127);
     }
+
     if (pid == 0) {
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
-        log_printf(LOG_ERROR, "An error as occured: %s", strerror(errno));
+
+        log_printf(LOG_ERROR, "An error has occurred: %s", strerror(errno));
         exit(127);
-    }
-    if (pid > 0) { // we wait for the command to finish then start executing the rest
+    } else if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
         waitpid(pid, &status, 0); // Wait for the child to finish
+
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
         else {
@@ -176,6 +235,7 @@ bool taur_exec(vector<const char*> cmd) {
             exit(127);
         }
     }
+
     return false;
 }
 
