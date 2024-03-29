@@ -15,6 +15,7 @@ struct TaurPkg_t;
 
 enum log_level {
     LOG_ERROR,
+    LOG_FATAL,
     LOG_WARN,
     LOG_INFO,
     LOG_DEBUG

@@ -248,7 +248,7 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path) {
     taur_exec({makepkg_bin, "--nobuild", "-fs", "-C", "--ignorearch"});
 
     string built_pkg = makepkg_list(pkg_name, extracted_path);
-    log_printf(LOG_DEBUG, "built_pkg = %s", built_pkg.c_str());
+    log_printf(LOG_DEBUG, "built_pkg = %s\n", built_pkg.c_str());
     
     if (!fs::exists(built_pkg)) {
         log_printf(LOG_DEBUG, "running %s -f --noconfirm --noextract --noprepare --holdver --ignorearch -c\n", makepkg_bin);
@@ -376,7 +376,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         if (!pkgrel.empty())
             versionInfo += "-" + pkgrel;
 
-        log_printf(LOG_DEBUG, "pkg %s versions: local %s vs online %s", pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(),
+        log_printf(LOG_DEBUG, "pkg %s versions: local %s vs online %s\n", pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(),
                    onlinePkgs[i].version.c_str());
 
         if (!alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))

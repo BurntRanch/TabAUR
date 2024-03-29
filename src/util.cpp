@@ -19,23 +19,29 @@ bool hasStart(string const& fullString, std::string const& start) {
 
 void log_printf(int log, string fmt, ...) {
     va_list args;
+    // https://stackoverflow.com/questions/2273330/restore-the-state-of-stdcout-after-manipulating-it
+    std::ios_base::fmtflags f( std::cout.flags() );
     va_start(args, fmt);
-    switch(log){
+    switch(log) {
         case LOG_ERROR:
-            std::cerr << BOLDRED << "====[ ERROR ]====" << std::endl << BOLD; break;
+            std::cerr << BOLDRED << "ERROR: " << RED; break;
         case LOG_WARN:
-            std::cout << BOLDYELLOW << "Warning: " << BOLD; break;
+            std::cout << BOLDYELLOW << "Warning: " << YELLOW; break;
+        case LOG_FATAL:
+            std::cerr << BOLDRED << "====[ FATAL ]====" << std::endl; break;
         case LOG_INFO:
-            std::cout << BOLDBLUE << "Info: " << BOLD; break;
+            std::cout << BOLDBLUE << "Info: " << BLUE; break;
         case LOG_DEBUG:
             if (config->debug)
-                std::cout << BOLDMAGENTA << "[DEBUG]: " << BOLD;
+                std::cout << BOLDMAGENTA << "[DEBUG]: " << MAGENTA;
             else
                 return;
     }
     vprintf(fmt.c_str(), args);
     va_end(args);
-    std::cout << NOCOLOR << std::endl;
+    std::cout << NOCOLOR;
+    std::cout.flags( f );
+    std::cout.flush();
 }
 
 bool isInvalid(char c) {
@@ -234,10 +240,9 @@ bool taur_exec(vector<const char*> cmd) {
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
         else {
-            std::cerr << BOLDRED << "====[ ERROR ]====" << std::endl << BOLD << "Failed to execute the command: " << NOCOLOR;
-            for(auto& i : cmd)
-                std::cout << i << " ";
-            std::cout << NOCOLOR << std::endl;
+            log_printf(LOG_ERROR, "Failed to execute the command: ");
+            for(auto& str : cmd)
+                std::cout << str << " ";
             exit(127);
         }
     }
@@ -247,13 +252,13 @@ bool taur_exec(vector<const char*> cmd) {
 
 string getColorFromDBName(string db_name) {
     if (db_name == "aur")
-        return db_color_aur;
+        return BOLDBLUE;
     else if (db_name == "extra")
-        return db_color_extra;
+        return BOLDGREEN;
     else if (db_name == "multilib")
-        return db_color_multilib;
+        return BOLDCYAN;
     else
-        return db_color_core;
+        return BOLDYELLOW;
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
