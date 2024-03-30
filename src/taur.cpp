@@ -4,8 +4,6 @@
 #include "taur.hpp"
 #include "config.hpp"
 
-#include <iostream>
-
 namespace fs = std::filesystem;
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
@@ -73,11 +71,18 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
             depends.push_back(makeDependsArray[i].GetString());
         }
     }
-    return (TaurPkg_t){.name    = pkgJson["Name"].GetString(),
+
+    TaurPkg_t out =   {.name    = pkgJson["Name"].GetString(),
                        .version = pkgJson["Version"].GetString(),
                        .url     = getUrl(pkgJson, returnGit),
                        .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
                        .depends = depends};
+
+    log_printf(LOG_DEBUG, "parsePkg.name = %s\n", out.name.c_str());
+    log_printf(LOG_DEBUG, "parsePkg.depends = ");
+    print_vec(out.depends);
+    
+    return out;
 }
 
 optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
@@ -245,14 +250,14 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path) {
     taur_exec({makepkg_bin, "--verifysource", "-f", "-Cc"});
 
     log_printf(LOG_DEBUG, "running %s --nobuild -fd -C --ignorearch\n", makepkg_bin);
-    taur_exec({makepkg_bin, "--nobuild", "-fs", "-C", "--ignorearch"});
+    taur_exec({makepkg_bin, "--nobuild", "-fd", "-C", "--ignorearch"});
 
     string built_pkg = makepkg_list(pkg_name, extracted_path);
     log_printf(LOG_DEBUG, "built_pkg = %s\n", built_pkg.c_str());
     
     if (!fs::exists(built_pkg)) {
-        log_printf(LOG_DEBUG, "running %s -f --noconfirm --noextract --noprepare --holdver --ignorearch -c\n", makepkg_bin);
-        taur_exec({makepkg_bin, "-f", "--noconfirm", "--noextract", "--noprepare", "--holdver", "--ignorearch", "-c"});   
+        log_printf(LOG_DEBUG, "running %s -fs --noconfirm --noextract --noprepare --holdver --ignorearch -c\n", makepkg_bin);
+        taur_exec({makepkg_bin, "-fs", "--noconfirm", "--noextract", "--noprepare", "--holdver", "--ignorearch", "-c"});   
     }
     else
         log_printf(LOG_INFO, "%s exists already, no need to build\n", built_pkg.c_str());
@@ -263,15 +268,19 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path) {
 
 bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool useGit){
     vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
+    log_printf(LOG_DEBUG, "pkg.name = %s\n", pkg.name.c_str());
+    log_printf(LOG_DEBUG, "pkg.depends = ");
+    print_vec(pkg.depends);
+    
     for (size_t i = 0; i < pkg.depends.size(); i++) {
+        
         optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg.depends[i], useGit);
-
         if (!oDepend)
             continue;
 
         TaurPkg_t depend = oDepend.value();
 
-        log_printf(LOG_DEBUG, "pkg = %s -- pkg.depends = %s\n", pkg.name[i], pkg.depends[i].c_str());
+        log_printf(LOG_DEBUG, "pkg = %s -- pkg.depends = %s\n", depend.name[i], depend.depends[i].c_str());
 
         bool alreadyExists = false;
         for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
@@ -281,7 +290,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool 
         if (alreadyExists)
             continue;
 
-        log_printf(LOG_INFO, "Downloading dependency %s.\n", depend.name.c_str());
+        log_printf(LOG_INFO, "Downloading dependency %s\n", depend.name.c_str());
 
         string filename = path(this->config.cacheDir) / depend.url.substr(depend.url.rfind("/") + 1);
 
@@ -342,6 +351,10 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
                 break;
             }
         }
+
+        log_printf(LOG_DEBUG, "onlinePkgs.name = %s\n", onlinePkgs[i].name.c_str());
+        log_printf(LOG_DEBUG, "onlinePkgs.depends = ");
+        print_vec(onlinePkgs[i].depends);
 
         if (!found) {
             log_printf(LOG_WARN, "We couldn't find %s in the local pkg database, This shouldn't happen.\n", onlinePkgs[i].name.c_str());

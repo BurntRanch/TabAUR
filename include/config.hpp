@@ -1,11 +1,14 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
 
+#include <alpm.h>
 #define TOML_HEADER_ONLY 0
 #include "toml.hpp"
-#include "util.hpp"
 
 using std::string;
+
+// so we don't need to include util.hpp for getConfigValue()
+string  expandVar(string& str);
 
 class Config {
 public:

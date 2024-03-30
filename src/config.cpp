@@ -3,7 +3,6 @@
 #include "util.hpp"
 #include "ini.h"
 
-#include <iostream>
 #include <filesystem>
 
 using std::getenv;

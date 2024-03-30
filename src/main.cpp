@@ -1,10 +1,8 @@
-#include <vector>
 #define BRANCH "libalpm-test"
 #define VERSION "0.1.0"
 
 #include <stdbool.h>
 #include <signal.h>
-#include <iostream>
 
 #include "util.hpp"
 #include "args.hpp"
@@ -90,7 +88,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
         return true;
     }
 
-    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs);
+    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, (*backend), useGit);
 
     if (!oPkg)
         return false;

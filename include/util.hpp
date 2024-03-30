@@ -4,18 +4,19 @@
 #include <alpm.h>
 #include <string>
 #include <vector>
-#include <optional>
-#include <vector>
+#include <iostream>
+
+#include "config.hpp"
 
 using std::string;
 using std::vector;
-struct TaurPkg_t;
 // taken from pacman
 #define _(str) (char*)str
+struct TaurPkg_t;
+class TaurBackend;
 
 enum log_level {
     LOG_ERROR,
-    LOG_FATAL,
     LOG_WARN,
     LOG_INFO,
     LOG_DEBUG
@@ -38,6 +39,16 @@ string getColorFromDBName(string db_name);
 std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
+
+template <typename T>
+void print_vec(std::vector<T> vec) {
+    if(!config->debug)
+        return;
+
+    for(auto& i : vec)
+        std::cout << i << " ";
+    std::cout << std::endl;
+}
 
 template <typename T>
 T sanitize(T beg, T end) {

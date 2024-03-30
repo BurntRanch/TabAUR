@@ -11,8 +11,7 @@
 #include <cpr/cpr.h>
 #include <sys/wait.h>
 
-#include "util.hpp"
-#include "config.hpp"
+class Config;
 
 using std::string;
 using std::filesystem::path;
@@ -25,7 +24,7 @@ struct TaurPkg_t {
     string         url;
     string         desc;
     vector<string> depends;
-    string         db_name;
+    string         db_name = "aur";
 };
 
 class TaurBackend {

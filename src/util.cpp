@@ -2,8 +2,6 @@
 #include "config.hpp"
 #include "taur.hpp"
 
-#include <iostream>
-
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, std::string const& ending) {
     if (ending.length() > fullString.length())
@@ -27,8 +25,6 @@ void log_printf(int log, string fmt, ...) {
             std::cerr << BOLDRED << "ERROR: " << RED; break;
         case LOG_WARN:
             std::cout << BOLDYELLOW << "Warning: " << YELLOW; break;
-        case LOG_FATAL:
-            std::cerr << BOLDRED << "====[ FATAL ]====" << std::endl; break;
         case LOG_INFO:
             std::cout << BOLDBLUE << "Info: " << BLUE; break;
         case LOG_DEBUG:
@@ -241,8 +237,7 @@ bool taur_exec(vector<const char*> cmd) {
             return true;
         else {
             log_printf(LOG_ERROR, "Failed to execute the command: ");
-            for(auto& str : cmd)
-                std::cout << str << " ";
+            print_vec(cmd);
             exit(127);
         }
     }
@@ -263,6 +258,7 @@ string getColorFromDBName(string db_name) {
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
 void printPkgInfo(TaurPkg_t pkg, int index) {
+    log_printf(LOG_DEBUG, "pkg.db_name = %s\n", pkg.db_name.c_str());
     if (index > 0)
         std::cout 
             << MAGENTA << index << " ";
@@ -274,8 +270,11 @@ void printPkgInfo(TaurPkg_t pkg, int index) {
     std::endl;
 }
 
-optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs) {
+optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
+        log_printf(LOG_DEBUG, "askUser.url = %s\n", pkgs[0].url.c_str());
+        if(!pkgs[0].url.empty())
+            return backend.fetch_pkg(pkgs[0].name, useGit);
         return pkgs[0];
     } else if (pkgs.size() > 1) {
         log_printf(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.\n");

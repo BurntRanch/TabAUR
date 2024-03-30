@@ -1,7 +1,7 @@
 #ifndef ARGS_HPP
 #define ARGS_HPP
 
-#include <alpm_list.h>
+#include <alpm.h>
 #include <string>
 #include <sys/types.h>
 #include <vector>
