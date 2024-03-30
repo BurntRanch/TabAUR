@@ -36,7 +36,7 @@ bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft = false);
 void printPkgInfo(TaurPkg_t pkg, int index = -1);
 string getColorFromDBName(string db_name);
-std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs);
+std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
 
