@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "fmt/base.h"
+#include "fmt/ranges.h"
 #include "fmt/color.h"
 #include "config.hpp"
 
@@ -65,7 +66,8 @@ template <typename T>
 void print_vec(std::vector<T> vec) {
     if(!config->debug)
         return;
-
+    
+    // could use fmt::join, but doesn't work with vector<const char*>
     for(auto& i : vec)
         std::cout << i << " ";
     std::cout << std::endl;

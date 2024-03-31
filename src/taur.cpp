@@ -79,8 +79,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                        .depends = depends};
 
     log_printf(LOG_DEBUG, "parsePkg.name = {}\n", out.name);
-    log_printf(LOG_DEBUG, "parsePkg.depends = ");
-    print_vec(out.depends);
+    log_printf(LOG_DEBUG, "parsePkg.depends = {}\n", fmt::join(out.depends, "; "));
     
     return out;
 }
@@ -166,9 +165,9 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
         return commitTransactionAndRelease(this->config.handle);
     }
 
-    std::cout << "Choose packages to remove, (Seperate by spaces, type * to remove all):" << std::endl;
+    fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
     for (size_t i = 0; i < packages.size(); i++)
-        std::cout << "[" << i << "] " << alpm_pkg_get_name(packages[i]) << std::endl;
+        fmt::println("[{}] {}", i, alpm_pkg_get_name(packages[i]));
 
     string included;
     std::cin >> included;
@@ -269,8 +268,7 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path) {
 bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool useGit){
     vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
     log_printf(LOG_DEBUG, "pkg.name = {}\n", pkg.name);
-    log_printf(LOG_DEBUG, "pkg.depends = ");
-    print_vec(pkg.depends);
+    log_printf(LOG_DEBUG, "pkg.depends = {}\n", fmt::join(pkg.depends, "; "));
     
     for (size_t i = 0; i < pkg.depends.size(); i++) {
         
@@ -353,8 +351,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         }
 
         log_printf(LOG_DEBUG, "onlinePkgs.name = {}\n", onlinePkgs[i].name);
-        log_printf(LOG_DEBUG, "onlinePkgs.depends = ");
-        print_vec(onlinePkgs[i].depends);
+        log_printf(LOG_DEBUG, "onlinePkgs.depends = {}\n", fmt::join(onlinePkgs[i].depends, "; "));
 
         if (!found) {
             log_printf(LOG_WARN, "We couldn't find {} in the local pkg database, This shouldn't happen.\n", onlinePkgs[i].name);

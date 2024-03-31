@@ -8,9 +8,6 @@
 #include "args.hpp"
 #include "taur.hpp"
 
-using std::cout;
-using std::endl;
-
 std::unique_ptr<Config> config;
 
 void usage(int op) {
@@ -26,17 +23,18 @@ options:
     taur {-T --deptest}  [options] [package(s)]
     taur {-U --upgrade}  [options] <file(s)>
     )#";
-    cout << "TabAUR usage: taur <op> [...]" << endl;
+
+    fmt::println("TabAUR usage: taur <op> [...]");
     if(op == OP_MAIN)
-        cout << help_op << endl;
+        fmt::println(help_op);
     else if (op == OP_SYNC)
-        cout << "-S,--sync test" << endl;
-    cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl << endl;
+        fmt::println("-S,--sync test");
+    fmt::println("TabAUR will assume -Syu if you pass no arguments to it.\n");
     
     if (config->secretRecipe) {
         log_printf(LOG_INFO, "Loading secret recipe...\n");
         for (auto const& i : secret) {
-            cout << i << endl;
+            fmt::println(i);
             usleep(650000); // 0.65 seconds
         }
     }
@@ -178,10 +176,10 @@ bool queryPkgs(TaurBackend *backend) {
     for (size_t i = 0; i < pkgs.size(); i++) {
         if (!pkgs[i])
             continue;
-        std::cout << BOLD << pkgs[i] << " " << BOLDGREEN << pkgs_ver[i] << std::endl;
+        fmt::println("{}{} {}{}", BOLD, pkgs[i], BOLDGREEN, pkgs_ver[i]);
     }
 
-    std::cout << NOCOLOR;
+    fmt::print(NOCOLOR);
 
     return true;
 }
@@ -294,7 +292,7 @@ int main(int argc, char* argv[]) {
     if (parseargs(argc, argv))
         return 1;
 
-    if (op.requires_root && geteuid() != 0) {
+    /*if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.\n");
         return 1;
     // doesn't need root, still gets it anyway.
@@ -312,7 +310,7 @@ int main(int argc, char* argv[]) {
                 config->initializeVars();
             }
         }
-    }
+    }*/
 
     switch (op.op) {
     case OP_SYNC:

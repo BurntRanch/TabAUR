@@ -51,15 +51,18 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
 
     log_printf(LOG_INFO, "Changes to be made:\n");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next)
-        std::cout << "    " << BOLDGREEN << "++ " << NOCOLOR << alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)) << std::endl;
+        fmt::println("    {}++ {}{}", BOLDGREEN, NOCOLOR, alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next)
-        std::cout << "    " << BOLDRED << "-- " << NOCOLOR << alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)) << std::endl;
+        fmt::println("    {}-- {}{}", BOLDRED, NOCOLOR, alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
 
-    std::cout << "Would you like to proceed with this transaction? [Y/n] ";
+    fmt::print("Would you like to proceed with this transaction? [Y/n] ");
     
     string response;
     std::cin >> response;
+
+    if(!std::cin) // CTRL-D
+        return false;
 
     for (char &c : response) { 
         c = tolower(c); 
@@ -212,7 +215,7 @@ bool taur_exec(vector<const char*> cmd) {
             return true;
         else {
             log_printf(LOG_ERROR, "Failed to execute the command: ");
-            print_vec(cmd);
+            print_vec(cmd); // fmt::join() doesn't work with vector<const char*>
             exit(127);
         }
     }
@@ -233,15 +236,9 @@ string getColorFromDBName(string db_name) {
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
 void printPkgInfo(TaurPkg_t pkg, int index) {
-    if (index > 0)
-        std::cout 
-            << MAGENTA << index << " ";
-    std::cout
-        << getColorFromDBName(pkg.db_name) << pkg.db_name << "/" << BOLD << pkg.name
-        << " " << BOLDGREEN << pkg.version
-        << "\n    " << NOCOLOR << pkg.desc
-        << NOCOLOR <<
-    std::endl;
+    if (index > -1)
+        fmt::print("{}{} ", MAGENTA, index);
+    fmt::println("{}{}/{}{} {}{}{}\n    {}", getColorFromDBName(pkg.db_name), pkg.db_name, BOLD, pkg.name, BOLDGREEN, pkg.version, NOCOLOR, pkg.desc);
 }
 
 optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
@@ -266,7 +263,7 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
             for (size_t i = 0; i < pkgs.size(); i++)
                 printPkgInfo(pkgs[i], i);
 
-            std::cout << "Choose a package to download: ";
+            fmt::print("Choose a package to download: ");
             std::cin >> input;
         } while (!is_number(input) || (size_t)std::stoi(input) >= pkgs.size());
 
