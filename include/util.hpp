@@ -1,11 +1,14 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
+#define FMT_HEADER_ONLY 1
 
 #include <alpm.h>
 #include <string>
 #include <vector>
 #include <iostream>
 
+#include "fmt/base.h"
+#include "fmt/color.h"
 #include "config.hpp"
 
 using std::string;
@@ -22,10 +25,9 @@ enum log_level {
     LOG_DEBUG
 };
 
-// https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
+
 bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);
-void log_printf(int log, string fmt, ...);
 string expandVar(string& str);
 bool is_number(const string& s);
 bool taur_read_exec(std::vector<const char*> cmd, string *output);
@@ -39,6 +41,25 @@ string getColorFromDBName(string db_name);
 std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
+
+template <typename... Args>
+void log_printf(int log, string fmt, Args&&... args) {
+    switch(log) {
+        case LOG_ERROR:
+            fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::red), "ERROR: "); break;
+        case LOG_WARN:
+            fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::yellow), "Warning: "); break;
+        case LOG_INFO:
+            fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::blue), "Info: "); break;
+        case LOG_DEBUG:
+            if (config->debug)
+                fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::magenta), "[DEBUG]: ");
+            else
+                return;
+            break;
+    }
+    fmt::print(fmt, std::forward<Args>(args)...);
+}
 
 template <typename T>
 void print_vec(std::vector<T> vec) {

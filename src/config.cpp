@@ -15,7 +15,7 @@ Config::Config() {
     string configDir = this->getConfigDir();
     string filename  = configDir + "/config.toml";
     if (!fs::exists(configDir)) {
-        log_printf(LOG_WARN, "TabAUR config folder was not found, Creating folders at %s!\n", configDir.c_str());
+        log_printf(LOG_WARN, "TabAUR config folder was not found, Creating folders at {}!\n", configDir);
         fs::create_directories(configDir);
     }
     if (!fs::exists(filename)) {
@@ -30,7 +30,7 @@ Config::Config() {
 
     string cacheDir = this->getCacheDir();
     if (!fs::exists(cacheDir)) {
-        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at %s!\n", cacheDir.c_str());
+        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", cacheDir);
         fs::create_directories(cacheDir);
     }
 }
@@ -192,7 +192,7 @@ void Config::loadPacmanConfigFile(string filename) {
 
         bool serversStatus = addServers(db, ini[section]["Include"], section);
         if (!serversStatus)
-            log_printf(LOG_ERROR, "Failed to open mirrors file! (%s)\n", ini[section]["Include"].c_str());
+            log_printf(LOG_ERROR, "Failed to open mirrors file! ({})\n", ini[section]["Include"]);
 
         alpm_db_set_usage(db, ALPM_DB_USAGE_ALL);
 

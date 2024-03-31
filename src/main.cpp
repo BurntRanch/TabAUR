@@ -43,13 +43,13 @@ options:
 }
 
 bool execPacman(int argc, char* argv[]) {
-    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: %d)\n", argc);
+    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: {:d})\n", argc);
     char* args[argc+3]; // sudo + pacman + null terminator
   
     args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
     for (int i = 0; i < argc; ++i) {
-        log_printf(LOG_DEBUG, "args[%d] = argv[%d] (%s)\n", i + 2, i, argv[i]);
+        log_printf(LOG_DEBUG, "args[{:d}] = argv[{:d}] ({})\n", i + 2, i, argv[i]);
         args[i+2] = argv[i];
     }
   
@@ -264,9 +264,9 @@ int parseargs(int argc, char* argv[]) {
 			if(result == 1) {
 			/* global option parsing failed, abort */
 				if(opt < 100) {
-					log_printf(LOG_ERROR, "invalid option '-%c'\n", opt);
+					log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
 				} else {
-					log_printf(LOG_ERROR, "invalid option '--%s'\n", opts[option_index].name);
+					log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);
 				}
 			}
 			return 1;

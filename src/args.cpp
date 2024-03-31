@@ -11,8 +11,8 @@ void invalid_opt(int used, string opt1, string opt2)
 {
 	if(used) {
 		log_printf(LOG_ERROR,
-				"invalid option: '%s' and '%s' may not be used together",
-				opt1.c_str(), opt2.c_str());
+				"invalid option: '{}' and '{}' may not be used together",
+				opt1, opt2);
 	}
 }
 

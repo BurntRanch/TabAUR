@@ -15,31 +15,6 @@ bool hasStart(string const& fullString, std::string const& start) {
     return (0 == fullString.compare(0, start.length(), start));
 }
 
-void log_printf(int log, string fmt, ...) {
-    va_list args;
-    // https://stackoverflow.com/questions/2273330/restore-the-state-of-stdcout-after-manipulating-it
-    std::ios_base::fmtflags f( std::cout.flags() );
-    va_start(args, fmt);
-    switch(log) {
-        case LOG_ERROR:
-            std::cerr << BOLDRED << "ERROR: " << RED; break;
-        case LOG_WARN:
-            std::cout << BOLDYELLOW << "Warning: " << YELLOW; break;
-        case LOG_INFO:
-            std::cout << BOLDBLUE << "Info: " << BLUE; break;
-        case LOG_DEBUG:
-            if (config->debug)
-                std::cout << BOLDMAGENTA << "[DEBUG]: " << MAGENTA;
-            else
-                return;
-    }
-    vprintf(fmt.c_str(), args);
-    va_end(args);
-    std::cout << NOCOLOR;
-    std::cout.flags( f );
-    std::cout.flush();
-}
-
 bool isInvalid(char c) {
     return !isprint(c);
 }
@@ -93,7 +68,7 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     if (!response.empty() && response != "y") {
         bool releaseStatus = alpm_trans_release(handle) == 0;
         if (!releaseStatus)
-            log_printf(LOG_ERROR, "Failed to release transaction (%s).\n", alpm_strerror(alpm_errno(handle)));
+            log_printf(LOG_ERROR, "Failed to release transaction ({}).\n", alpm_strerror(alpm_errno(handle)));
 
         log_printf(LOG_INFO, "Cancelled transaction.\n");
         return soft;
@@ -101,15 +76,15 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
 
     bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
     if (!prepareStatus)
-        log_printf(LOG_ERROR, "Failed to prepare transaction (%s).\n", alpm_strerror(alpm_errno(handle)));
+        log_printf(LOG_ERROR, "Failed to prepare transaction ({}).\n", alpm_strerror(alpm_errno(handle)));
 
     bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
     if (!commitStatus)
-        log_printf(LOG_ERROR, "Failed to commit transaction (%s).\n", alpm_strerror(alpm_errno(handle)));
+        log_printf(LOG_ERROR, "Failed to commit transaction ({}).\n", alpm_strerror(alpm_errno(handle)));
 
     bool releaseStatus = alpm_trans_release(handle) == 0;
     if (!releaseStatus)
-        log_printf(LOG_ERROR, "Failed to release transaction (%s).\n", alpm_strerror(alpm_errno(handle)));
+        log_printf(LOG_ERROR, "Failed to release transaction ({}).\n", alpm_strerror(alpm_errno(handle)));
 
 
     if (prepareStatus && commitStatus && releaseStatus) {
@@ -119,7 +94,7 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
 
     return false;
 }
-     
+
 std::string expandVar(std::string& str) {
     const char* env;
     if (str[0] == '~') {
@@ -129,7 +104,7 @@ std::string expandVar(std::string& str) {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
         if (env == nullptr) {
-            log_printf(LOG_ERROR, "No such enviroment variable: %s\n", str.c_str());
+            log_printf(LOG_ERROR, "No such enviroment variable: {}\n", str);
             exit(-1);
         }
         str = std::string(env);
@@ -164,7 +139,7 @@ bool taur_read_exec(vector<const char*> cmd, string *output) {
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
-        log_printf(LOG_ERROR, "pipe() failed: %s\n", strerror(errno));
+        log_printf(LOG_ERROR, "pipe() failed: {}\n", strerror(errno));
         exit(127);
     }
 
@@ -198,10 +173,10 @@ bool taur_read_exec(vector<const char*> cmd, string *output) {
 
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
 
-        log_printf(LOG_ERROR, "An error has occurred: %s\n", strerror(errno));
+        log_printf(LOG_ERROR, "An error has occurred: {}\n", strerror(errno));
         exit(127);
     } else {
-        log_printf(LOG_ERROR, "fork() failed: %s\n", strerror(errno));
+        log_printf(LOG_ERROR, "fork() failed: {}\n", strerror(errno));
 
         close(pipeout[0]);
         close(pipeout[1]);
@@ -221,13 +196,13 @@ bool taur_exec(vector<const char*> cmd) {
     int pid = fork();
 
     if (pid < 0) {
-        log_printf(LOG_ERROR, "fork() failed: %s\n", strerror(errno));
+        log_printf(LOG_ERROR, "fork() failed: {}\n", strerror(errno));
         exit(127);
     }
 
     if (pid == 0) {
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
-        log_printf(LOG_ERROR, "An error as occured: %s\n", strerror(errno));
+        log_printf(LOG_ERROR, "An error as occured: {}\n", strerror(errno));
         exit(127);
     } else if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
@@ -258,21 +233,20 @@ string getColorFromDBName(string db_name) {
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
 void printPkgInfo(TaurPkg_t pkg, int index) {
-    log_printf(LOG_DEBUG, "pkg.db_name = %s\n", pkg.db_name.c_str());
     if (index > 0)
         std::cout 
             << MAGENTA << index << " ";
     std::cout
         << getColorFromDBName(pkg.db_name) << pkg.db_name << "/" << BOLD << pkg.name
         << " " << BOLDGREEN << pkg.version
-        << "\n    " << NOCOLOR << BOLD << pkg.desc
+        << "\n    " << NOCOLOR << pkg.desc
         << NOCOLOR <<
     std::endl;
 }
 
 optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
-        log_printf(LOG_DEBUG, "askUser.url = %s\n", pkgs[0].url.c_str());
+        log_printf(LOG_DEBUG, "askUser.url = {}\n", pkgs[0].url);
         if(!pkgs[0].url.empty())
             return backend.fetch_pkg(pkgs[0].name, useGit);
         return pkgs[0];
