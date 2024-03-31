@@ -36,7 +36,7 @@ int parsearg_op(int opt, int dryrun)
 			op.op = (op.op != OP_MAIN ? 0 : OP_QUERY); break;
 		case 'R':
 			if(dryrun) break;
-			op.op = (op.op != OP_MAIN ? 0 : OP_REM); break;
+			op.op = (op.op != OP_MAIN ? 0 : OP_REM); op.requires_root = true; break;
 		case 'S':
 			if(dryrun) break;
 			op.op = (op.op != OP_MAIN ? 0 : OP_SYNC); break;

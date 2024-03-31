@@ -243,10 +243,7 @@ void printPkgInfo(TaurPkg_t pkg, int index) {
 
 optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
-        log_printf(LOG_DEBUG, "askUser.url = {}\n", pkgs[0].url);
-        if(!pkgs[0].url.empty())
-            return backend.fetch_pkg(pkgs[0].name, useGit);
-        return pkgs[0];
+        return pkgs[0].url.empty() ? pkgs[0] : backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]);
     } else if (pkgs.size() > 1) {
         log_printf(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.\n");
         string input;
@@ -269,7 +266,7 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
 
         size_t selected = std::stoi(input);
 
-        return pkgs[selected];
+        return pkgs[selected].url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]);
     }
 
     return {};
