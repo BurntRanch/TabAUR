@@ -231,6 +231,10 @@ string makepkg_list(string pkg_name, string path) {
     string arch = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD");
     string pkgext = shell_exec("grep 'PKGEXT=' /etc/makepkg.conf | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
     
+    // remove quotes
+    if (arch == "'any'")
+        arch = "any";
+
     ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
     return ret;
 }
