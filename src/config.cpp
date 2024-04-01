@@ -103,6 +103,20 @@ void Config::loadConfigFile(string filename) {
     this->loadPacmanConfigFile(this->getConfigValue("pacman.ConfigFile", "/etc/pacman.conf"));
 }
 
+void Config::loadThemeFile(string filename) {
+    try {
+        this->theme_tbl = toml::parse_file(filename);
+    } catch (const toml::parse_error& err) {
+        log_printf(LOG_ERROR, "Parsing theme.toml failed:\n");
+        std::cerr << err << std::endl;
+        exit(-1);
+    }
+}
+
+string Config::getThemeValue(string value, string fallback) {
+    return this->theme_tbl["theme"][value].value<string>().value_or(fallback);
+}
+
 void Config::loadColors() {
     if (this->colors) {
         NOCOLOR = "\033[0m";

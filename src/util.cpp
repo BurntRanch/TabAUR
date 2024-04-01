@@ -3,13 +3,13 @@
 #include "taur.hpp"
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
-bool hasEnding(string const& fullString, std::string const& ending) {
+bool hasEnding(string const& fullString, string const& ending) {
     if (ending.length() > fullString.length())
         return false;
     return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
 }
 
-bool hasStart(string const& fullString, std::string const& start) {
+bool hasStart(string const& fullString, string const& start) {
     if (start.length() > fullString.length())
         return false;
     return (0 == fullString.compare(0, start.length(), start));
@@ -98,7 +98,7 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
     return false;
 }
 
-std::string expandVar(std::string& str) {
+string expandVar(string& str) {
     const char* env;
     if (str[0] == '~') {
         env = getenv("HOME");   // it's likely impossible for not having the $HOME env var setup
@@ -110,10 +110,26 @@ std::string expandVar(std::string& str) {
             log_printf(LOG_ERROR, "No such enviroment variable: {}\n", str);
             exit(-1);
         }
-        str = std::string(env);
+        str = string(env);
     }
 
     return str;
+}
+
+fmt::rgb hexStringToColor(string hexstr) {
+    hexstr = hexstr.substr(1);
+    // convert the hexadecimal string to individual components
+    std::stringstream ss;
+    ss << std::hex << hexstr;
+
+    int intValue;
+    ss >> intValue;
+
+    int red = (intValue >> 16) & 0xFF;
+    int green = (intValue >> 8) & 0xFF;
+    int blue = intValue & 0xFF;
+    
+    return fmt::rgb(red, green, blue);
 }
 
 // http://stackoverflow.com/questions/478898/ddg#478960
@@ -272,7 +288,7 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
     return {};
 }
 
-std::vector<string> split(std::string text, char delim) {
+std::vector<string> split(string text, char delim) {
     string              line;
     std::vector<string> vec;
     std::stringstream   ss(text);

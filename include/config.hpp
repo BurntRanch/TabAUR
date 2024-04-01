@@ -4,6 +4,7 @@
 #include <alpm.h>
 #define TOML_HEADER_ONLY 0
 #include "toml.hpp"
+#include "fmt/color.h"
 
 using std::string;
 
@@ -35,19 +36,22 @@ public:
     void   loadConfigFile(string filename); 
     void   loadColors();
     void   loadPacmanConfigFile(string filename);
+    void   loadThemeFile(string filename);
     
     // stupid c++ that wants template functions in header
     template <typename T>
     T getConfigValue(string value, T fallback) {
         toml::optional<T> ret = this->tbl.at_path(value).value<T>();
         if constexpr (toml::is_string<T>) // if we want to get a value that's a string
-            return ret ? expandVar(ret.value()) : expandVar(fallback);
+            return ret.value_or(expandVar(fallback));
         else
-            return ret ? ret.value() : fallback;
+            return ret.value_or(fallback);
     }
 
+    string getThemeValue(string value, string fallback);
+
 private:
-    toml::table tbl;
+    toml::table tbl, theme_tbl;
 };
 
 extern std::unique_ptr<Config> config;
@@ -89,24 +93,24 @@ inline const string defConfig = R"#([general]
 #ConfigFile = "/etc/pacman.conf"
 )#";
 
-inline string NOCOLOR;
-inline string BOLD;
+inline fmt::rgb NOCOLOR;
+inline fmt::rgb BOLD;
 
-inline string BLACK;
-inline string GREEN;
-inline string YELLOW;
-inline string BLUE;
-inline string RED;
-inline string MAGENTA;
-inline string CYAN;
-inline string WHITE;
+inline fmt::rgb BLACK;
+inline fmt::rgb GREEN;
+inline fmt::rgb YELLOW;
+inline fmt::rgb BLUE;
+inline fmt::rgb RED;
+inline fmt::rgb MAGENTA;
+inline fmt::rgb CYAN;
+inline fmt::rgb WHITE;
 
-inline string BOLDBLACK;
-inline string BOLDGREEN;
-inline string BOLDYELLOW;
-inline string BOLDBLUE;
-inline string BOLDRED;
-inline string BOLDMAGENTA;
-inline string BOLDCYAN;
-inline string BOLDWHITE;
+inline fmt::rgb BOLDBLACK;
+inline fmt::rgb BOLDGREEN;
+inline fmt::rgb BOLDYELLOW;
+inline fmt::rgb BOLDBLUE;
+inline fmt::rgb BOLDRED;
+inline fmt::rgb BOLDMAGENTA;
+inline fmt::rgb BOLDCYAN;
+inline fmt::rgb BOLDWHITE;
 #endif

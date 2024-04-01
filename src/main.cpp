@@ -26,7 +26,7 @@ options:
 
     fmt::println("TabAUR usage: taur <op> [...]");
     if(op == OP_MAIN)
-        fmt::println(help_op);
+        fmt::print("{}", help_op);
     else if (op == OP_SYNC)
         fmt::println("-S,--sync test");
     fmt::println("TabAUR will assume -Syu if you pass no arguments to it.\n");

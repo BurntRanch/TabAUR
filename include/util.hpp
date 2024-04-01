@@ -42,6 +42,7 @@ string getColorFromDBName(string db_name);
 std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
+fmt::rgb hexStringToColor(string hexstr);
 
 template <typename... Args>
 void log_printf(int log, string fmt, Args&&... args) {
@@ -53,21 +54,20 @@ void log_printf(int log, string fmt, Args&&... args) {
         case LOG_INFO:
             fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::blue), "Info: "); break;
         case LOG_DEBUG:
-            if (config->debug)
-                fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::magenta), "[DEBUG]: ");
-            else
+            if (!config->debug)
                 return;
+            fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::magenta), "[DEBUG]: ");
             break;
     }
     fmt::print(fmt, std::forward<Args>(args)...);
 }
 
+// could use fmt::join, but doesn't work with vector<const char*>
 template <typename T>
 void print_vec(std::vector<T> vec) {
     if(!config->debug)
         return;
     
-    // could use fmt::join, but doesn't work with vector<const char*>
     for(auto& i : vec)
         std::cout << i << " ";
     std::cout << std::endl;
