@@ -162,7 +162,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
             return false;
         }
         
-        return commitTransactionAndRelease(this->config.handle);
+        return commitTransactionAndRelease(this->config);
     }
 
     fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
@@ -183,7 +183,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
             }
         }
 
-        if (!commitTransactionAndRelease(this->config.handle)) {
+        if (!commitTransactionAndRelease(this->config)) {
             log_printf(LOG_ERROR, "Failed to prepare, commit, or release alpm transaction.\n");
             return false;
         }
@@ -213,7 +213,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
         }
     }
 
-    if (!commitTransactionAndRelease(this->config.handle)) {
+    if (!commitTransactionAndRelease(this->config)) {
         log_printf(LOG_ERROR, "Failed to prepare, commit, or release alpm transaction.\n");
         return false;
     }

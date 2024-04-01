@@ -34,7 +34,6 @@ public:
     string getConfigDir();
     void   initializeVars();
     void   loadConfigFile(string filename); 
-    void   loadColors();
     void   loadPacmanConfigFile(string filename);
     void   loadThemeFile(string filename);
     
@@ -48,7 +47,7 @@ public:
             return ret.value_or(fallback);
     }
 
-    string getThemeValue(string value, string fallback);
+    fmt::rgb getThemeValue(string value, string fallback);
 
 private:
     toml::table tbl, theme_tbl;
@@ -93,24 +92,13 @@ inline const string defConfig = R"#([general]
 #ConfigFile = "/etc/pacman.conf"
 )#";
 
-inline fmt::rgb NOCOLOR;
-inline fmt::rgb BOLD;
+inline const string defTheme = R"#([theme]
+red = "#aa0000"
+green = "#00aa00"
+blue = "#0000aa"
+cyan = "#004499"
+yellow = "#aa8a00"
+magenta = "#aa00aa"
+)#";
 
-inline fmt::rgb BLACK;
-inline fmt::rgb GREEN;
-inline fmt::rgb YELLOW;
-inline fmt::rgb BLUE;
-inline fmt::rgb RED;
-inline fmt::rgb MAGENTA;
-inline fmt::rgb CYAN;
-inline fmt::rgb WHITE;
-
-inline fmt::rgb BOLDBLACK;
-inline fmt::rgb BOLDGREEN;
-inline fmt::rgb BOLDYELLOW;
-inline fmt::rgb BOLDBLUE;
-inline fmt::rgb BOLDRED;
-inline fmt::rgb BOLDMAGENTA;
-inline fmt::rgb BOLDCYAN;
-inline fmt::rgb BOLDWHITE;
 #endif

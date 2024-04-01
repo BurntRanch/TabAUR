@@ -36,10 +36,10 @@ void interruptHandler(int);
 bool taur_exec(std::vector<const char*> cmd);
 void sanitizeStr(string& str);
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
-bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft = false);
-void printPkgInfo(TaurPkg_t pkg, int index = -1);
-string getColorFromDBName(string db_name);
-std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
+bool commitTransactionAndRelease(Config &cfg, bool soft = false);
+void printPkgInfo(TaurPkg_t pkg, Config &cfg, int index = -1);
+fmt::text_style getColorFromDBName(string db_name, Config &cfg);
+std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, Config &cfg, bool useGit);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
 fmt::rgb hexStringToColor(string hexstr);
@@ -48,15 +48,15 @@ template <typename... Args>
 void log_printf(int log, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::red), "ERROR: "); break;
+            fmt::print(fmt::emphasis::bold | fmt::fg(config ? config->getThemeValue("red", "#aa0000") : hexStringToColor("#aa0000")), "ERROR: "); break;
         case LOG_WARN:
-            fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::yellow), "Warning: "); break;
+            fmt::print(fmt::emphasis::bold | fmt::fg(config ? config->getThemeValue("yellow", "#aa8a00") : hexStringToColor("#aa8a00")), "Warning: "); break;
         case LOG_INFO:
-            fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::blue), "Info: "); break;
+            fmt::print(fmt::emphasis::bold | fmt::fg(config ? config->getThemeValue("blue", "#0000aa") : hexStringToColor("#0000aa")), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(fmt::emphasis::bold | fmt::fg(fmt::color::magenta), "[DEBUG]: ");
+            fmt::print(fmt::emphasis::bold | fmt::fg(config ? config->getThemeValue("magenta", "#aa00aa") : hexStringToColor("#aa00aa")), "[DEBUG]: ");
             break;
     }
     fmt::print(fmt, std::forward<Args>(args)...);

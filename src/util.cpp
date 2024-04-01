@@ -1,6 +1,8 @@
 #include "util.hpp"
 #include "config.hpp"
+#include "fmt/color.h"
 #include "taur.hpp"
+#include <alpm.h>
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, string const& ending) {
@@ -42,7 +44,9 @@ bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
 }
 
 // soft means it won't return false (or even try) if the list is empty
-bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
+bool commitTransactionAndRelease(Config &cfg, bool soft) {
+    alpm_handle_t *handle = cfg.handle;
+
     alpm_list_t *addPkgs    = alpm_trans_get_add(handle);
     alpm_list_t *removePkgs = alpm_trans_get_remove(handle);
     alpm_list_t *combined   = alpm_list_join(addPkgs, removePkgs);
@@ -50,11 +54,16 @@ bool commitTransactionAndRelease(alpm_handle_t *handle, bool soft) {
         return true;
 
     log_printf(LOG_INFO, "Changes to be made:\n");
-    for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next)
-        fmt::println("    {}++ {}{}", BOLDGREEN, NOCOLOR, alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
+    for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
+        fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", "#00aa00")), "    ++ ");
+        fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
+    }
+        
 
-    for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next)
-        fmt::println("    {}-- {}{}", BOLDRED, NOCOLOR, alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
+    for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
+        fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("red", "#aa0000")), "    -- ");
+        fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
+    }
 
     fmt::print("Would you like to proceed with this transaction? [Y/n] ");
     
@@ -239,25 +248,28 @@ bool taur_exec(vector<const char*> cmd) {
     return false;
 }
 
-string getColorFromDBName(string db_name) {
+fmt::text_style getColorFromDBName(string db_name, Config &cfg) {
     if (db_name == "aur")
-        return BOLDBLUE;
+        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("blue", "#0000aa"));
     else if (db_name == "extra")
-        return BOLDGREEN;
+        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", "#00aa00"));
     else if (db_name == "multilib")
-        return BOLDCYAN;
+        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("cyan", "#004499"));
     else
-        return BOLDYELLOW;
+        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("yellow", "#aa8a00"));
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t pkg, int index) {
+void printPkgInfo(TaurPkg_t pkg, Config &cfg, int index) {
     if (index > -1)
-        fmt::print("{}{} ", MAGENTA, index);
-    fmt::println("{}{}/{}{} {}{}{}\n    {}", getColorFromDBName(pkg.db_name), pkg.db_name, BOLD, pkg.name, BOLDGREEN, pkg.version, NOCOLOR, pkg.desc);
+        fmt::print(fmt::fg(cfg.getThemeValue("magenta", "#aa00aa")), "{} \n", index);
+    fmt::print(getColorFromDBName(pkg.db_name, cfg), "{}/", pkg.db_name);
+    fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
+    fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", "#00aa00")), "{}\n", pkg.version);
+    fmt::println("    {}", pkg.desc);
 }
 
-optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
+optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, Config &cfg, bool useGit) {
     if (pkgs.size() == 1) {
         return pkgs[0].url.empty() ? pkgs[0] : backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]);
     } else if (pkgs.size() > 1) {
@@ -274,7 +286,7 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
                 log_printf(LOG_WARN, "Invalid input!\n");
 
             for (size_t i = 0; i < pkgs.size(); i++)
-                printPkgInfo(pkgs[i], i);
+                printPkgInfo(pkgs[i], cfg, i);
 
             fmt::print("Choose a package to download: ");
             std::cin >> input;

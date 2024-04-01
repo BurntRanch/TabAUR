@@ -1,3 +1,4 @@
+#include "fmt/color.h"
 #define BRANCH "libalpm-test"
 #define VERSION "0.1.0"
 
@@ -82,11 +83,11 @@ int installPkg(string pkgName, TaurBackend *backend) {
     // ./taur -Ss -- list only, don't install.
     if (op.op_s_search) {
         for (size_t i = 0; i < pkgs.size(); i++)
-            printPkgInfo(pkgs[i]);
+            printPkgInfo(pkgs[i], *config);
         return true;
     }
 
-    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, (*backend), useGit);
+    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, *backend, *config, useGit);
 
     if (!oPkg)
         return false;
@@ -176,10 +177,9 @@ bool queryPkgs(TaurBackend *backend) {
     for (size_t i = 0; i < pkgs.size(); i++) {
         if (!pkgs[i])
             continue;
-        fmt::println("{}{} {}{}", BOLD, pkgs[i], BOLDGREEN, pkgs_ver[i]);
+        fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
+        fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", "#00aa00")), "{}\n", pkgs_ver[i]);
     }
-
-    fmt::print(NOCOLOR);
 
     return true;
 }
