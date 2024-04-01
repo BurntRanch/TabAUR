@@ -31,7 +31,7 @@ options:
     else if (op == OP_SYNC)
         fmt::println("-S,--sync test");
     fmt::println("TabAUR will assume -Syu if you pass no arguments to it.\n");
-    
+
     if (config->secretRecipe) {
         log_printf(LOG_INFO, "Loading secret recipe...\n");
         for (auto const& i : secret) {
@@ -44,16 +44,16 @@ options:
 bool execPacman(int argc, char* argv[]) {
     log_printf(LOG_DEBUG, "Passing command to pacman! (argc: {:d})\n", argc);
     char* args[argc+3]; // sudo + pacman + null terminator
-  
+
     args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
     for (int i = 0; i < argc; ++i) {
-        log_printf(LOG_DEBUG, "args[{:d}] = argv[{:d}] ({})\n", i + 2, i, argv[i]);
+        log_printf(LOG_DEBUG, "args[{}] = argv[{}] ({})\n", i + 2, i, argv[i]);
         args[i+2] = argv[i];
     }
-  
+
     args[argc+2] = nullptr; // null-terminate the array
-  
+
     execvp(args[0], args);
 
     // If execvp returns, it means an error occurred
@@ -64,7 +64,7 @@ bool execPacman(int argc, char* argv[]) {
 int installPkg(string pkgName, TaurBackend *backend) { 
     bool            useGit   = config->useGit;
     string          cacheDir = config->cacheDir;
-    
+
     vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
 
     if (pkgs.empty() && !op.op_s_upgrade) {
@@ -167,18 +167,18 @@ bool queryPkgs(TaurBackend *backend) {
         pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
         pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
     }
-    
+
     if (config->aurOnly)
         for (; syncdbs; syncdbs = syncdbs->next)
             for (size_t i = 0; i < pkgs.size(); i++)
                 if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i]))
                     pkgs[i] = NULL; // wont be printed
-    
+
     for (size_t i = 0; i < pkgs.size(); i++) {
         if (!pkgs[i])
             continue;
         fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
-        fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", "#00aa00")), "{}\n", pkgs_ver[i]);
+        fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}\n", pkgs_ver[i]);
     }
 
     return true;
@@ -191,23 +191,23 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-	const char *optstring = "SRQVDFTUahyus";
-	static const struct option opts[] = 
+    const char *optstring = "SRQVDFTUahyus";
+    static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
-		{"files",      no_argument,       0, 'F'},
-		{"query",      no_argument,       0, 'Q'},
-		{"remove",     no_argument,       0, 'R'},
-		{"sync",       no_argument,       0, 'S'},
-		{"deptest",    no_argument,       0, 'T'}, /* used by makepkg */
-		{"upgrade",    no_argument,       0, 'U'},
-		{"version",    no_argument,       0, 'V'},
+	{"files",      no_argument,       0, 'F'},
+	{"query",      no_argument,       0, 'Q'},
+	{"remove",     no_argument,       0, 'R'},
+	{"sync",       no_argument,       0, 'S'},
+	{"deptest",    no_argument,       0, 'T'}, /* used by makepkg */
+	{"upgrade",    no_argument,       0, 'U'},
+	{"version",    no_argument,       0, 'V'},
         {"aur-only",   no_argument,       0, 'a'},
         {"help",       no_argument,       0, 'h'},
 
         {"refresh",    no_argument,       0, OP_REFRESH},
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
-        {"search", no_argument,       0, OP_SEARCH},
+        {"search",     no_argument,       0, OP_SEARCH},
         {0,0,0,0}
     };
 
@@ -220,15 +220,15 @@ int parseargs(int argc, char* argv[]) {
         }
         parsearg_op(opt, 0);
     }
-    
+
     if(op.op == 0) {
 		log_printf(LOG_ERROR, "only one operation may be used at a time\n");
 		return 1;
-	}
+    }
     if(op.help) {
 		usage(op.op);
 		exit(0);
-	}
+    }
 
     /* parse all other options */
 	optind = 1;
@@ -251,24 +251,23 @@ int parseargs(int argc, char* argv[]) {
 				result = 1;
 				break;
         }
-        
-        if(result == 0) {
-			continue;
-		}
+
+        if(result == 0)
+		continue;
 
         /* fall back to global options */
-		result = parsearg_global(opt);
-		if(result != 0) {
-			if(result == 1) {
-			/* global option parsing failed, abort */
-				if(opt < 100) {
-					log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
-				} else {
-					log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);
-				}
+	result = parsearg_global(opt);
+	if(result != 0) {
+		if(result == 1) {
+		/* global option parsing failed, abort */
+			if(opt < 100) {
+				log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
+			} else {
+				log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);
 			}
-			return 1;
 		}
+		return 1;
+	}
 
     }
 
@@ -288,11 +287,11 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, &interruptHandler);
 
     TaurBackend backend(*config);
-    
+
     if (parseargs(argc, argv))
         return 1;
 
-    /*if (op.requires_root && geteuid() != 0) {
+    if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.\n");
         return 1;
     // doesn't need root, still gets it anyway.
@@ -310,7 +309,7 @@ int main(int argc, char* argv[]) {
                 config->initializeVars();
             }
         }
-    }*/
+    }
 
     switch (op.op) {
     case OP_SYNC:

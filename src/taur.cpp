@@ -34,7 +34,7 @@ bool TaurBackend::download_tar(string url, string out_path) {
     // if this is in a directory, it will change to that directory first.
     bool isNested = out_path.find("/") != (size_t)-1;
     sanitizeStr(out_path);
-    
+
     if (isNested)
         fs::current_path(out_path.substr(0, out_path.rfind("/")));
 
@@ -77,7 +77,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                        .url     = getUrl(pkgJson, returnGit),
                        .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
                        .depends = depends};
-    
+
     return out;
 }
 
@@ -158,7 +158,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
             alpm_trans_release(this->config.handle);
             return false;
         }
-        
+
         return commitTransactionAndRelease(this->config);
     }
 

@@ -98,7 +98,14 @@ green = "#00aa00"
 blue = "#0000aa"
 cyan = "#004499"
 yellow = "#aa8a00"
-magenta = "#aa00aa"
+magenta = "#ff11cc"
 )#";
+
+inline string red = "#aa0000";
+inline string green = "#00aa00";
+inline string blue = "#0000aa";
+inline string cyan = "#004499";
+inline string yellow = "#aa8a00";
+inline string magenta = "#ff11cc";
 
 #endif

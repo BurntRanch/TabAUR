@@ -56,13 +56,13 @@ bool commitTransactionAndRelease(Config &cfg, bool soft) {
 
     log_printf(LOG_INFO, "Changes to be made:\n");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
-        fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", "#00aa00")), "    ++ ");
+        fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", green)), "    ++ ");
         fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
         
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
-        fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("red", "#aa0000")), "    -- ");
+        fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("red", red)), "    -- ");
         fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
@@ -251,22 +251,23 @@ bool taur_exec(vector<const char*> cmd) {
 
 fmt::text_style getColorFromDBName(string db_name, Config &cfg) {
     if (db_name == "aur")
-        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("blue", "#0000aa"));
+        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("blue", blue));
     else if (db_name == "extra")
-        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", "#00aa00"));
+        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", green));
     else if (db_name == "multilib")
-        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("cyan", "#004499"));
+        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("cyan", cyan));
     else
-        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("yellow", "#aa8a00"));
+        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("yellow", yellow));
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
 void printPkgInfo(TaurPkg_t pkg, Config &cfg, int index) {
     if (index > -1)
-        fmt::print(fmt::fg(cfg.getThemeValue("magenta", "#aa00aa")), "[{}] ", index);
+        fmt::print(fmt::fg(cfg.getThemeValue("magenta", magenta)), "[{}]", index);
+    
     fmt::print(getColorFromDBName(pkg.db_name, cfg), "{}/", pkg.db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::println(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", "#00aa00")), "{}", pkg.version);
+    fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", green)), "{}\n", pkg.version);
     fmt::println("    {}", pkg.desc);
 }
 

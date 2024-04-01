@@ -9,11 +9,8 @@ alpm_list_t *taur_targets;
 
 void invalid_opt(int used, string opt1, string opt2)
 {
-	if(used) {
-		log_printf(LOG_ERROR,
-				"invalid option: '{}' and '{}' may not be used together",
-				opt1, opt2);
-	}
+	if(used)
+		log_printf(LOG_ERROR, "invalid option: '{}' and '{}' may not be used together", opt1, opt2);
 }
 
 /** Helper function for parsing operation from command-line arguments.
@@ -71,15 +68,15 @@ int parsearg_global(int opt)
 		case OP_NOCOLOR:
 			config->colors = false;
 			break;
-        case OP_COLOR:
-            config->colors = true;
-            break;
+        	case OP_COLOR:
+            		config->colors = true;
+            		break;
 		case OP_DEBUG:
-            config->debug = false;
+            		config->debug = false;
 			break;
-        case OP_AURONLY:
-            config->aurOnly = true;
-            break;
+        	case OP_AURONLY:
+            		config->aurOnly = true;
+            		break;
 		default:
 			return 1;
 	}
@@ -99,7 +96,7 @@ int parsearg_sync(int opt)
 			break;
 		case OP_SEARCH:
 		case 's':
-			(op.op_s_search)++;
+			op.op_s_search = 1;
 			break;
 		default:
 			return 1;

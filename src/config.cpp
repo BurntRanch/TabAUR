@@ -139,7 +139,7 @@ bool addServers(alpm_db_t *db, string includeFilename, string repoName) {
     while (std::getline(includeFile, line)) {
         if (hasStart(line, "#") || line.length() < 20)
             continue;
-        
+
         size_t repo_pos = line.find("$repo");
         if (repo_pos != string::npos)
             line.replace(repo_pos, 5, repoName);
@@ -160,7 +160,7 @@ void Config::loadPacmanConfigFile(string filename) {
     mINI::INIStructure ini;
 
     file.read(ini);
-    
+
     for (auto const& it : ini)
     {
         string section = it.first;
