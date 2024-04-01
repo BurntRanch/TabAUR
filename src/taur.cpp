@@ -77,9 +77,6 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                        .url     = getUrl(pkgJson, returnGit),
                        .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
                        .depends = depends};
-
-    log_printf(LOG_DEBUG, "parsePkg.name = {}\n", out.name);
-    log_printf(LOG_DEBUG, "parsePkg.depends = {}\n", fmt::join(out.depends, "; "));
     
     return out;
 }
@@ -337,7 +334,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
     int attemptedDownloads = 0;
 
     if (onlinePkgs.size() != pkgs.size())
-        log_printf(LOG_WARN, "Couldn't get all packages! (searched %d packages, got %d) Still trying to update the others.\n", pkgs.size(), onlinePkgs.size());
+        log_printf(LOG_WARN, "Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others.\n", pkgs.size(), onlinePkgs.size());
 
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
         size_t pkgIndex;
@@ -359,6 +356,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         }
 
         if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
+            log_printf(LOG_DEBUG, "pkg {} has no update, local: {}, online: {}, skipping!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);
             continue;
         }
 
@@ -389,8 +387,10 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         log_printf(LOG_DEBUG, "pkg {} versions: local {} vs online {}\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
                    onlinePkgs[i].version);
 
-        if (!alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))
+        if (!alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str())) {
+            log_printf(LOG_DEBUG, "pkg {} has a different version on the AUR than in its PKGBUILD, local: {}, online: {}, PKGBUILD: {}, skipping!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version, versionInfo);
             continue;
+        }
 
         log_printf(LOG_INFO, "Upgrading package {} from version {} to version {}!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
                    onlinePkgs[i].version);
@@ -405,7 +405,7 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         updatedPkgs++;
     }
 
-    log_printf(LOG_INFO, "Upgraded %d/%d packages.\n", updatedPkgs, attemptedDownloads);
+    log_printf(LOG_INFO, "Upgraded {}/{} packages.\n", updatedPkgs, attemptedDownloads);
 
     if (attemptedDownloads > updatedPkgs)
         log_printf(LOG_WARN,

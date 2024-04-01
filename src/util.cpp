@@ -1,5 +1,6 @@
 #include "util.hpp"
 #include "config.hpp"
+#include "fmt/base.h"
 #include "fmt/color.h"
 #include "taur.hpp"
 #include <alpm.h>
@@ -265,7 +266,7 @@ void printPkgInfo(TaurPkg_t pkg, Config &cfg, int index) {
         fmt::print(fmt::fg(cfg.getThemeValue("magenta", "#aa00aa")), "[{}] ", index);
     fmt::print(getColorFromDBName(pkg.db_name, cfg), "{}/", pkg.db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", "#00aa00")), "{}\n", pkg.version);
+    fmt::println(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", "#00aa00")), "{}", pkg.version);
     fmt::println("    {}", pkg.desc);
 }
 
