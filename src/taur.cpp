@@ -228,7 +228,7 @@ string makepkg_list(string pkg_name, string path) {
     if (!pkgrel.empty())
         versionInfo += "-" + pkgrel;
 
-    string arch = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD");
+    string arch = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
     string pkgext = shell_exec("grep 'PKGEXT=' /etc/makepkg.conf | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
     
     // remove quotes

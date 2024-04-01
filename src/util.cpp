@@ -263,12 +263,12 @@ fmt::text_style getColorFromDBName(string db_name, Config &cfg) {
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
 void printPkgInfo(TaurPkg_t pkg, Config &cfg, int index) {
     if (index > -1)
-        fmt::print(fmt::fg(cfg.getThemeValue("magenta", magenta)), "[{}]", index);
+        fmt::print(fmt::fg(cfg.getThemeValue("magenta", magenta)), "[{}] ", index);
     
     fmt::print(getColorFromDBName(pkg.db_name, cfg), "{}/", pkg.db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
     fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", green)), "{}\n", pkg.version);
-    fmt::println("    {}", pkg.desc);
+    fmt::println("     {}", pkg.desc);
 }
 
 optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, Config &cfg, bool useGit) {
