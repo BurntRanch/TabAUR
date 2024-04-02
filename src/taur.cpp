@@ -3,6 +3,7 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
+#include <unistd.h>
 
 namespace fs = std::filesystem;
 
@@ -244,15 +245,20 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path) {
     const char* makepkg_bin = this->config.makepkgBin.c_str();
     
     log_printf(LOG_DEBUG, "running {} --verifysource -f -Cc\n", makepkg_bin);
+    log_printf(LOG_INFO, "Verifying package sources..\n");
     taur_exec({makepkg_bin, "--verifysource", "-f", "-Cc"});
 
     log_printf(LOG_DEBUG, "running {} --nobuild -fd -C --ignorearch\n", makepkg_bin);
+    log_printf(LOG_INFO, "Preparing for compilation..\n");
     taur_exec({makepkg_bin, "--nobuild", "-fd", "-C", "--ignorearch"});
 
     string built_pkg = makepkg_list(pkg_name, extracted_path);
     log_printf(LOG_DEBUG, "built_pkg = {}\n", built_pkg);
     
     if (!fs::exists(built_pkg)) {
+        log_printf(LOG_INFO, "Compiling {} in 3 seconds, you can cancel at this point if you can't compile.\n", pkg_name);
+        sleep(3);
+
         log_printf(LOG_DEBUG, "running {} -fs --noconfirm --noextract --noprepare --holdver --ignorearch -c\n", makepkg_bin);
         taur_exec({makepkg_bin, "-fs", "--noconfirm", "--noextract", "--noprepare", "--holdver", "--ignorearch", "-c"});   
     }
