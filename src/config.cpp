@@ -17,14 +17,13 @@ Config::Config() {
     string confFilename  = configDir + "/config.toml";
     string themeFilename  = configDir + "/theme.toml";
 
-    // if 3, then user is lacking all 3 files/folders and is most likely a new user, if so, warn them about AUR packages.
-    int newUser = 0;
+    bool newUser = false;
 
     if (!fs::exists(configDir)) {
         log_printf(LOG_WARN, "TabAUR config folder was not found, Creating folders at {}!\n", configDir);
         fs::create_directories(configDir);
 
-        newUser++;
+        newUser = true;
     }
     if (!fs::exists(confFilename)) {
         log_printf(LOG_WARN, "config.toml not found, generating new one\n");
@@ -32,8 +31,6 @@ Config::Config() {
         ofstream configFile(confFilename, std::ios::trunc);
         configFile << defConfig;
         configFile.close();
-
-        newUser++;
     }
     if (!fs::exists(themeFilename)) {
         log_printf(LOG_WARN, "theme.toml not found, generating new one\n");
@@ -41,8 +38,6 @@ Config::Config() {
         ofstream configFile(themeFilename, std::ios::trunc);
         configFile << defTheme;
         configFile.close();
-
-        newUser++;
     }
 
     loadConfigFile(confFilename);
