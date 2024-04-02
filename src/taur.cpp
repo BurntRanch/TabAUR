@@ -501,6 +501,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
                                 .name = string(alpm_pkg_get_name(packages[i])),
                                 .version = string(alpm_pkg_get_version(packages[i])),
                                 .desc = string(alpm_pkg_get_desc(packages[i])),
+                                .popularity = 100,  // system packages are very trustable
                                 .db_name = string(alpm_db_get_name(alpm_pkg_get_db(packages[i]))),
                              };
 
