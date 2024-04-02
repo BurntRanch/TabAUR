@@ -43,16 +43,16 @@ options:
 }
 
 void test_colors() {
-    log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(fmt::emphasis::bold | fg(config->getThemeValue("magenta", magenta)), "magenta"));
-    log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(fmt::emphasis::bold | fg(config->getThemeValue("blue", blue)), "blue"));
-    log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(fmt::emphasis::bold | fg(config->getThemeValue("yellow", yellow)), "yellow"));
-    log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(fmt::emphasis::bold | fg(config->getThemeValue("red", red)), "red"));
-    fmt::println("color red: {}",    fmt::format(fg(config->getThemeValue("red", red)), red));
-    fmt::println("color blue: {}",   fmt::format(fg(config->getThemeValue("blue", blue)), blue));
-    fmt::println("color yellow: {}", fmt::format(fg(config->getThemeValue("yellow", yellow)), yellow));
-    fmt::println("color green: {}",  fmt::format(fg(config->getThemeValue("green", green)), green));
-    fmt::println("color cyan: {}",   fmt::format(fg(config->getThemeValue("cyan", cyan)), cyan));
-    fmt::println("color magenta: {}",fmt::format(fg(config->getThemeValue("magenta", magenta)), magenta));
+    log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "magenta"));
+    log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("blue", blue)), "blue"));
+    log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "yellow"));
+    log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "red"));
+    fmt::println("red: {}",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
+    fmt::println("blue: {}",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
+    fmt::println("yellow: {}", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
+    fmt::println("green: {}",  fmt::format(fg(config->getThemeValue("green", green)), config->getThemeHexValue("green", green)));
+    fmt::println("cyan: {}",   fmt::format(fg(config->getThemeValue("cyan", cyan)), config->getThemeHexValue("cyan", cyan)));
+    fmt::println("magenta: {}",fmt::format(fg(config->getThemeValue("magenta", magenta)), config->getThemeHexValue("magenta", magenta)));
 }
 
 bool execPacman(int argc, char* argv[]) {

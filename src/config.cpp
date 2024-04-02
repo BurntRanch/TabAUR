@@ -128,6 +128,10 @@ fmt::rgb Config::getThemeValue(string value, string fallback) {
     return this->colors ? hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback)) : fmt::color::white;
 }
 
+string Config::getThemeHexValue(string value, string fallback) {
+    return this->colors ? this->theme_tbl["theme"][value].value<string>().value() : fallback;
+}
+
 bool addServers(alpm_db_t *db, string includeFilename, string repoName) {
     ifstream includeFile(includeFilename);
 

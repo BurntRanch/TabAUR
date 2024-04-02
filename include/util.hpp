@@ -19,6 +19,8 @@ using std::vector;
 struct TaurPkg_t;
 class TaurBackend;
 
+#define BOLD_TEXT(x) (fmt::emphasis::bold | fmt::fg(x))
+
 enum log_level {
     LOG_ERROR,
     LOG_WARN,

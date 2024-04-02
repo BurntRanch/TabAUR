@@ -48,6 +48,7 @@ public:
     }
 
     fmt::rgb getThemeValue(string value, string fallback);
+    string getThemeHexValue(string value, string fallback);
 
 private:
     toml::table tbl, theme_tbl;
