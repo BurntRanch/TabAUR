@@ -474,9 +474,9 @@ vector<string> TaurBackend::list_all_local_pkgs(bool aurOnly, bool stripVersion)
 vector<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool useGit) {
     int resultcount = doc["resultcount"].GetInt();
 
-    vector<TaurPkg_t> out;
+    vector<TaurPkg_t> out(resultcount);
     for (int i = 0; i < resultcount; i++) {
-        out.push_back(parsePkg(doc["results"][i], useGit));
+        out[i] = parsePkg(doc["results"][i], useGit);
     }
 
     return out;
