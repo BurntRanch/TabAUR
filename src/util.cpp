@@ -45,8 +45,8 @@ bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
 }
 
 // soft means it won't return false (or even try) if the list is empty
-bool commitTransactionAndRelease(Config &cfg, bool soft) {
-    alpm_handle_t *handle = cfg.handle;
+bool commitTransactionAndRelease(bool soft) {
+    alpm_handle_t *handle = config->handle;
 
     alpm_list_t *addPkgs    = alpm_trans_get_add(handle);
     alpm_list_t *removePkgs = alpm_trans_get_remove(handle);
@@ -56,13 +56,13 @@ bool commitTransactionAndRelease(Config &cfg, bool soft) {
 
     log_printf(LOG_INFO, "Changes to be made:\n");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
-        fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", green)), "    ++ ");
+        fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "    ++ ");
         fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
         
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
-        fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("red", red)), "    -- ");
+        fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("red", red)), "    -- ");
         fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
@@ -261,17 +261,17 @@ fmt::text_style getColorFromDBName(string db_name, Config &cfg) {
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t pkg, Config &cfg, int index) {
+void printPkgInfo(TaurPkg_t pkg, int index) {
     if (index > -1)
-        fmt::print(fmt::fg(cfg.getThemeValue("magenta", magenta)), "[{}] ", index);
+        fmt::print(fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
     
-    fmt::print(getColorFromDBName(pkg.db_name, cfg), "{}/", pkg.db_name);
+    fmt::print(getColorFromDBName(pkg.db_name, *config), "{}/", pkg.db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::print(fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", green)), "{}\n", pkg.version);
-    fmt::println("     {}", pkg.desc);
+    fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}\n", pkg.version);
+    fmt::println("    {}", pkg.desc);
 }
 
-optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, Config &cfg, bool useGit) {
+optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
         return pkgs[0].url.empty() ? pkgs[0] : backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]);
     } else if (pkgs.size() > 1) {
@@ -288,7 +288,7 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
                 log_printf(LOG_WARN, "Invalid input!\n");
 
             for (size_t i = 0; i < pkgs.size(); i++)
-                printPkgInfo(pkgs[i], cfg, i);
+                printPkgInfo(pkgs[i], i);
 
             fmt::print("Choose a package to download: ");
             std::cin >> input;

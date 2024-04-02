@@ -83,11 +83,11 @@ int installPkg(string pkgName, TaurBackend *backend) {
     // ./taur -Ss -- list only, don't install.
     if (op.op_s_search) {
         for (size_t i = 0; i < pkgs.size(); i++)
-            printPkgInfo(pkgs[i], *config, i);
+            printPkgInfo(pkgs[i], i);
         return true;
     }
 
-    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, *backend, *config, useGit);
+    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, *backend, useGit);
 
     if (!oPkg)
         return false;
