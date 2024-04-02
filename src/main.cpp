@@ -16,6 +16,7 @@ void usage(int op) {
 options:
     taur {-h --help}
     taur {-V --version}
+    taur {-t, --test-colors}
     taur {-D --database} <options> <package(s)>
     taur {-F --files}    [options] [file(s)]
     taur {-Q --query}    [options] [package(s)]
@@ -39,6 +40,19 @@ options:
             usleep(650000); // 0.65 seconds
         }
     }
+}
+
+void test_colors() {
+    log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(fmt::emphasis::bold | fg(config->getThemeValue("magenta", magenta)), "magenta"));
+    log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(fmt::emphasis::bold | fg(config->getThemeValue("blue", blue)), "blue"));
+    log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(fmt::emphasis::bold | fg(config->getThemeValue("yellow", yellow)), "yellow"));
+    log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(fmt::emphasis::bold | fg(config->getThemeValue("red", red)), "red"));
+    fmt::println("color red: {}",    fmt::format(fg(config->getThemeValue("red", red)), red));
+    fmt::println("color blue: {}",   fmt::format(fg(config->getThemeValue("blue", blue)), blue));
+    fmt::println("color yellow: {}", fmt::format(fg(config->getThemeValue("yellow", yellow)), yellow));
+    fmt::println("color green: {}",  fmt::format(fg(config->getThemeValue("green", green)), green));
+    fmt::println("color cyan: {}",   fmt::format(fg(config->getThemeValue("cyan", cyan)), cyan));
+    fmt::println("color magenta: {}",fmt::format(fg(config->getThemeValue("magenta", magenta)), magenta));
 }
 
 bool execPacman(int argc, char* argv[]) {
@@ -191,7 +205,7 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-    const char *optstring = "SRQVDFTUahyus";
+    const char *optstring = "SRQVDFTUahyust";
     static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
@@ -204,6 +218,7 @@ int parseargs(int argc, char* argv[]) {
 	{"version",    no_argument,       0, 'V'},
         {"aur-only",   no_argument,       0, 'a'},
         {"help",       no_argument,       0, 'h'},
+        {"test-colors",no_argument,       0, 't'},
 
         {"refresh",    no_argument,       0, OP_REFRESH},
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
@@ -229,7 +244,11 @@ int parseargs(int argc, char* argv[]) {
 		usage(op.op);
 		exit(0);
     }
-
+    if(op.test_colors){
+        test_colors();
+        exit(0);
+    }
+    
     /* parse all other options */
 	optind = 1;
 	while((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
@@ -256,18 +275,18 @@ int parseargs(int argc, char* argv[]) {
 		continue;
 
         /* fall back to global options */
-	result = parsearg_global(opt);
-	if(result != 0) {
-		if(result == 1) {
-		/* global option parsing failed, abort */
-			if(opt < 100) {
-				log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
-			} else {
-				log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);
-			}
-		}
-		return 1;
-	}
+	    result = parsearg_global(opt);
+	    if(result != 0) {
+		    if(result == 1) {
+		    /* global option parsing failed, abort */
+			    if(opt < 100) {
+				    log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
+			    } else {
+				    log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);
+			    }
+		    }
+            return 1;
+	    }
 
     }
 

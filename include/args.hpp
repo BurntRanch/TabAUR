@@ -25,6 +25,7 @@ enum {
     OP_COLOR,
     OP_DEBUG,
     OP_SEARCH,
+    OP_TEST_COLORS,
 };
 
 struct Operation_t {
@@ -37,6 +38,7 @@ struct Operation_t {
     bool    requires_root = false;
     u_short help;
     u_short version;
+    u_short test_colors;
 
     std::vector<std::string> args;
 };

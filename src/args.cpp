@@ -49,6 +49,9 @@ int parsearg_op(int opt, int dryrun)
 		case 'h':
 			if(dryrun) break;
 			op.help = 1; break;
+        case 't':
+            if(dryrun) break;
+            op.test_colors = 1; break;
 		default:
 			return 1;
 	}
@@ -68,16 +71,16 @@ int parsearg_global(int opt)
 		case OP_NOCOLOR:
 			config->colors = false;
 			break;
-        	case OP_COLOR:
-            		config->colors = true;
-            		break;
+        case OP_COLOR:
+            config->colors = true;
+            break;
 		case OP_DEBUG:
-            		config->debug = false;
+            config->debug = false;
 			break;
-        	case OP_AURONLY:
-            		config->aurOnly = true;
-            		break;
-		default:
+        case OP_AURONLY:
+            config->aurOnly = true;
+            break;
+        default:
 			return 1;
 	}
 	return 0;
