@@ -2,6 +2,7 @@
 #include "config.hpp"
 #include "fmt/base.h"
 #include "fmt/color.h"
+#include "rapidjson/internal/meta.h"
 #include "taur.hpp"
 #include <alpm.h>
 
@@ -261,13 +262,13 @@ fmt::text_style getColorFromDBName(string db_name, Config &cfg) {
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t pkg, int index) {
+void printPkgInfo(TaurPkg_t &pkg, int index) {
     if (index > -1)
         fmt::print(fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
     
     fmt::print(getColorFromDBName(pkg.db_name, *config), "{}/", pkg.db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}\n", pkg.version);
+    fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}, Popularity: {} ({})\n", pkg.version, pkg.popularity, getTitleForPopularity(pkg.popularity));
     fmt::println("    {}", pkg.desc);
 }
 
@@ -300,6 +301,20 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
     }
 
     return {};
+}
+
+string getTitleForPopularity(float popularity) {
+    if (popularity < 0.5)
+        return "Untrustable";
+    if (popularity < 1)
+        return "Caution";
+    if (popularity < 10)
+        return "Normal";
+    if (popularity < 20)
+        return "Good";
+    if (popularity >= 20)
+        return "Trustable";
+    return "Weird, report this bug.";
 }
 
 std::vector<string> split(string text, char delim) {

@@ -76,6 +76,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                        .version = pkgJson["Version"].GetString(),
                        .url     = getUrl(pkgJson, returnGit),
                        .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
+                       .popularity = pkgJson["Popularity"].GetFloat(),
                        .depends = depends};
 
     return out;

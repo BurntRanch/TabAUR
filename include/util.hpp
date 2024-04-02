@@ -39,12 +39,13 @@ bool taur_exec(std::vector<const char*> cmd);
 void sanitizeStr(string& str);
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool commitTransactionAndRelease(bool soft = false);
-void printPkgInfo(TaurPkg_t pkg, int index = -1);
+void printPkgInfo(TaurPkg_t &pkg, int index = -1);
 fmt::text_style getColorFromDBName(string db_name, Config& cfg);
 std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
 fmt::rgb hexStringToColor(string hexstr);
+string getTitleForPopularity(float popularity);
 
 template <typename... Args>
 void log_printf(int log, string fmt, Args&&... args) {

@@ -23,6 +23,7 @@ struct TaurPkg_t {
     string         version;
     string         url;
     string         desc;
+    float          popularity = 1; // normal
     vector<string> depends;
     string         db_name = "aur";
 };

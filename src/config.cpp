@@ -17,9 +17,14 @@ Config::Config() {
     string confFilename  = configDir + "/config.toml";
     string themeFilename  = configDir + "/theme.toml";
 
+    // if 3, then user is lacking all 3 files/folders and is most likely a new user, if so, warn them about AUR packages.
+    int newUser = 0;
+
     if (!fs::exists(configDir)) {
         log_printf(LOG_WARN, "TabAUR config folder was not found, Creating folders at {}!\n", configDir);
         fs::create_directories(configDir);
+
+        newUser++;
     }
     if (!fs::exists(confFilename)) {
         log_printf(LOG_WARN, "config.toml not found, generating new one\n");
@@ -27,6 +32,8 @@ Config::Config() {
         ofstream configFile(confFilename, std::ios::trunc);
         configFile << defConfig;
         configFile.close();
+
+        newUser++;
     }
     if (!fs::exists(themeFilename)) {
         log_printf(LOG_WARN, "theme.toml not found, generating new one\n");
@@ -34,10 +41,15 @@ Config::Config() {
         ofstream configFile(themeFilename, std::ios::trunc);
         configFile << defTheme;
         configFile.close();
+
+        newUser++;
     }
 
     loadConfigFile(confFilename);
     loadThemeFile(themeFilename);
+
+    if (newUser)
+        fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
 
     string cacheDir = this->getCacheDir();
     if (!fs::exists(cacheDir)) {
