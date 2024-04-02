@@ -94,19 +94,19 @@ inline const string defConfig = R"#([general]
 )#";
 
 inline const string defTheme = R"#([theme]
-red = "#aa0000"
-green = "#00aa00"
-blue = "#0000aa"
-cyan = "#004499"
-yellow = "#aa8a00"
+red = "#ff2000"
+green = "#00ff00"
+blue = "#00aaff"
+cyan = "#00ffff"
+yellow = "#ffff00"
 magenta = "#ff11cc"
 )#";
 
-inline string red = "#aa0000";
-inline string green = "#00aa00";
-inline string blue = "#0000aa";
-inline string cyan = "#004499";
-inline string yellow = "#aa8a00";
+inline string red = "#ff2000";
+inline string green = "#00ff00";
+inline string blue = "#00aaff";
+inline string cyan = "#00ffff";
+inline string yellow = "#ffff00";
 inline string magenta = "#ff11cc";
 
 #endif
