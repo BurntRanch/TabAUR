@@ -446,6 +446,10 @@ template <typename Char>
 void vformat_to(
     buffer<Char>& buf, const text_style& ts, basic_string_view<Char> format_str,
     basic_format_args<buffered_context<type_identity_t<Char>>> args) {
+  if (disable_colors) {
+    detail::vformat_to(buf, format_str, args, {});
+    return;
+  }
   bool has_style = false;
   if (ts.has_emphasis()) {
     has_style = true;
@@ -489,7 +493,7 @@ inline void vprint(FILE* f, const text_style& ts, string_view fmt,
 template <typename... T>
 void print(FILE* f, const text_style& ts, format_string<T...> fmt,
            T&&... args) {
-  vprint(f, disable_colors ? fmt::text_style() : ts, fmt, fmt::make_format_args(args...));
+  vprint(f, ts, fmt, fmt::make_format_args(args...));
 }
 
 /**
@@ -563,7 +567,7 @@ inline auto vformat(const text_style& ts, string_view fmt, format_args args)
 template <typename... T>
 inline auto format(const text_style& ts, format_string<T...> fmt, T&&... args)
     -> std::string {
-  return fmt::vformat(disable_colors ? fmt::text_style() : ts, fmt, fmt::make_format_args(args...));
+  return fmt::vformat(ts, fmt, fmt::make_format_args(args...));
 }
 
 /**
