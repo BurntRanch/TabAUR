@@ -304,9 +304,9 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
 }
 
 string getTitleForPopularity(float popularity) {
-    if (popularity < 0.5)
+    if (popularity < 0.2)
         return "Untrustable";
-    if (popularity < 1)
+    if (popularity < 0.8)
         return "Caution";
     if (popularity < 10)
         return "Normal";
