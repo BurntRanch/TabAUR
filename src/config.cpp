@@ -51,6 +51,7 @@ Config::Config() {
         log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", cacheDir);
         fs::create_directories(cacheDir);
     }
+    fmt::disable_colors = this->colors == 0;
 }
 
 Config::~Config() {
@@ -132,11 +133,11 @@ void Config::loadThemeFile(string filename) {
 }
 
 fmt::rgb Config::getThemeValue(string value, string fallback) {
-    return this->colors ? hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback)) : fmt::color::white;
+    return hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback));
 }
 
 string Config::getThemeHexValue(string value, string fallback) {
-    return this->colors ? this->theme_tbl["theme"][value].value<string>().value() : fallback;
+    return this->theme_tbl["theme"][value].value<string>().value_or(fallback);
 }
 
 bool addServers(alpm_db_t *db, string includeFilename, string repoName) {

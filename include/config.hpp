@@ -80,8 +80,8 @@ inline const string defConfig = R"#([general]
 # Please activate this before reporting bugs on our Github repo, thank you :)
 #debug = true
 
-# Where we are gonna download the AUR packages (default $XDG_CACHE_HOME, else ~/.cache/TabAUR)
-#cacheDir = "$XDG_CACHE_HOME"
+# Where we are gonna download the AUR packages (default $XDG_CACHE_HOME/TabAUR, else ~/.cache/TabAUR)
+#cacheDir = "$XDG_CACHE_HOME/TabAUR"
 
 [bins]
 #makepkg = "makepkg"

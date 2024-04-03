@@ -187,6 +187,8 @@ enum class emphasis : uint8_t {
   strikethrough = 1 << 7,
 };
 
+inline bool disable_colors = false;
+
 // rgb is a struct for red, green and blue colors.
 // Using the name "rgb" makes some editors show the color in a tooltip.
 struct rgb {
@@ -487,7 +489,7 @@ inline void vprint(FILE* f, const text_style& ts, string_view fmt,
 template <typename... T>
 void print(FILE* f, const text_style& ts, format_string<T...> fmt,
            T&&... args) {
-  vprint(f, ts, fmt, fmt::make_format_args(args...));
+  vprint(f, disable_colors ? fmt::text_style() : ts, fmt, fmt::make_format_args(args...));
 }
 
 /**
@@ -503,7 +505,7 @@ void print(FILE* f, const text_style& ts, format_string<T...> fmt,
  */
 template <typename... T>
 void print(const text_style& ts, format_string<T...> fmt, T&&... args) {
-  return print(stdout, ts, fmt, std::forward<T>(args)...);
+  return print(stdout, disable_colors ? fmt::text_style() : ts, fmt, std::forward<T>(args)...);
 }
 
 /**
@@ -520,7 +522,7 @@ void print(const text_style& ts, format_string<T...> fmt, T&&... args) {
 template <typename... T>
 void println(FILE* f, const text_style& ts, format_string<T...> fmt,
            T&&... args) {
-  print(f, ts, fmt, std::forward<T>(args)..., '\n');
+  print(f, disable_colors ? fmt::text_style() : ts, fmt, std::forward<T>(args)..., '\n');
 }
 
 /**
@@ -536,7 +538,7 @@ void println(FILE* f, const text_style& ts, format_string<T...> fmt,
  */
 template <typename... T>
 void println(const text_style& ts, format_string<T...> fmt, T&&... args) {
-  print(stdout, ts, fmt, std::forward<T>(args)..., '\n');
+  print(stdout, disable_colors ? fmt::text_style() : ts, fmt, std::forward<T>(args)..., '\n');
 }
 
 inline auto vformat(const text_style& ts, string_view fmt, format_args args)
@@ -561,7 +563,7 @@ inline auto vformat(const text_style& ts, string_view fmt, format_args args)
 template <typename... T>
 inline auto format(const text_style& ts, format_string<T...> fmt, T&&... args)
     -> std::string {
-  return fmt::vformat(ts, fmt, fmt::make_format_args(args...));
+  return fmt::vformat(disable_colors ? fmt::text_style() : ts, fmt, fmt::make_format_args(args...));
 }
 
 /**
