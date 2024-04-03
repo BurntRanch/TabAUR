@@ -1,5 +1,5 @@
 pkgname="TabAUR-git"
-pkgver=0.0.1
+pkgver=0.1.0
 pkgrel=1
 pkgdesc="A lightweight AUR helper, designed to be simple but powerful."
 arch=('x86_64' 'aarch64')
