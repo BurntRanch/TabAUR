@@ -4,12 +4,12 @@ OBJ 	 = $(SRC:.cpp=.o)
 LIBS 	?= -lcpr -lalpm
 LDFLAGS  = ${LIBS}
 TARGET   = taur
-CPPFLAGS = -O3 -funroll-all-loops -march=native -pedantic -isystem include -Wall -std=c++17
+CPPFLAGS = -ggdb -funroll-all-loops -march=native -isystem include -Wall -std=c++17
 
-cpr_installed := $(shell test -s /usr/lib/libcpr.so.1 || test -s /usr/local/lib/libcpr.so.1 && echo -n yes)
+is_cpr_installed := $(shell ldconfig -p | grep libcpr > /dev/null && echo -n yes)
 
-# let's not build cpr everytime if it's already installed (support by pacman installed)
-ifneq ($(cpr_installed), yes)
+# let's not build cpr everytime if it's already installed
+ifneq ($(is_cpr_installed), yes)
 all: cpr $(TARGET)
 else
 all: $(TARGET)
@@ -23,7 +23,7 @@ cpr:
 	cmake --build $@/build --parallel
 	sudo cmake --install $@/build --prefix /usr
 
-ifneq ($(cpr_installed), yes)
+ifneq ($(is_cpr_installed), yes)
 $(TARGET): cpr ${OBJ}
 else
 $(TARGET): ${OBJ}

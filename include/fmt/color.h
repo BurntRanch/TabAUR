@@ -187,6 +187,8 @@ enum class emphasis : uint8_t {
   strikethrough = 1 << 7,
 };
 
+inline bool disable_colors = false;
+
 // rgb is a struct for red, green and blue colors.
 // Using the name "rgb" makes some editors show the color in a tooltip.
 struct rgb {
@@ -444,6 +446,10 @@ template <typename Char>
 void vformat_to(
     buffer<Char>& buf, const text_style& ts, basic_string_view<Char> format_str,
     basic_format_args<buffered_context<type_identity_t<Char>>> args) {
+  if (disable_colors) {
+    detail::vformat_to(buf, format_str, args, {});
+    return;
+  }
   bool has_style = false;
   if (ts.has_emphasis()) {
     has_style = true;

@@ -56,13 +56,13 @@ bool commitTransactionAndRelease(bool soft) {
 
     log_printf(LOG_INFO, "Changes to be made:\n");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
-        log_printf(LOG_NONE, fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "    ++ ");
+        log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "    ++ ");
         log_printf(LOG_NONE, fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
         
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
-        log_printf(LOG_NONE, fmt::emphasis::bold | fmt::fg(config->getThemeValue("red", red)), "    -- ");
+        log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("red", red)), "    -- ");
         log_printf(LOG_NONE, fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
@@ -111,8 +111,13 @@ bool commitTransactionAndRelease(bool soft) {
 string expandVar(string& str) {
     const char* env;
     if (str[0] == '~') {
-        env = getenv("HOME");   // it's likely impossible for not having the $HOME env var setup
-        str.replace(0, 1, env); // replace ~ with the $HOME value
+        env = getenv("HOME");
+        if (env == nullptr) {
+            // it's so bad we need to write the text all red
+            log_printf(LOG_ERROR, "{}", fmt::format(fmt::fg(config->getThemeValue("red", red)), "$HOME enviroment variable is not set (how?)"));
+            exit(-1);
+        }
+        str.replace(0, 1, string(env)); // replace ~ with the $HOME value
     } else if (str[0] == '$') {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
@@ -153,8 +158,8 @@ string shell_exec(string cmd) {
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
         result += buffer.data();
     }
-    // why there is a \n ??
-    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+    // why there is a '\n' at the end??
+    result.erase(result.end()-1, result.end());
     return result;
 }
 
@@ -251,13 +256,13 @@ bool taur_exec(vector<const char*> cmd) {
 
 fmt::text_style getColorFromDBName(string db_name, Config &cfg) {
     if (db_name == "aur")
-        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("blue", blue));
+        return BOLD_TEXT(cfg.getThemeValue("blue", blue));
     else if (db_name == "extra")
-        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("green", green));
+        return BOLD_TEXT(cfg.getThemeValue("green", green));
     else if (db_name == "multilib")
-        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("cyan", cyan));
+        return BOLD_TEXT(cfg.getThemeValue("cyan", cyan));
     else
-        return fmt::emphasis::bold | fmt::fg(cfg.getThemeValue("yellow", yellow));
+        return BOLD_TEXT(cfg.getThemeValue("yellow", yellow));
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
@@ -267,7 +272,8 @@ void printPkgInfo(TaurPkg_t &pkg, int index) {
     
     log_printf(LOG_NONE, getColorFromDBName(pkg.db_name, *config), "{}/", pkg.db_name);
     log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkg.name);
-    log_printf(LOG_NONE, fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}, Popularity: {} ({})\n", pkg.version, pkg.popularity, getTitleForPopularity(pkg.popularity));
+    log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "{} ", pkg.version);
+    log_printf(LOG_NONE, fmt::fg(config->getThemeValue("cyan", cyan)), " Popularity: {} ({})\n", pkg.popularity, getTitleForPopularity(pkg.popularity));
     log_printf(LOG_NONE, "    {}\n", pkg.desc);
 }
 

@@ -46,10 +46,10 @@ options:
 }
 
 void test_colors() {
-    log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "magenta"));
-    log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("blue", blue)), "blue"));
-    log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "yellow"));
-    log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "red"));
+    log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
+    log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
+    log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
+    log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
     log_printf(LOG_NONE, "red: {}\n",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
     log_printf(LOG_NONE, "blue: {}\n",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
     log_printf(LOG_NONE, "yellow: {}\n", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
@@ -104,7 +104,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     // ./taur -Ss -- list only, don't install.
     if (op.op_s_search) {
         for (size_t i = 0; i < pkgs.size(); i++)
-            printPkgInfo(pkgs[i], -1);
+            printPkgInfo(pkgs[i]);
         return true;
     }
 
@@ -199,7 +199,7 @@ bool queryPkgs(TaurBackend *backend) {
         if (!pkgs[i])
             continue;
         log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkgs[i]);
-        log_printf(LOG_NONE, fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}\n", pkgs_ver[i]);
+        log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "{}\n", pkgs_ver[i]);
     }
 
     return true;

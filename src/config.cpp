@@ -28,22 +28,22 @@ Config::Config() {
     if (!fs::exists(confFilename)) {
         log_printf(LOG_WARN, "config.toml not found, generating new one\n");
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
-        ofstream configFile(confFilename, std::ios::trunc);
-        configFile << defConfig;
-        configFile.close();
+        ofstream f(confFilename, std::ios::trunc);
+        f << defConfig;
+        f.close();
     }
     if (!fs::exists(themeFilename)) {
         log_printf(LOG_WARN, "theme.toml not found, generating new one\n");
-        // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
-        ofstream configFile(themeFilename, std::ios::trunc);
-        configFile << defTheme;
-        configFile.close();
+        ofstream f(themeFilename, std::ios::trunc);
+        f << defTheme;
+        f.close();
     }
 
     loadConfigFile(confFilename);
     loadThemeFile(themeFilename);
 
-    if (newUser)
+    if (newUser) 
+        // ye i'm sorry for if it's too wide
         fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
 
     string cacheDir = this->getCacheDir();
@@ -51,6 +51,7 @@ Config::Config() {
         log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", cacheDir);
         fs::create_directories(cacheDir);
     }
+    fmt::disable_colors = this->colors == 0;
 }
 
 Config::~Config() {
@@ -87,6 +88,7 @@ string Config::getConfigDir() {
 
 void Config::initializeVars() {
     this->cacheDir     = this->getCacheDir();
+    this->makepkgConf  = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
     this->makepkgBin   = this->getConfigValue<string>("bins.makepkg", "makepkg");
     this->git          = this->getConfigValue<string>("bins.git", "git");
     this->sudo         = this->getConfigValue<string>("general.sudo", "sudo");
@@ -98,6 +100,7 @@ void Config::initializeVars() {
 
     sanitizeStr(this->sudo);
     sanitizeStr(this->makepkgBin);
+    sanitizeStr(this->makepkgConf);
     sanitizeStr(this->cacheDir);
     sanitizeStr(this->git);
 }
@@ -132,11 +135,11 @@ void Config::loadThemeFile(string filename) {
 }
 
 fmt::rgb Config::getThemeValue(string value, string fallback) {
-    return this->colors ? hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback)) : fmt::color::white;
+    return hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback));
 }
 
 string Config::getThemeHexValue(string value, string fallback) {
-    return this->colors ? this->theme_tbl["theme"][value].value<string>().value() : fallback;
+    return this->theme_tbl["theme"][value].value<string>().value_or(fallback);
 }
 
 bool addServers(alpm_db_t *db, string includeFilename, string repoName) {

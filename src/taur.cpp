@@ -127,7 +127,7 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     return out;
 }
 
-bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
+bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
     alpm_list_t *pkg, *syncdbs;
     syncdbs = config.repos;
 
@@ -137,9 +137,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
         string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
         if (name.find(pkgName) == string::npos)
             continue;
-        if (searchForeignPackagesOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs))
-            packages.push_back((alpm_pkg_t *)(pkg->data));
-        else if (!searchForeignPackagesOnly)
+        if ((aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) || !aurOnly)
             packages.push_back((alpm_pkg_t *)(pkg->data));
     }
   
@@ -230,13 +228,13 @@ string makepkg_list(string pkg_name, string path) {
     if (!pkgrel.empty())
         versionInfo += "-" + pkgrel;
     
-    string arch = shell_exec("grep 'CARCH=' /etc/makepkg.conf | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+    string arch = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
     string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
     
     if (arch_field == "any")
         arch = "any";
     
-    string pkgext = shell_exec("grep 'PKGEXT=' /etc/makepkg.conf | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+    string pkgext = shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
     
     ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
     return ret;
