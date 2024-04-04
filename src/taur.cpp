@@ -137,7 +137,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
         string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
         if (name.find(pkgName) == string::npos)
             continue;
-        if (aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs) || !aurOnly)
+        if ((aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) || !aurOnly)
             packages.push_back((alpm_pkg_t *)(pkg->data));
     }
   
