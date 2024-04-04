@@ -1,1 +1,4 @@
 -I./include
+-pedantic
+-Wall
+-std=c++17

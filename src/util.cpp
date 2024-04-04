@@ -2,7 +2,6 @@
 #include "config.hpp"
 #include "fmt/base.h"
 #include "fmt/color.h"
-#include "rapidjson/internal/meta.h"
 #include "taur.hpp"
 #include <alpm.h>
 
@@ -57,17 +56,17 @@ bool commitTransactionAndRelease(bool soft) {
 
     log_printf(LOG_INFO, "Changes to be made:\n");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
-        fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "    ++ ");
-        fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
+        log_printf(LOG_NONE, fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "    ++ ");
+        log_printf(LOG_NONE, fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
         
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
-        fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("red", red)), "    -- ");
-        fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
+        log_printf(LOG_NONE, fmt::emphasis::bold | fmt::fg(config->getThemeValue("red", red)), "    -- ");
+        log_printf(LOG_NONE, fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
-    fmt::print("Would you like to proceed with this transaction? [Y/n] ");
+    log_printf(LOG_NONE, "Would you like to proceed with this transaction? [Y/n] ");
     
     string response;
     std::cin >> response;
@@ -264,12 +263,12 @@ fmt::text_style getColorFromDBName(string db_name, Config &cfg) {
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
 void printPkgInfo(TaurPkg_t &pkg, int index) {
     if (index > -1)
-        fmt::print(fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
+        log_printf(LOG_NONE, fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
     
-    fmt::print(getColorFromDBName(pkg.db_name, *config), "{}/", pkg.db_name);
-    fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}, Popularity: {} ({})\n", pkg.version, pkg.popularity, getTitleForPopularity(pkg.popularity));
-    fmt::println("    {}", pkg.desc);
+    log_printf(LOG_NONE, getColorFromDBName(pkg.db_name, *config), "{}/", pkg.db_name);
+    log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkg.name);
+    log_printf(LOG_NONE, fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}, Popularity: {} ({})\n", pkg.version, pkg.popularity, getTitleForPopularity(pkg.popularity));
+    log_printf(LOG_NONE, "    {}\n", pkg.desc);
 }
 
 optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
@@ -291,7 +290,7 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
             for (size_t i = 0; i < pkgs.size(); i++)
                 printPkgInfo(pkgs[i], i);
 
-            fmt::print("Choose a package to download: ");
+            log_printf(LOG_NONE, "Choose a package to download: ");
             std::cin >> input;
         } while (!is_number(input) || (size_t)std::stoi(input) >= pkgs.size());
 

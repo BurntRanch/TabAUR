@@ -25,7 +25,8 @@ enum log_level {
     LOG_ERROR,
     LOG_WARN,
     LOG_INFO,
-    LOG_DEBUG
+    LOG_DEBUG,
+    LOG_NONE    // display no prefix for this.
 };
 
 
@@ -63,6 +64,24 @@ void log_printf(int log, string fmt, Args&&... args) {
             break;
     }
     fmt::print(fmt, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_printf(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
+    switch(log) {
+        case LOG_ERROR:
+            fmt::print(ts, "ERROR: "); break;
+        case LOG_WARN:
+            fmt::print(ts, "Warning: "); break;
+        case LOG_INFO:
+            fmt::print(ts, "Info: "); break;
+        case LOG_DEBUG:
+            if (!config->debug)
+                return;
+            fmt::print(ts, "[DEBUG]: ");
+            break;
+    }
+    fmt::print(ts, fmt, std::forward<Args>(args)...);
 }
 
 // could use fmt::join, but doesn't work with vector<const char*>

@@ -1,4 +1,7 @@
+#pragma GCC diagnostic ignored "-Wvla"
+
 #include "fmt/color.h"
+#include <stdexcept>
 #define BRANCH "libalpm-test"
 #define VERSION "0.1.0"
 
@@ -26,17 +29,17 @@ options:
     taur {-U --upgrade}  [options] <file(s)>
     )#";
 
-    fmt::println("TabAUR usage: taur <op> [...]");
+    log_printf(LOG_NONE, "TabAUR usage: taur <op> [...]\n");
     if(op == OP_MAIN)
-        fmt::print("{}", help_op);
+        log_printf(LOG_NONE, "{}", help_op);
     else if (op == OP_SYNC)
-        fmt::println("-S,--sync test");
-    fmt::println("TabAUR will assume -Syu if you pass no arguments to it.\n");
+        log_printf(LOG_NONE, "-S,--sync test\n");
+    log_printf(LOG_NONE, "TabAUR will assume -Syu if you pass no arguments to it.\n\n");
 
     if (config->secretRecipe) {
         log_printf(LOG_INFO, "Loading secret recipe...\n");
         for (auto const& i : secret) {
-            fmt::println(i);
+            log_printf(LOG_NONE, "{}\n", i);
             usleep(650000); // 0.65 seconds
         }
     }
@@ -47,16 +50,20 @@ void test_colors() {
     log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("blue", blue)), "blue"));
     log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "yellow"));
     log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "red"));
-    fmt::println("red: {}",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
-    fmt::println("blue: {}",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
-    fmt::println("yellow: {}", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
-    fmt::println("green: {}",  fmt::format(fg(config->getThemeValue("green", green)), config->getThemeHexValue("green", green)));
-    fmt::println("cyan: {}",   fmt::format(fg(config->getThemeValue("cyan", cyan)), config->getThemeHexValue("cyan", cyan)));
-    fmt::println("magenta: {}",fmt::format(fg(config->getThemeValue("magenta", magenta)), config->getThemeHexValue("magenta", magenta)));
+    log_printf(LOG_NONE, "red: {}\n",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
+    log_printf(LOG_NONE, "blue: {}\n",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
+    log_printf(LOG_NONE, "yellow: {}\n", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
+    log_printf(LOG_NONE, "green: {}\n",  fmt::format(fg(config->getThemeValue("green", green)), config->getThemeHexValue("green", green)));
+    log_printf(LOG_NONE, "cyan: {}\n",   fmt::format(fg(config->getThemeValue("cyan", cyan)), config->getThemeHexValue("cyan", cyan)));
+    log_printf(LOG_NONE, "magenta: {}\n",fmt::format(fg(config->getThemeValue("magenta", magenta)), config->getThemeHexValue("magenta", magenta)));
 }
 
 bool execPacman(int argc, char* argv[]) {
     log_printf(LOG_DEBUG, "Passing command to pacman! (argc: {:d})\n", argc);
+    
+    if (0 > argc || argc > 512)
+        throw std::invalid_argument("argc is invalid! (512 > argc > 0)");
+
     char* args[argc+3]; // sudo + pacman + null terminator
 
     args[0] = _(config->sudo.c_str());
@@ -191,8 +198,8 @@ bool queryPkgs(TaurBackend *backend) {
     for (size_t i = 0; i < pkgs.size(); i++) {
         if (!pkgs[i])
             continue;
-        fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
-        fmt::print(fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}\n", pkgs_ver[i]);
+        log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkgs[i]);
+        log_printf(LOG_NONE, fmt::emphasis::bold | fmt::fg(config->getThemeValue("green", green)), "{}\n", pkgs_ver[i]);
     }
 
     return true;
@@ -209,13 +216,13 @@ int parseargs(int argc, char* argv[]) {
     static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
-	{"files",      no_argument,       0, 'F'},
-	{"query",      no_argument,       0, 'Q'},
-	{"remove",     no_argument,       0, 'R'},
-	{"sync",       no_argument,       0, 'S'},
-	{"deptest",    no_argument,       0, 'T'}, /* used by makepkg */
-	{"upgrade",    no_argument,       0, 'U'},
-	{"version",    no_argument,       0, 'V'},
+        {"files",      no_argument,       0, 'F'},
+        {"query",      no_argument,       0, 'Q'},
+        {"remove",     no_argument,       0, 'R'},
+        {"sync",       no_argument,       0, 'S'},
+        {"deptest",    no_argument,       0, 'T'}, /* used by makepkg */
+        {"upgrade",    no_argument,       0, 'U'},
+        {"version",    no_argument,       0, 'V'},
         {"aur-only",   no_argument,       0, 'a'},
         {"help",       no_argument,       0, 'h'},
         {"test-colors",no_argument,       0, 't'},
@@ -239,6 +246,14 @@ int parseargs(int argc, char* argv[]) {
     if(op.op == 0) {
 		log_printf(LOG_ERROR, "only one operation may be used at a time\n");
 		return 1;
+    }
+    if (op.version) {
+        log_printf(LOG_NONE, "TabAUR version {}, branch {}\n", VERSION, BRANCH);
+        exit(0);
+    }
+    if(op.help) {
+		usage(op.op);
+		exit(0);
     }
     if(op.help) {
 		usage(op.op);

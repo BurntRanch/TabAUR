@@ -73,12 +73,12 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
         }
     }
 
-    TaurPkg_t out =   {.name    = pkgJson["Name"].GetString(),
-                       .version = pkgJson["Version"].GetString(),
-                       .url     = getUrl(pkgJson, returnGit),
-                       .desc    = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
-                       .popularity = pkgJson["Popularity"].GetFloat(),
-                       .depends = depends};
+    TaurPkg_t out =   {pkgJson["Name"].GetString(), // name
+                       pkgJson["Version"].GetString(),  // version
+                       getUrl(pkgJson, returnGit),  // url
+                       pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "", // description
+                       pkgJson["Popularity"].GetFloat(),    // popularity
+                       depends};    // depends
 
     return out;
 }
@@ -129,7 +129,7 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
 
 bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
     alpm_list_t *pkg, *syncdbs;
-    syncdbs = alpm_get_syncdbs(config.handle);
+    syncdbs = config.repos;
 
     vector<alpm_pkg_t *> packages;
 
@@ -432,7 +432,7 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
 
     alpm_list_t *pkg, *syncdbs;
 
-    syncdbs = alpm_get_syncdbs(config.handle);
+    syncdbs = config.repos;
 
     for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = alpm_list_next(pkg)) {
         if ((aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) || !aurOnly) {
@@ -448,7 +448,7 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
         vector<string> pkg = split(pkgs[i], ' ');
         if (pkg.size() < 2)
             continue;
-        out.push_back((TaurPkg_t){pkg[0], pkg[1], "https://aur.archlinux.org/" + cpr::util::urlEncode(pkg[0]) + ".git"});
+        out.push_back({pkg[0], pkg[1], "https://aur.archlinux.org/" + cpr::util::urlEncode(pkg[0]) + ".git"});
     }
 
     return out;
@@ -460,7 +460,7 @@ vector<string> TaurBackend::list_all_local_pkgs(bool aurOnly, bool stripVersion)
 
     alpm_list_t *pkg, *syncdbs;
 
-    syncdbs = alpm_get_syncdbs(config.handle);
+    syncdbs = config.repos;
 
     for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = alpm_list_next(pkg)) {
         if ((aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) || !aurOnly) {
@@ -492,7 +492,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
     alpm_list_t *pkg, *syncdbs;
     string packages_str;
 
-    syncdbs = alpm_get_syncdbs(config.handle);
+    syncdbs = config.repos;
 
     vector<alpm_pkg_t *> packages;
 
@@ -509,11 +509,13 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
 
     for (size_t i = 0; i < packages.size(); i++) {
         TaurPkg_t taur_pkg = { 
-                                .name = string(alpm_pkg_get_name(packages[i])),
-                                .version = string(alpm_pkg_get_version(packages[i])),
-                                .desc = string(alpm_pkg_get_desc(packages[i])),
-                                .popularity = 100,  // system packages are very trustable
-                                .db_name = string(alpm_db_get_name(alpm_pkg_get_db(packages[i]))),
+                                string(alpm_pkg_get_name(packages[i])), // name
+                                string(alpm_pkg_get_version(packages[i])),  // version
+                                "", // url
+                                string(alpm_pkg_get_desc(packages[i])), // desc
+                                100,  // system packages are very trustable
+                                vector<string>(),   // depends
+                                string(alpm_db_get_name(alpm_pkg_get_db(packages[i]))), // db_name
                              };
 
         out.push_back(taur_pkg);
