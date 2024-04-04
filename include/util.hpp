@@ -51,15 +51,15 @@ template <typename... Args>
 void log_printf(int log, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            fmt::print(fmt::emphasis::bold | fmt::fg(config ? config->getThemeValue("red", red) : hexStringToColor(red)), "ERROR: "); break;
+            fmt::print(BOLD_TEXT(config ? config->getThemeValue("red", red) : hexStringToColor(red)), "ERROR: "); break;
         case LOG_WARN:
-            fmt::print(fmt::emphasis::bold | fmt::fg(config ? config->getThemeValue("yellow", yellow) : hexStringToColor(yellow)), "Warning: "); break;
+            fmt::print(BOLD_TEXT(config ? config->getThemeValue("yellow", yellow) : hexStringToColor(yellow)), "Warning: "); break;
         case LOG_INFO:
-            fmt::print(fmt::emphasis::bold | fmt::fg(config ? config->getThemeValue("blue", blue) : hexStringToColor(blue)), "Info: "); break;
+            fmt::print(BOLD_TEXT(config ? config->getThemeValue("cyan", cyan) : hexStringToColor(cyan)), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(fmt::emphasis::bold | fmt::fg(config ? config->getThemeValue("magenta", magenta) : hexStringToColor(magenta)), "[DEBUG]: ");
+            fmt::print(BOLD_TEXT(config ? config->getThemeValue("magenta", magenta) : hexStringToColor(magenta)), "[DEBUG]: ");
             break;
     }
     fmt::print(fmt, std::forward<Args>(args)...);

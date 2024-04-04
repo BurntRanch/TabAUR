@@ -19,6 +19,7 @@ public:
     string cacheDir;
     string sudo;
     string git;
+    string makepkgConf;
     bool aurOnly;
     bool useGit;
     bool colors;
@@ -42,7 +43,7 @@ public:
     T getConfigValue(string value, T fallback) {
         toml::optional<T> ret = this->tbl.at_path(value).value<T>();
         if constexpr (toml::is_string<T>) // if we want to get a value that's a string
-            return ret.value_or(expandVar(fallback));
+            return ret ?  expandVar(ret.value()) : expandVar(fallback);
         else
             return ret.value_or(fallback);
     }
@@ -91,6 +92,7 @@ inline const string defConfig = R"#([general]
 #RootDir = "/"
 #DBPath = "/var/lib/pacman"
 #ConfigFile = "/etc/pacman.conf"
+#MakepkgConf = "/etc/makepkg.conf"
 )#";
 
 inline const string defTheme = R"#([theme]
