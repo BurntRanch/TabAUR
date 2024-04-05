@@ -1,4 +1,3 @@
-#include "fmt/color.h"
 #define TOML_IMPLEMENTATION
 #include "config.hpp"
 #include "util.hpp"
@@ -60,6 +59,11 @@ Config::~Config() {
     alpm_list_free(this->repos);
 }
 
+/*
+* Get the user cache directory
+* either from $XDG_CACHE_HOME or from $HOME/.cache/
+* @return user's cache directory  
+*/
 string Config::getHomeCacheDir() {
     char* dir = getenv("XDG_CACHE_HOME");
     if (dir != NULL && fs::exists(string(dir))) {
@@ -73,10 +77,20 @@ string Config::getHomeCacheDir() {
     }
 }
 
+/*
+* Get the user cache directory
+* either from Config::getHomeCacheDir() or the cacheDir variable of config.toml
+* @return TabAUR's cache directory 
+*/
 string Config::getCacheDir() {
     return this->getConfigValue<string>("general.cacheDir", this->getHomeCacheDir() + "/TabAUR");
 }
 
+/*
+* Get the user config directory
+* either from $XDG_CONFIG_HOME or from $HOME/.config/
+* @return user's config directory  
+*/
 string Config::getHomeConfigDir() {
     char* dir = getenv("XDG_CONFIG_HOME");
     if (dir != NULL && fs::exists(string(dir))) {
@@ -90,10 +104,20 @@ string Config::getHomeConfigDir() {
     }
 }
 
+/*
+ * Get the TabAUR config directory 
+ * where we'll have both "config.toml" and "theme.toml"
+ * from Config::getHomeConfigDir()
+ * @return TabAUR's config directory
+ */
 string Config::getConfigDir() {
     return this->getHomeConfigDir() + "/TabAUR";
 }
 
+/*
+* initialize all the "config.toml" variables
+* and sanitize them (never trust user's input)
+*/
 void Config::initializeVars() {
     this->cacheDir     = this->getCacheDir();
     this->makepkgConf  = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
@@ -113,6 +137,11 @@ void Config::initializeVars() {
     sanitizeStr(this->git);
 }
 
+/** parse the config file (aka "config.toml")
+ *  and initialize libalpm
+ *  using the variables under the [pacman] table in "config.toml"
+ *  @param the directory of the config file
+*/
 void Config::loadConfigFile(string filename) {
     try {
         this->tbl = toml::parse_file(filename);
@@ -132,6 +161,9 @@ void Config::loadConfigFile(string filename) {
     this->loadPacmanConfigFile(this->getConfigValue("pacman.ConfigFile", "/etc/pacman.conf"));
 }
 
+/** parse the theme file (aka "theme.toml")
+ *  @param filename The directory of the theme file
+ */
 void Config::loadThemeFile(string filename) {
     try {
         this->theme_tbl = toml::parse_file(filename);
@@ -142,10 +174,21 @@ void Config::loadThemeFile(string filename) {
     }
 }
 
+/** Get the theme color variable and return a fmt::rgb type variable
+ * Which can be used for colorize the text (useful for functions like log_printf())
+ * @param value The value we want
+ * @param fallback The default value if it doesn't exists
+ * @return fmt::rgb type variable 
+ */
 fmt::rgb Config::getThemeValue(string value, string fallback) {
     return hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback));
 }
 
+/** Get the theme color variable and return its hexcode
+ * @param value The value we want
+ * @param fallback The default value if it doesn't exists
+ * @return color hexcode value
+ */
 string Config::getThemeHexValue(string value, string fallback) {
     return this->theme_tbl["theme"][value].value<string>().value_or(fallback);
 }
