@@ -288,7 +288,7 @@ void printPkgInfo(TaurPkg_t &pkg, int index) {
     if (index > -1)
         log_printf(LOG_NONE, fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
     
-    log_printf(LOG_NONE, getColorFromDBName(pkg.db_name, *config), "{}/", pkg.db_name);
+    log_printf(LOG_NONE, getColorFromDBName(pkg.db_name), "{}/", pkg.db_name);
     log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkg.name);
     log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "{} ", pkg.version);
     log_printf(LOG_NONE, fmt::fg(config->getThemeValue("cyan", cyan)), " Popularity: {} ({})\n", pkg.popularity, getTitleForPopularity(pkg.popularity));
