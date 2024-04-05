@@ -3,7 +3,6 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
-#include <unistd.h>
 
 namespace fs = std::filesystem;
 

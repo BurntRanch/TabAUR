@@ -1,16 +1,14 @@
 #pragma GCC diagnostic ignored "-Wvla"
 
-#include "fmt/color.h"
 #include <stdexcept>
-#define BRANCH "libalpm-test"
-#define VERSION "0.1.0"
-
-#include <stdbool.h>
 #include <signal.h>
 
 #include "util.hpp"
 #include "args.hpp"
 #include "taur.hpp"
+
+#define BRANCH "libalpm-test"
+#define VERSION "0.1.0"
 
 std::unique_ptr<Config> config;
 
@@ -247,6 +245,7 @@ int parseargs(int argc, char* argv[]) {
 		log_printf(LOG_ERROR, "only one operation may be used at a time\n");
 		return 1;
     }
+
     if (op.version) {
         log_printf(LOG_NONE, "TabAUR version {}, branch {}\n", VERSION, BRANCH);
         exit(0);
@@ -255,11 +254,7 @@ int parseargs(int argc, char* argv[]) {
 		usage(op.op);
 		exit(0);
     }
-    if(op.help) {
-		usage(op.op);
-		exit(0);
-    }
-    if(op.test_colors){
+    if(op.test_colors) {
         test_colors();
         exit(0);
     }

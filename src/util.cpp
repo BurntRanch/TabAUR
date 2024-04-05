@@ -1,9 +1,6 @@
 #include "util.hpp"
 #include "config.hpp"
-#include "fmt/base.h"
-#include "fmt/color.h"
 #include "taur.hpp"
-#include <alpm.h>
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, string const& ending) {
@@ -26,13 +23,21 @@ void sanitizeStr(string& str){
     str.erase(std::remove_if(str.begin(), str.end(), isInvalid), str.end());
 }
 
+/** Print some text after hitting CTRL-C. 
+ * Used only in main() for signal()
+ */
 void interruptHandler(int) {
     log_printf(LOG_WARN, "Caught CTRL-C, Exiting!\n");
 
     std::exit(-1);
 }
 
-// Function to check if a package is from a synchronization database
+/** Function to check if a package is from a synchronization database
+ * Basically if it's in pacman repos like core, extra, multilib, etc.
+ * @param pkg The package to check
+ * @param syncdbs
+ * @return true if the pkg exists, else false
+ */ 
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
     const char *name = alpm_pkg_get_name(pkg);
 
@@ -108,6 +113,10 @@ bool commitTransactionAndRelease(bool soft) {
     return false;
 }
 
+/** Replace special symbols such as ~ and $ in std::strings
+ * @param str The string
+ * @return The modified string
+ */ 
 string expandVar(string& str) {
     const char* env;
     if (str[0] == '~') {
@@ -224,6 +233,11 @@ bool taur_read_exec(vector<const char*> cmd, string *output) {
     return false;
 }
 
+/** Executes commands with execvp() and keep the program running without existing
+ * @param cmd The command to execute 
+ * @return true if the command successed, else false 
+ * P.S. it's likely impossible to return false because if the command failed, the program will just exists
+ */ 
 bool taur_exec(vector<const char*> cmd) {
     cmd.push_back(nullptr);
 
@@ -231,13 +245,13 @@ bool taur_exec(vector<const char*> cmd) {
 
     if (pid < 0) {
         log_printf(LOG_ERROR, "fork() failed: {}\n", strerror(errno));
-        exit(127);
+        exit(-1);
     }
 
     if (pid == 0) {
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
         log_printf(LOG_ERROR, "An error as occured: {}\n", strerror(errno));
-        exit(127);
+        exit(-1);
     } else if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
         waitpid(pid, &status, 0); // Wait for the child to finish
@@ -247,22 +261,26 @@ bool taur_exec(vector<const char*> cmd) {
         else {
             log_printf(LOG_ERROR, "Failed to execute the command: ");
             print_vec(cmd); // fmt::join() doesn't work with vector<const char*>
-            exit(127);
+            exit(-1);
         }
     }
 
     return false;
 }
 
-fmt::text_style getColorFromDBName(string db_name, Config &cfg) {
+/** Get the database color
+ * @param The database name
+ * @return database's color in bold
+ */
+fmt::text_style getColorFromDBName(string db_name) {
     if (db_name == "aur")
-        return BOLD_TEXT(cfg.getThemeValue("blue", blue));
+        return BOLD_TEXT(config->getThemeValue("blue", blue));
     else if (db_name == "extra")
-        return BOLD_TEXT(cfg.getThemeValue("green", green));
+        return BOLD_TEXT(config->getThemeValue("green", green));
     else if (db_name == "multilib")
-        return BOLD_TEXT(cfg.getThemeValue("cyan", cyan));
+        return BOLD_TEXT(config->getThemeValue("cyan", cyan));
     else
-        return BOLD_TEXT(cfg.getThemeValue("yellow", yellow));
+        return BOLD_TEXT(config->getThemeValue("yellow", yellow));
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
