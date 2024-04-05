@@ -65,8 +65,12 @@ string Config::getHomeCacheDir() {
     if (dir != NULL && fs::exists(string(dir))) {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
-    } else
-        return string(getenv("HOME")) + "/.cache";
+    } else {
+        char *home = getenv("HOME");
+        if (home == nullptr)
+            return "~/.cache";	// If this screws up, its not our fault, should've set $HOME!!
+        return string(home) + "/.cache";
+    }
 }
 
 string Config::getCacheDir() {
@@ -78,8 +82,12 @@ string Config::getHomeConfigDir() {
     if (dir != NULL && fs::exists(string(dir))) {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
-    } else
-        return string(getenv("HOME")) + "/.config";
+    } else {
+        char *home = getenv("HOME");
+        if (home == nullptr)
+            return "~/.cache";
+        return string(home) + "/.config";
+    }
 }
 
 string Config::getConfigDir() {
