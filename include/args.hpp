@@ -18,8 +18,8 @@ enum {
 enum {
     OP_ASK = 100,
     OP_CACHEDIR,
-    OP_AURONLY,
-    OP_REFRESH,
+    OP_AURONLY = 97,
+    OP_REFRESH = 103,   // continue the chain i guess
     OP_SYSUPGRADE,
     OP_NOCOLOR,
     OP_COLOR,

@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <memory>
+#include <optional>
 
 #include "fmt/base.h"
 #include "fmt/ranges.h"
@@ -14,12 +16,16 @@
 
 using std::string;
 using std::vector;
+using std::unique_ptr;
+
 // taken from pacman
 #define _(str) (char*)str
 struct TaurPkg_t;
 class TaurBackend;
 
 #define BOLD_TEXT(x) (fmt::emphasis::bold | fmt::fg(x))
+#define alpm_list_smart_pointer unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
+#define make_list_smart_pointer(pointer) (unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
 
 enum log_level {
     LOG_ERROR,
@@ -43,6 +49,7 @@ bool commitTransactionAndRelease(bool soft = false);
 void printPkgInfo(TaurPkg_t &pkg, int index = -1);
 fmt::text_style getColorFromDBName(string db_name);
 std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
+std::optional<alpm_list_smart_pointer> filterAURPkgs(alpm_list_t *pkgs, alpm_list_t *syncdbs, bool inverse);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
 fmt::rgb hexStringToColor(string hexstr);

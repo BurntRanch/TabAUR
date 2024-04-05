@@ -172,6 +172,7 @@ bool updateAll(TaurBackend *backend) {
 }
 
 bool queryPkgs(TaurBackend *backend) {
+    log_printf(LOG_DEBUG, "AUR Only: {}\n", config->aurOnly);
     alpm_list_t *pkg, *syncdbs;
 
     syncdbs = alpm_get_syncdbs(config->handle);

@@ -1,6 +1,11 @@
 #include "util.hpp"
 #include "config.hpp"
 #include "taur.hpp"
+#include <alpm.h>
+#include <alpm_list.h>
+#include <memory>
+#include <optional>
+#include <memory>
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, string const& ending) {
@@ -42,9 +47,8 @@ bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
     const char *name = alpm_pkg_get_name(pkg);
 
     for (; syncdbs; syncdbs = alpm_list_next(syncdbs))
-        for (alpm_list_t *p = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); p; p = alpm_list_next(p))
-            if (strcmp(name, alpm_pkg_get_name((alpm_pkg_t *)(p->data))) == 0)
-                return true;
+        if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), name))
+            return true;
             
     return false;
 }
@@ -269,7 +273,7 @@ bool taur_exec(vector<const char*> cmd) {
 }
 
 /** Get the database color
- * @param The database name
+ * @param db_name The database name
  * @return database's color in bold
  */
 fmt::text_style getColorFromDBName(string db_name) {
@@ -295,6 +299,12 @@ void printPkgInfo(TaurPkg_t &pkg, int index) {
     log_printf(LOG_NONE, "    {}\n", pkg.desc);
 }
 
+/** Ask the user to select a package out of a list.
+ * @param pkgs The list of packages, in a vector
+ * @param backend A reference to the TaurBackend responsible for fetching any AUR packages.
+ * @param useGit Whether the fetched pkg should use a .git url
+ * @return Optional TaurPkg_t, will not return if interrupted.
+*/
 optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
         return pkgs[0].url.empty() ? pkgs[0] : backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]);
@@ -324,6 +334,47 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
     }
 
     return {};
+}
+
+/** Filters out/only AUR packages.
+ * Default behavior is filtering out.
+ * @param pkgs a unique_ptr to a list of packages to filter.
+ * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
+ * @return an optional unique_ptr to a result.
+*/
+optional<alpm_list_smart_pointer> filterAURPkgs(alpm_list_t *pkgs, alpm_list_t *syncdbs, bool inverse) {
+    size_t pkgsSize = alpm_list_count(pkgs);
+
+    alpm_list_smart_pointer sync_pkgs(nullptr, alpm_list_free);
+
+    for (; syncdbs; syncdbs = syncdbs->next) {
+        for (size_t i = 0; i < pkgsSize; i++) {
+            alpm_pkg_t *pkg = alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(pkgs, i)->data)));
+            if (pkg) {
+                alpm_list_t *sync_pkgs_get = sync_pkgs.get();
+                sync_pkgs.release();
+                sync_pkgs = make_list_smart_pointer(alpm_list_add(sync_pkgs_get, (void *)(pkg)));
+            }
+        }
+    }
+
+    alpm_list_smart_pointer out(nullptr, alpm_list_free);
+
+    if (inverse) {
+        for (alpm_list_t *pkgsClone = pkgs; pkgsClone; pkgsClone = sync_pkgs->next) {
+            // it couldn't find the sync pkg in the pkgs list, AUR package.
+            if (alpm_list_find_ptr(pkgs, (alpm_pkg_t *)(sync_pkgs->data)) == nullptr) {
+                alpm_list_t *out_get = out.get();
+                out.release();
+                out = make_list_smart_pointer(alpm_list_add(out_get, (alpm_pkg_t *)(sync_pkgs->data)));
+            }
+        }
+    } else {
+        // can't move ownership for some reason, just copy the data, both'll get deleted anyway.
+        out.swap(sync_pkgs);
+    }
+
+    return out;
 }
 
 string getTitleForPopularity(float popularity) {

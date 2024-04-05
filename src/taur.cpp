@@ -3,6 +3,9 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
+#include <alpm.h>
+#include <alpm_list.h>
+#include <memory>
 
 namespace fs = std::filesystem;
 
@@ -127,32 +130,27 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
 }
 
 bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
-    alpm_list_t *pkg, *syncdbs;
-    syncdbs = config.repos;
+    std::unique_ptr<alpm_list_t, decltype(&alpm_list_free)> list(alpm_list_add(NULL, (void *)(pkgName.c_str())), alpm_list_free);
+    alpm_list_t *temp_ret;
 
-    vector<alpm_pkg_t *> packages;
-
-    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = alpm_list_next(pkg)) {
-        string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
-        if (name.find(pkgName) == string::npos)
-            continue;
-        if ((aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) || !aurOnly)
-            packages.push_back((alpm_pkg_t *)(pkg->data));
-    }
-  
-    if (packages.empty())
+    if (alpm_db_search(alpm_get_localdb(config.handle), list.get(), &temp_ret) != 0)
         return false;
 
-    int transCode = alpm_trans_init(this->config.handle, 0);
+    std::unique_ptr<alpm_list_t, decltype(&alpm_list_free)> ret(temp_ret, alpm_list_free);
 
-    if (transCode) {
+    size_t ret_length = alpm_list_count(ret.get());
+
+    if (alpm_trans_init(this->config.handle, 0)) {
         log_printf(LOG_ERROR, "Failed to initialize transaction ({})\n", alpm_strerror(alpm_errno(this->config.handle)));
         return false;
     }
 
-    if (packages.size() == 1) {
-        log_printf(LOG_INFO, "Removing package {}.\n", pkgName);
-        if (alpm_remove_pkg(this->config.handle, packages[0])) {
+    if (ret_length == 0) {
+        log_printf(LOG_ERROR, "Couldn't find any packages!\n");
+        return false;
+    } else if (ret_length == 1) {
+        log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(ret->data)));
+        if (alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(ret->data))) {
             log_printf(LOG_ERROR, "Failed to remove package ({})\n", alpm_strerror(alpm_errno(this->config.handle)));
             alpm_trans_release(this->config.handle);
             return false;
@@ -162,17 +160,18 @@ bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
     }
 
     fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
-    for (size_t i = 0; i < packages.size(); i++)
-        fmt::println("[{}] {}", i, alpm_pkg_get_name(packages[i]));
+    for (size_t i = 0; i < ret_length; i++) {
+        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
+    }
 
     string included;
     std::cin >> included;
 
     if (included == "*") {
-        for (size_t i = 0; i < packages.size(); i++) {
-            log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name(packages[i]));
-            int ret = alpm_remove_pkg(this->config.handle, packages[i]);
-            if (ret != 0) {
+        for (size_t i = 0; i < ret_length; i++) {
+            log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
+            int code = alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data));
+            if (code != 0) {
                 log_printf(LOG_ERROR, "Failed to remove package, Exiting!\n");
                 alpm_trans_release(this->config.handle);
                 return false;
@@ -194,12 +193,12 @@ bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
         try {
             size_t includedIndex = (size_t)stoi(includedIndexes[i]);
 
-            if (includedIndex >= packages.size())
+            if (includedIndex >= ret_length)
                 continue;
 
-            log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name(packages[includedIndex]));
-            int ret = alpm_remove_pkg(this->config.handle, packages[includedIndex]);
-            if (ret != 0) {
+            log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), includedIndex)->data)));
+            int code = alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(alpm_list_nth(ret.get(), includedIndex)->data));
+            if (code != 0) {
                 log_printf(LOG_ERROR, "Failed to remove package, Exiting!\n");
                 alpm_trans_release(this->config.handle);
                 return false;
@@ -425,27 +424,35 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
 
 // all AUR local packages
 vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
-    vector<string> pkgs;
+    alpm_list_smart_pointer pkgs(nullptr, alpm_list_free);
 
     alpm_list_t *pkg, *syncdbs;
 
     syncdbs = config.repos;
 
-    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = alpm_list_next(pkg)) {
-        if ((aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) || !aurOnly) {
-            pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))) + " " + string(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data))));
-        }
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = pkg->next) {
+        // data is name + " " + version
+        log_printf(LOG_DEBUG, "Adding pkg {} to list of size {}\n", alpm_pkg_get_name((alpm_pkg_t *)pkg->data), alpm_list_count(pkgs.get()));
+        alpm_list_t *pkgs_get = pkgs.get();
+        pkgs.release();
+        pkgs = make_list_smart_pointer(alpm_list_add(pkgs_get, pkg->data));
     }
 
-    if (pkgs.empty())
-        return {};
+    if (aurOnly) {
+        optional<alpm_list_smart_pointer> oPkgs = filterAURPkgs(pkgs.get(), syncdbs, false);
+
+        if (!oPkgs)
+            return {};
+
+        pkgs.swap(oPkgs.value());
+    }
+
+    size_t pkgsSize = alpm_list_count(pkgs.get());
 
     vector<TaurPkg_t> out;
-    for (size_t i = 0; i < pkgs.size(); i++) {
-        vector<string> pkg = split(pkgs[i], ' ');
-        if (pkg.size() < 2)
-            continue;
-        out.push_back({pkg[0], pkg[1], "https://aur.archlinux.org/" + cpr::util::urlEncode(pkg[0]) + ".git"});
+    for (size_t i = 0; i < pkgsSize; i++) {
+        alpm_pkg_t *pkg = (alpm_pkg_t *)(alpm_list_nth(pkgs.get(), i)->data);
+        out.push_back({alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg), "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git"});
     }
 
     return out;

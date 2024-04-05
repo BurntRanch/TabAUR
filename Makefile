@@ -4,7 +4,7 @@ OBJ 	 = $(SRC:.cpp=.o)
 LIBS 	?= -lcpr -lalpm
 LDFLAGS  = ${LIBS}
 TARGET   = taur
-CPPFLAGS = -ggdb -funroll-all-loops -march=native -isystem include -Wall -std=c++17
+CPPFLAGS = -ggdb -O3 -pedantic -funroll-all-loops -march=native -isystem include -Wall -std=c++17
 
 is_cpr_installed := $(shell ldconfig -p | grep libcpr > /dev/null && echo -n yes)
 
