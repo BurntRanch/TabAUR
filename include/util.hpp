@@ -52,7 +52,7 @@ void printPkgInfo(TaurPkg_t &pkg, int index = -1);
 void free_list_and_internals(alpm_list_t *list);
 fmt::text_style getColorFromDBName(string db_name);
 std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
-std::optional<alpm_list_smart_pointer> filterAURPkgs(alpm_list_t *pkgs, alpm_list_t *syncdbs, bool inverse);
+vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
 fmt::rgb hexStringToColor(string hexstr);

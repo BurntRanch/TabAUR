@@ -354,37 +354,21 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
  * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
  * @return an optional unique_ptr to a result.
 */
-optional<alpm_list_smart_pointer> filterAURPkgs(alpm_list_t *pkgs, alpm_list_t *syncdbs, bool inverse) {
-    size_t pkgsSize = alpm_list_count(pkgs);
-
-    alpm_list_smart_pointer sync_pkgs(nullptr, alpm_list_free);
+vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse) {
+    vector<alpm_pkg_t *> out;
 
     for (; syncdbs; syncdbs = syncdbs->next) {
-        for (size_t i = 0; i < pkgsSize; i++) {
-            alpm_pkg_t *pkg = alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(pkgs, i)->data)));
-            if (pkg) {
-                alpm_list_t *sync_pkgs_get = sync_pkgs.get();
-                (void)sync_pkgs.release();
-                sync_pkgs = make_list_smart_pointer(alpm_list_add(sync_pkgs_get, (void *)(pkg)));
-            }
+        for (size_t i = 0; i < pkgs.size(); i++) {
+            bool existsInSync = alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), alpm_pkg_get_name(pkgs[i])) != nullptr;
+            
+            if ((existsInSync && inverse) || (!existsInSync && !inverse))
+                pkgs[i] = nullptr;
         }
     }
 
-    alpm_list_smart_pointer out(nullptr, alpm_list_free);
-
-    if (inverse) {
-        for (alpm_list_t *pkgsClone = pkgs; pkgsClone; pkgsClone = sync_pkgs->next) {
-            // it couldn't find the sync pkg in the pkgs list, AUR package.
-            if (alpm_list_find_ptr(pkgs, (alpm_pkg_t *)(sync_pkgs->data)) == nullptr) {
-                alpm_list_t *out_get = out.get();
-                (void)out.release();
-                out = make_list_smart_pointer(alpm_list_add(out_get, (alpm_pkg_t *)(sync_pkgs->data)));
-            }
-        }
-    } else {
-        // can't move ownership for some reason, just copy the data, both'll get deleted anyway.
-        out.swap(sync_pkgs);
-    }
+    for (size_t i = 0; i < pkgs.size(); i++)
+        if (pkgs[i])
+            out.push_back(pkgs[i]);
 
     return out;
 }

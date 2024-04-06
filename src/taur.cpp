@@ -278,12 +278,13 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool 
     for (size_t i = 0; i < pkg.depends.size(); i++) {
         
         optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg.depends[i], useGit);
+        
         if (!oDepend)
             continue;
 
         TaurPkg_t depend = oDepend.value();
 
-        log_printf(LOG_DEBUG, "pkg = {} -- pkg.depends = {}\n", depend.name[i], depend.depends[i]);
+        log_printf(LOG_DEBUG, "depend = {} -- depend.depends = {}\n", depend.name, fmt::join(depend.depends, "; "));
 
         bool alreadyExists = false;
         for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
@@ -424,34 +425,21 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
 
 // all AUR local packages
 vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
-    alpm_list_smart_pointer pkgs(nullptr, alpm_list_free);
+    vector<alpm_pkg_t *> pkgs;
 
     alpm_list_t *pkg, *syncdbs;
 
     syncdbs = config.repos;
 
-    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = pkg->next) {
-        // data is name + " " + version
-        log_printf(LOG_DEBUG, "Adding pkg {} to list of size {}\n", alpm_pkg_get_name((alpm_pkg_t *)pkg->data), alpm_list_count(pkgs.get()));
-        alpm_list_t *pkgs_get = pkgs.get();
-        (void)pkgs.release();
-        pkgs = make_list_smart_pointer(alpm_list_add(pkgs_get, pkg->data));
-    }
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = pkg->next)
+        pkgs.push_back((alpm_pkg_t *)(pkg->data));
 
-    if (aurOnly) {
-        optional<alpm_list_smart_pointer> oPkgs = filterAURPkgs(pkgs.get(), syncdbs, false);
-
-        if (!oPkgs)
-            return {};
-
-        pkgs.swap(oPkgs.value());
-    }
-
-    size_t pkgsSize = alpm_list_count(pkgs.get());
+    if (aurOnly)
+        pkgs = filterAURPkgs(pkgs, syncdbs, true);
 
     vector<TaurPkg_t> out;
-    for (size_t i = 0; i < pkgsSize; i++) {
-        alpm_pkg_t *pkg = (alpm_pkg_t *)(alpm_list_nth(pkgs.get(), i)->data);
+    for (size_t i = 0; i < pkgs.size(); i++) {
+        alpm_pkg_t *pkg = pkgs[i];
         out.push_back({alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg), "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git"});
     }
 
