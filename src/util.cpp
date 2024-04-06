@@ -1,12 +1,6 @@
 #include "util.hpp"
 #include "config.hpp"
 #include "taur.hpp"
-#include <alpm.h>
-#include <alpm_list.h>
-#include <iostream>
-#include <memory>
-#include <optional>
-#include <memory>
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, string const& ending) {

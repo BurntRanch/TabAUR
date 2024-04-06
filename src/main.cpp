@@ -1,8 +1,4 @@
-#include <alpm_list.h>
 #pragma GCC diagnostic ignored "-Wvla"
-
-#include <stdexcept>
-#include <signal.h>
 
 #include "util.hpp"
 #include "args.hpp"
@@ -29,10 +25,12 @@ options:
     )#";
 
     log_printf(LOG_NONE, "TabAUR usage: taur <op> [...]\n");
+    
     if(op == OP_MAIN)
         log_printf(LOG_NONE, "{}", help_op);
     else if (op == OP_SYNC)
         log_printf(LOG_NONE, "-S,--sync test\n");
+
     log_printf(LOG_NONE, "TabAUR will assume -Syu if you pass no arguments to it.\n\n");
 
     if (config->secretRecipe) {
@@ -230,6 +228,10 @@ int parseargs(int argc, char* argv[]) {
         {"refresh",    no_argument,       0, OP_REFRESH},
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
         {"search",     no_argument,       0, OP_SEARCH},
+        {"cachedir",   required_argument, 0, OP_CACHEDIR},
+        {"sudo",       required_argument, 0, OP_SUDO},
+        {"use-git",    no_argument,       0, OP_USEGIT},
+        {"debug",      no_argument,       0, OP_DEBUG},
         {0,0,0,0}
     };
 
@@ -291,7 +293,7 @@ int parseargs(int argc, char* argv[]) {
 	    if(result != 0) {
 		    if(result == 1) {
 		    /* global option parsing failed, abort */
-			    if(opt < 100) {
+			    if(opt < 1000) {
 				    log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
 			    } else {
 				    log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);

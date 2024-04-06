@@ -76,10 +76,18 @@ int parsearg_global(int opt)
             config->colors = true;
             break;
 		case OP_DEBUG:
-            config->debug = false;
+            config->debug = true;
 			break;
         case OP_AURONLY:
+        case 'a':
             config->aurOnly = true;
+            break;
+        case OP_SUDO:
+            config->sudo = strdup(optarg);
+            break;
+        case OP_USEGIT:
+        case 'g':
+            config->useGit = true;
             break;
         default:
 			return 1;

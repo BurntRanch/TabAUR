@@ -3,9 +3,6 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
-#include <alpm.h>
-#include <alpm_list.h>
-#include <memory>
 
 namespace fs = std::filesystem;
 
