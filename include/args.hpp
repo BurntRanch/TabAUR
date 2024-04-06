@@ -1,6 +1,7 @@
 #ifndef ARGS_HPP
 #define ARGS_HPP
 
+#include "util.hpp"
 #include <alpm.h>
 #include <string>
 #include <sys/types.h>
@@ -44,7 +45,7 @@ struct Operation_t {
 };
 
 extern struct Operation_t op;
-extern alpm_list_t *taur_targets;
+extern alpm_list_smart_deleter taur_targets;
 
 int parsearg_op(int opt, int dryrun);
 void invalid_opt();

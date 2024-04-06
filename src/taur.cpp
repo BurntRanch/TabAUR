@@ -434,7 +434,7 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
         // data is name + " " + version
         log_printf(LOG_DEBUG, "Adding pkg {} to list of size {}\n", alpm_pkg_get_name((alpm_pkg_t *)pkg->data), alpm_list_count(pkgs.get()));
         alpm_list_t *pkgs_get = pkgs.get();
-        pkgs.release();
+        (void)pkgs.release();
         pkgs = make_list_smart_pointer(alpm_list_add(pkgs_get, pkg->data));
     }
 

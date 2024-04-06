@@ -1,3 +1,4 @@
+#include <alpm_list.h>
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include <stdexcept>
@@ -303,7 +304,10 @@ int parseargs(int argc, char* argv[]) {
 
     while(optind < argc) {
 		/* add the target to our target array */
-		taur_targets = alpm_list_add(taur_targets, strdup(argv[optind]));
+        alpm_list_t *taur_targets_get = taur_targets.get();
+        (void)taur_targets.release();
+        alpm_list_append_strdup(&taur_targets_get, argv[optind]);
+		taur_targets = make_list_smart_deleter(taur_targets_get);
 		optind++;
 	}
 
@@ -324,11 +328,9 @@ int main(int argc, char* argv[]) {
     if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.\n");
         return 1;
+        
     // doesn't need root, still gets it anyway.
     } else if (!op.requires_root && geteuid() == 0) {
-        // This was here because in past versions, libalpm was being used next to makepkg, which one requires sudo, and the other requires normal user privileges.
-        // I'll keep this here as it's convenient for some users.
-        // TODO: Add an option to suppress its messages or disable it entirely.
         char *real_uid = getenv("SUDO_UID");
         if (real_uid) {
             int realuid = std::atoi(real_uid);

@@ -27,6 +27,9 @@ class TaurBackend;
 #define alpm_list_smart_pointer unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
 #define make_list_smart_pointer(pointer) (unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
 
+#define alpm_list_smart_deleter unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>
+#define make_list_smart_deleter(pointer) (unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>(pointer, free_list_and_internals))
+
 enum log_level {
     LOG_ERROR,
     LOG_WARN,
@@ -34,7 +37,6 @@ enum log_level {
     LOG_DEBUG,
     LOG_NONE    // display no prefix for this.
 };
-
 
 bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);
@@ -47,6 +49,7 @@ void sanitizeStr(string& str);
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool commitTransactionAndRelease(bool soft = false);
 void printPkgInfo(TaurPkg_t &pkg, int index = -1);
+void free_list_and_internals(alpm_list_t *list);
 fmt::text_style getColorFromDBName(string db_name);
 std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 std::optional<alpm_list_smart_pointer> filterAURPkgs(alpm_list_t *pkgs, alpm_list_t *syncdbs, bool inverse);

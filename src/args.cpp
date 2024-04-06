@@ -5,7 +5,8 @@
 #include "config.hpp"
 
 Operation_t op;
-alpm_list_t *taur_targets;
+
+alpm_list_smart_deleter taur_targets(nullptr, free_list_and_internals);
 
 void invalid_opt(int used, string opt1, string opt2)
 {

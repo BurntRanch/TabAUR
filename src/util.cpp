@@ -3,6 +3,7 @@
 #include "taur.hpp"
 #include <alpm.h>
 #include <alpm_list.h>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <memory>
@@ -272,6 +273,17 @@ bool taur_exec(vector<const char*> cmd) {
     return false;
 }
 
+/** Free a list and every single item in it.
+ * This will attempt to free everything, should be used for strings that contain C strings only.
+ * @param list the list to free
+*/
+void free_list_and_internals(alpm_list_t *list) {
+    for (alpm_list_t *listClone = list; listClone; listClone = listClone->next)
+        free(listClone->data);
+
+    alpm_list_free(list);
+}
+
 /** Get the database color
  * @param db_name The database name
  * @return database's color in bold
@@ -352,7 +364,7 @@ optional<alpm_list_smart_pointer> filterAURPkgs(alpm_list_t *pkgs, alpm_list_t *
             alpm_pkg_t *pkg = alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(pkgs, i)->data)));
             if (pkg) {
                 alpm_list_t *sync_pkgs_get = sync_pkgs.get();
-                sync_pkgs.release();
+                (void)sync_pkgs.release();
                 sync_pkgs = make_list_smart_pointer(alpm_list_add(sync_pkgs_get, (void *)(pkg)));
             }
         }
@@ -365,7 +377,7 @@ optional<alpm_list_smart_pointer> filterAURPkgs(alpm_list_t *pkgs, alpm_list_t *
             // it couldn't find the sync pkg in the pkgs list, AUR package.
             if (alpm_list_find_ptr(pkgs, (alpm_pkg_t *)(sync_pkgs->data)) == nullptr) {
                 alpm_list_t *out_get = out.get();
-                out.release();
+                (void)out.release();
                 out = make_list_smart_pointer(alpm_list_add(out_get, (alpm_pkg_t *)(sync_pkgs->data)));
             }
         }
