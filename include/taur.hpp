@@ -1,7 +1,6 @@
 #ifndef GIT_HPP
 #define GIT_HPP
 
-#include <alpm.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <optional>

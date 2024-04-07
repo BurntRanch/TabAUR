@@ -1,3 +1,4 @@
+#include <stdexcept>
 #define TOML_IMPLEMENTATION
 #include "config.hpp"
 #include "util.hpp"
@@ -72,7 +73,7 @@ string Config::getHomeCacheDir() {
     } else {
         char *home = getenv("HOME");
         if (home == nullptr)
-            return "~/.cache";	// If this screws up, its not our fault, should've set $HOME!!
+            throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
         return string(home) + "/.cache";
     }
 }
@@ -99,7 +100,7 @@ string Config::getHomeConfigDir() {
     } else {
         char *home = getenv("HOME");
         if (home == nullptr)
-            return "~/.cache";
+            throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
         return string(home) + "/.config";
     }
 }

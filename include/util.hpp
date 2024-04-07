@@ -2,7 +2,6 @@
 #define UTIL_HPP
 #define FMT_HEADER_ONLY 1
 
-#include <alpm.h>
 #include <string>
 #include <vector>
 #include <iostream>
