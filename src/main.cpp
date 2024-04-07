@@ -43,6 +43,8 @@ options:
 }
 
 void test_colors() {
+    if(fmt::disable_colors)
+        log_printf(LOG_NONE, "Colors are disabled\n");
     log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
     log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
     log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
@@ -229,6 +231,7 @@ int parseargs(int argc, char* argv[]) {
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
         {"search",     no_argument,       0, OP_SEARCH},
         {"cachedir",   required_argument, 0, OP_CACHEDIR},
+        {"colors",     required_argument, 0, OP_COLORS},
         {"sudo",       required_argument, 0, OP_SUDO},
         {"use-git",    no_argument,       0, OP_USEGIT},
         {"debug",      no_argument,       0, OP_DEBUG},
@@ -258,11 +261,7 @@ int parseargs(int argc, char* argv[]) {
 		usage(op.op);
 		exit(0);
     }
-    if(op.test_colors) {
-        test_colors();
-        exit(0);
-    }
-    
+        
     /* parse all other options */
 	optind = 1;
 	while((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
@@ -300,10 +299,14 @@ int parseargs(int argc, char* argv[]) {
 			    }
 		    }
             return 1;
-	    }
-
+	    }       
     }
 
+    if(op.test_colors) {
+        test_colors();
+        exit(0);
+    }
+    
     while(optind < argc) {
 		/* add the target to our target array */
         alpm_list_t *taur_targets_get = taur_targets.get();
@@ -312,7 +315,7 @@ int parseargs(int argc, char* argv[]) {
 		taur_targets = make_list_smart_deleter(taur_targets_get);
 		optind++;
 	}
-
+    
     return 0;
 }
 
@@ -330,19 +333,9 @@ int main(int argc, char* argv[]) {
     if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.\n");
         return 1;
-        
-    // doesn't need root, still gets it anyway.
     } else if (!op.requires_root && geteuid() == 0) {
-        char *real_uid = getenv("SUDO_UID");
-        if (real_uid) {
-            int realuid = std::atoi(real_uid);
-            if (realuid > 0) {
-                log_printf(LOG_WARN, "You are trying to run TabAUR with sudo when it doesn't need it, This has security & safety implications.\n We will try to reduce your privilege, but there is no guarantee it'll work.\n");
-                setuid(realuid);
-                setenv("HOME", ("/home/" + string(getenv("SUDO_USER"))).c_str(), 1);
-                config->initializeVars();
-            }
-        }
+        log_printf(LOG_ERROR, "You are trying to run TabAUR as root when you don't need it.\n");
+        return 1;
     }
 
     switch (op.op) {

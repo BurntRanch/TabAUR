@@ -22,39 +22,39 @@ int parsearg_op(int opt, int dryrun) {
     switch (opt) {
         /* operations */
         case 'D':
-            if(dryrun) break;
-            op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
+                if(dryrun) break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
         case 'F':
-            if(dryrun) break;
-            op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
+                if(dryrun) break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
         case 'Q':
-            if(dryrun) break;
-            op.op = (op.op != OP_MAIN ? 0 : OP_QUERY); break;
+                if(dryrun) break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_QUERY); break;
         case 'R':
-            if(dryrun) break;
-            op.op = (op.op != OP_MAIN ? 0 : OP_REM);
-            op.requires_root = true;
-            break;
+                if(dryrun) break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_REM);
+                op.requires_root = true;
+                break;
         case 'S':
-            if(dryrun) break;
-            op.op = (op.op != OP_MAIN ? 0 : OP_SYNC); break;
+                if(dryrun) break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_SYNC); break;
         case 'T':
-            if(dryrun) break;
-            op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
+                if(dryrun) break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
         case 'U':
-            if(dryrun) break;
-            op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
+                if(dryrun) break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
         case 'V':
-            if(dryrun) break;
-            op.version = 1; break;
+                if(dryrun) break;
+                op.version = 1; break;
         case 'h':
-            if(dryrun) break;
-            op.help = 1; break;
+                if(dryrun) break;
+                op.help = 1; break;
         case 't':
-            if(dryrun) break;
-            op.test_colors = 1; break;
+                if(dryrun) break;
+                op.test_colors = 1; break;
         default:
-            return 1;
+                return 1;
     }
     return 0;
 }
@@ -66,23 +66,27 @@ int parsearg_op(int opt, int dryrun) {
 int parsearg_global(int opt) {
     switch (opt) {
         case OP_CACHEDIR:
-            config->cacheDir = strdup(optarg); break;
-        case OP_NOCOLOR:
-            config->colors = false; break;
-        case OP_COLOR:
-            config->colors = true; break;
+                config->cacheDir = strndup(optarg, PATH_MAX);
+                break;
+        case OP_COLORS:
+                fmt::disable_colors = !((bool)std::atoi(optarg));
+                break;
         case OP_DEBUG:
-            config->debug = true; break;
+                config->debug = true;
+                break;
         case OP_AURONLY:
         case 'a':
-            config->aurOnly = true; break;
+                config->aurOnly = true;
+                break;
         case OP_SUDO:
-            config->sudo = strdup(optarg); break;
+                config->sudo = strndup(optarg, PATH_MAX);
+                break;
         case OP_USEGIT:
         case 'g':
-            config->useGit = true; break;
+                config->useGit = true;
+                break;
         default:
-            return 1;
+                return 1;
     }
     return 0;
 }
@@ -91,13 +95,16 @@ int parsearg_sync(int opt) {
     switch (opt) {
         case OP_SYSUPGRADE:
         case 'u':
-            (op.op_s_upgrade)++; break;
+            (op.op_s_upgrade)++; 
+            break;
         case OP_REFRESH:
         case 'y':
-            (op.op_s_sync)++; break;
+            (op.op_s_sync)++; 
+            break;
         case OP_SEARCH:
         case 's':
-            op.op_s_search = 1; break;
+            op.op_s_search = 1; 
+            break;
         default:
             return 1;
     }
