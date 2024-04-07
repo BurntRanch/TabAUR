@@ -4,18 +4,15 @@
 #include "util.hpp"
 #include "ini.h"
 
-#include <filesystem>
 
-using std::getenv;
 using std::ofstream;
 using std::ifstream;
 
-namespace fs = std::filesystem;
 
 Config::Config() {
-    string configDir = this->getConfigDir();
-    string confFilename  = configDir + "/config.toml";
-    string themeFilename  = configDir + "/theme.toml";
+    string configDir = getConfigDir();
+    def_conffile  = configDir + "/config.toml";
+    def_themefile  = configDir + "/theme.toml";
 
     bool newUser = false;
 
@@ -25,33 +22,24 @@ Config::Config() {
 
         newUser = true;
     }
-    if (!fs::exists(confFilename)) {
+    if (!fs::exists(def_conffile)) {
         log_printf(LOG_WARN, "config.toml not found, generating new one\n");
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
-        ofstream f(confFilename, std::ios::trunc);
+        ofstream f(def_conffile, std::ios::trunc);
         f << defConfig;
         f.close();
     }
-    if (!fs::exists(themeFilename)) {
+    if (!fs::exists(def_themefile)) {
         log_printf(LOG_WARN, "theme.toml not found, generating new one\n");
-        ofstream f(themeFilename, std::ios::trunc);
+        ofstream f(def_themefile, std::ios::trunc);
         f << defTheme;
         f.close();
     }
-
-    loadConfigFile(confFilename);
-    loadThemeFile(themeFilename);
 
     if (newUser) 
         // ye i'm sorry for if it's too wide
         fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
 
-    string cacheDir = this->getCacheDir();
-    if (!fs::exists(cacheDir)) {
-        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", cacheDir);
-        fs::create_directories(cacheDir);
-    }
-    fmt::disable_colors = this->colors == 0;
 }
 
 Config::~Config() {
@@ -61,66 +49,11 @@ Config::~Config() {
 }
 
 /*
-* Get the user cache directory
-* either from $XDG_CACHE_HOME or from $HOME/.cache/
-* @return user's cache directory  
-*/
-string Config::getHomeCacheDir() {
-    char* dir = getenv("XDG_CACHE_HOME");
-    if (dir != NULL && fs::exists(string(dir))) {
-        string str_dir(dir);
-        return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
-    } else {
-        char *home = getenv("HOME");
-        if (home == nullptr)
-            throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
-        return string(home) + "/.cache";
-    }
-}
-
-/*
-* Get the user cache directory
-* either from Config::getHomeCacheDir() or the cacheDir variable of config.toml
-* @return TabAUR's cache directory 
-*/
-string Config::getCacheDir() {
-    return this->getConfigValue<string>("general.cacheDir", this->getHomeCacheDir() + "/TabAUR");
-}
-
-/*
-* Get the user config directory
-* either from $XDG_CONFIG_HOME or from $HOME/.config/
-* @return user's config directory  
-*/
-string Config::getHomeConfigDir() {
-    char* dir = getenv("XDG_CONFIG_HOME");
-    if (dir != NULL && fs::exists(string(dir))) {
-        string str_dir(dir);
-        return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
-    } else {
-        char *home = getenv("HOME");
-        if (home == nullptr)
-            throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
-        return string(home) + "/.config";
-    }
-}
-
-/*
- * Get the TabAUR config directory 
- * where we'll have both "config.toml" and "theme.toml"
- * from Config::getHomeConfigDir()
- * @return TabAUR's config directory
- */
-string Config::getConfigDir() {
-    return this->getHomeConfigDir() + "/TabAUR";
-}
-
-/*
 * initialize all the "config.toml" variables
 * and sanitize them (never trust user's input)
 */
 void Config::initializeVars() {
-    this->cacheDir     = this->getCacheDir();
+    this->cacheDir     = this->getConfigValue<string>("general.cacheDir", getHomeCacheDir() + "/TabAUR");;
     this->makepkgConf  = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
     this->makepkgBin   = this->getConfigValue<string>("bins.makepkg", "makepkg");
     this->git          = this->getConfigValue<string>("bins.git", "git");
@@ -151,7 +84,6 @@ void Config::loadConfigFile(string filename) {
         std::cerr << err << std::endl;
         exit(-1);
     }
-    this->initializeVars();
 
     alpm_errno_t err;
     this->handle    = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);

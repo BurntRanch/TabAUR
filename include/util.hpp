@@ -56,6 +56,9 @@ string shell_exec(string cmd);
 vector<string> split(string text, char delim);
 fmt::rgb hexStringToColor(string hexstr);
 string getTitleForPopularity(float popularity);
+string getConfigDir();
+string getHomeCacheDir();
+string getHomeConfigDir();
 
 template <typename... Args>
 void log_printf(int log, string fmt, Args&&... args) {

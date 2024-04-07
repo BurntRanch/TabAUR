@@ -26,6 +26,8 @@ enum {
     OP_SYSUPGRADE,
     OP_COLORS,
     OP_DEBUG,
+    OP_CONFIG,
+    OP_THEME,
     OP_SEARCH,
     OP_TEST_COLORS,
 };

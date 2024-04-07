@@ -232,6 +232,8 @@ int parseargs(int argc, char* argv[]) {
         {"search",     no_argument,       0, OP_SEARCH},
         {"cachedir",   required_argument, 0, OP_CACHEDIR},
         {"colors",     required_argument, 0, OP_COLORS},
+        {"config",     required_argument, 0, OP_CONFIG},
+        {"theme",      required_argument, 0, OP_THEME},
         {"sudo",       required_argument, 0, OP_SUDO},
         {"use-git",    no_argument,       0, OP_USEGIT},
         {"debug",      no_argument,       0, OP_DEBUG},
@@ -302,11 +304,6 @@ int parseargs(int argc, char* argv[]) {
 	    }       
     }
 
-    if(op.test_colors) {
-        test_colors();
-        exit(0);
-    }
-    
     while(optind < argc) {
 		/* add the target to our target array */
         alpm_list_t *taur_targets_get = taur_targets.get();
@@ -322,13 +319,32 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char* argv[]) {
     config = std::make_unique<Config>();
+    configfile = def_conffile;
+    themefile = def_themefile;
+
+    config->initializeVars();
+    fmt::disable_colors = config->colors == 0;
+
+    if (parseargs(argc, argv))
+        return 1;
+    
+    config->loadConfigFile(configfile);
+    config->loadThemeFile(themefile);
 
     signal(SIGINT, &interruptHandler);
 
     TaurBackend backend(*config);
+    
+    
+    if (!fs::exists(config->cacheDir)) {
+        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", config->cacheDir);
+        fs::create_directories(config->cacheDir);
+    }
 
-    if (parseargs(argc, argv))
-        return 1;
+    if(op.test_colors) {
+        test_colors();
+        return 0;
+    }
 
     if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.\n");

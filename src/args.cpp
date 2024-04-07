@@ -85,6 +85,12 @@ int parsearg_global(int opt) {
         case 'g':
                 config->useGit = true;
                 break;
+        case OP_CONFIG:
+                configfile = strndup(optarg, PATH_MAX);
+                break;
+        case OP_THEME:
+                themefile = strndup(optarg, PATH_MAX);
+                break;
         default:
                 return 1;
     }

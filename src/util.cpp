@@ -381,6 +381,52 @@ string getTitleForPopularity(float popularity) {
     return "Weird, report this bug.";
 }
 
+/*
+* Get the user cache directory
+* either from $XDG_CACHE_HOME or from $HOME/.cache/
+* @return user's cache directory  
+*/
+string getHomeCacheDir() {
+    char* dir = getenv("XDG_CACHE_HOME");
+    if (dir != NULL && fs::exists(string(dir))) {
+        string str_dir(dir);
+        return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
+    } else {
+        char *home = getenv("HOME");
+        if (home == nullptr)
+            throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
+        return string(home) + "/.cache";
+    }
+}
+
+/*
+* Get the user config directory
+* either from $XDG_CONFIG_HOME or from $HOME/.config/
+* @return user's config directory  
+*/
+string getHomeConfigDir() {
+    char* dir = getenv("XDG_CONFIG_HOME");
+    if (dir != NULL && fs::exists(string(dir))) {
+        string str_dir(dir);
+        return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
+    } else {
+        char *home = getenv("HOME");
+        if (home == nullptr)
+            throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
+        return string(home) + "/.config";
+    }
+}
+
+/*
+ * Get the TabAUR config directory 
+ * where we'll have both "config.toml" and "theme.toml"
+ * from Config::getHomeConfigDir()
+ * @return TabAUR's config directory
+ */
+string getConfigDir() {
+    return getHomeConfigDir() + "/TabAUR";
+}
+
 std::vector<string> split(string text, char delim) {
     string              line;
     std::vector<string> vec;

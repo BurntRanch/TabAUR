@@ -2,11 +2,13 @@
 #define CONFIG_HPP
 
 #include <alpm.h>
+#include <filesystem>
 #define TOML_HEADER_ONLY 0
 #include "toml.hpp"
 #include "fmt/color.h"
 
 using std::string;
+namespace fs = std::filesystem;
 
 // so we don't need to include util.hpp for getConfigValue()
 string  expandVar(string& str);
@@ -29,10 +31,6 @@ public:
     Config();
     ~Config();
 
-    string getHomeCacheDir();
-    string getCacheDir();
-    string getHomeConfigDir();
-    string getConfigDir();
     void   initializeVars();
     void   loadConfigFile(string filename); 
     void   loadPacmanConfigFile(string filename);
@@ -110,5 +108,10 @@ inline string blue = "#00aaff";
 inline string cyan = "#00ffff";
 inline string yellow = "#ffff00";
 inline string magenta = "#ff11cc";
+
+inline string configfile;
+inline string themefile;
+inline string def_conffile;
+inline string def_themefile;
 
 #endif
