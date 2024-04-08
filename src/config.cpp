@@ -1,4 +1,3 @@
-#include <stdexcept>
 #define TOML_IMPLEMENTATION
 #include "config.hpp"
 #include "util.hpp"
@@ -13,6 +12,8 @@ Config::Config() {
     string configDir = getConfigDir();
     def_conffile  = configDir + "/config.toml";
     def_themefile  = configDir + "/theme.toml";
+    configfile = def_conffile;
+    themefile = def_themefile;
 
     bool newUser = false;
 
@@ -69,6 +70,8 @@ void Config::initializeVars() {
     sanitizeStr(this->makepkgConf);
     sanitizeStr(this->cacheDir);
     sanitizeStr(this->git);
+        
+    fmt::disable_colors = config->colors == 0;
 }
 
 /** parse the config file (aka "config.toml")
@@ -80,7 +83,7 @@ void Config::loadConfigFile(string filename) {
     try {
         this->tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_printf(LOG_ERROR, "Parsing config.toml failed:\n");
+        log_printf(LOG_ERROR, "Parsing config file {} failed:\n", filename);
         std::cerr << err << std::endl;
         exit(-1);
     }
@@ -101,7 +104,7 @@ void Config::loadThemeFile(string filename) {
     try {
         this->theme_tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_printf(LOG_ERROR, "Parsing theme.toml failed:\n");
+        log_printf(LOG_ERROR, "Parsing theme file {} failed:\n", filename);
         std::cerr << err << std::endl;
         exit(-1);
     }

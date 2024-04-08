@@ -3,7 +3,6 @@
 
 #include "util.hpp"
 #include <alpm.h>
-#include <string>
 #include <sys/types.h>
 #include <vector>
 #include <getopt.h>

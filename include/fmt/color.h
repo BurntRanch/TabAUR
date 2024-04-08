@@ -446,6 +446,10 @@ template <typename Char>
 void vformat_to(
     buffer<Char>& buf, const text_style& ts, basic_string_view<Char> format_str,
     basic_format_args<buffered_context<type_identity_t<Char>>> args) {
+  char *no_color = getenv("NO_COLOR");
+  if (no_color != NULL && no_color[0] != '\0')
+      disable_colors = true;
+
   if (disable_colors) {
     detail::vformat_to(buf, format_str, args, {});
     return;
