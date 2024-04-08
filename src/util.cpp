@@ -128,7 +128,11 @@ string expandVar(string& str) {
         env = getenv("HOME");
         if (env == nullptr) {
             // it's so bad we need to write the text all red
-            log_printf(LOG_ERROR, "{}", fmt::format(fmt::fg(config->getThemeValue("red", red)), "$HOME enviroment variable is not set (how?)"));
+            const string message = "$HOME enviroment variable is not set (how?)";
+            if (config && config->colors)
+                log_printf(LOG_ERROR, "{}", fmt::format(fmt::fg(config->getThemeValue("red", red)), message));
+            else
+                log_printf(LOG_ERROR, "{}", message);
             exit(-1);
         }
         str.replace(0, 1, string(env)); // replace ~ with the $HOME value

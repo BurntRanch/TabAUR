@@ -6,7 +6,7 @@
 #include <filesystem>
 
 #define BRANCH "libalpm-test"
-#define VERSION "0.1.0"
+#define VERSION "0.2.0"
 
 std::unique_ptr<Config> config;
 

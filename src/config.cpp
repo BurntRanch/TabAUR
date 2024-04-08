@@ -41,7 +41,7 @@ void Config::init(string configFile, string themeFile) {
     }
     if (!fs::exists(themeFile)) {
         log_printf(LOG_WARN, "{} not found, generating new one\n", themeFile);
-        ofstream f(configFile, std::ios::trunc);
+        ofstream f(themeFile, std::ios::trunc);
         f << defTheme;
         f.close();
     }
