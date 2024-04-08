@@ -3,6 +3,7 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
+#include <fmt/ranges.h>
 
 namespace fs = std::filesystem;
 

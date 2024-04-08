@@ -66,24 +66,25 @@ int parsearg_op(int opt, int dryrun) {
 int parsearg_global(int opt) {
     switch (opt) {
         case OP_CACHEDIR:
-                config->cacheDir = strndup(optarg, PATH_MAX);
+                config->overrides["general.cacheDir"] = {STR, strndup(optarg, PATH_MAX)};
                 break;
         case OP_COLORS:
                 fmt::disable_colors = !((bool)std::atoi(optarg));
+                config->overrides["general.colors"] = {BOOL, "", (bool)std::atoi(optarg)};
                 break;
         case OP_DEBUG:
-                config->debug = true;
+                config->overrides["general.debug"] = {BOOL, "", true};
                 break;
         case OP_AURONLY:
         case 'a':
-                config->aurOnly = true;
+                config->overrides["general.aurOnly"] = {BOOL, "", true};
                 break;
         case OP_SUDO:
-                config->sudo = strndup(optarg, PATH_MAX);
+                config->overrides["general.sudo"] = {STR, strndup(optarg, PATH_MAX)};
                 break;
         case OP_USEGIT:
         case 'g':
-                config->useGit = true;
+                config->overrides["general.useGit"] = {BOOL, "", true};
                 break;
         case OP_CONFIG:
                 configfile = strndup(optarg, PATH_MAX);

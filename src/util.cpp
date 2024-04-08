@@ -1,6 +1,12 @@
+#pragma GCC diagnostic ignored "-Wignored-attributes"
+
 #include "util.hpp"
 #include "config.hpp"
 #include "taur.hpp"
+#include <filesystem>
+#include <fmt/ranges.h>
+
+namespace fs = std::filesystem;
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, string const& ending) {

@@ -2,19 +2,28 @@
 #include "config.hpp"
 #include "util.hpp"
 #include "ini.h"
-
+#include <filesystem>
 
 using std::ofstream;
 using std::ifstream;
 
+namespace fs = std::filesystem;
 
-Config::Config() {
+Config::Config() { }
+
+Config::~Config() {
+    if (this->handle) {
+        alpm_trans_release(this->handle);
+        alpm_release(this->handle);
+    }
+
+    if (this->repos)
+        alpm_list_free(this->repos);
+}
+
+// initialize Config.
+void Config::init(string configFile, string themeFile) {
     string configDir = getConfigDir();
-    def_conffile  = configDir + "/config.toml";
-    def_themefile  = configDir + "/theme.toml";
-    configfile = def_conffile;
-    themefile = def_themefile;
-
     bool newUser = false;
 
     if (!fs::exists(configDir)) {
@@ -23,16 +32,16 @@ Config::Config() {
 
         newUser = true;
     }
-    if (!fs::exists(def_conffile)) {
-        log_printf(LOG_WARN, "config.toml not found, generating new one\n");
+    if (!fs::exists(configFile)) {
+        log_printf(LOG_WARN, "{} not found, generating new one\n", configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
-        ofstream f(def_conffile, std::ios::trunc);
+        ofstream f(configFile, std::ios::trunc);
         f << defConfig;
         f.close();
     }
-    if (!fs::exists(def_themefile)) {
-        log_printf(LOG_WARN, "theme.toml not found, generating new one\n");
-        ofstream f(def_themefile, std::ios::trunc);
+    if (!fs::exists(themeFile)) {
+        log_printf(LOG_WARN, "{} not found, generating new one\n", themeFile);
+        ofstream f(configFile, std::ios::trunc);
         f << defTheme;
         f.close();
     }
@@ -41,12 +50,16 @@ Config::Config() {
         // ye i'm sorry for if it's too wide
         fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
 
+    this->loadConfigFile(configFile);
+    this->loadThemeFile(themeFile);
+    this->initializeVars();
+
+    this->initialized = true;
 }
 
-Config::~Config() {
-    alpm_trans_release(this->handle);
-    alpm_release(this->handle);
-    alpm_list_free(this->repos);
+// get initialized variable
+bool Config::isInitialized() {
+    return this->initialized;
 }
 
 /*

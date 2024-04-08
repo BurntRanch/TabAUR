@@ -9,7 +9,6 @@
 #include <optional>
 
 #include "fmt/base.h"
-#include "fmt/ranges.h"
 #include "fmt/color.h"
 #include "config.hpp"
 
@@ -61,39 +60,39 @@ string getHomeCacheDir();
 string getHomeConfigDir();
 
 template <typename... Args>
-void log_printf(int log, string fmt, Args&&... args) {
-    switch(log) {
-        case LOG_ERROR:
-            fmt::print(BOLD_TEXT(config ? config->getThemeValue("red", red) : hexStringToColor(red)), "ERROR: "); break;
-        case LOG_WARN:
-            fmt::print(BOLD_TEXT(config ? config->getThemeValue("yellow", yellow) : hexStringToColor(yellow)), "Warning: "); break;
-        case LOG_INFO:
-            fmt::print(BOLD_TEXT(config ? config->getThemeValue("cyan", cyan) : hexStringToColor(cyan)), "Info: "); break;
-        case LOG_DEBUG:
-            if (!config->debug)
-                return;
-            fmt::print(BOLD_TEXT(config ? config->getThemeValue("magenta", magenta) : hexStringToColor(magenta)), "[DEBUG]: ");
-            break;
-    }
-    fmt::print(fmt, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
 void log_printf(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            fmt::print(ts, "ERROR: "); break;
+            fmt::print(config && config->colors ? ts : fmt::text_style(), "ERROR: "); break;
         case LOG_WARN:
-            fmt::print(ts, "Warning: "); break;
+            fmt::print(config && config->colors ? ts : fmt::text_style(), "Warning: "); break;
         case LOG_INFO:
-            fmt::print(ts, "Info: "); break;
+            fmt::print(config && config->colors ? ts : fmt::text_style(), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(ts, "[DEBUG]: ");
+            fmt::print(config && config->colors ? ts : fmt::text_style(), "[DEBUG]: ");
             break;
     }
-    fmt::print(ts, fmt, std::forward<Args>(args)...);
+    fmt::print(config && config->colors ? ts : fmt::text_style(), fmt, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_printf(int log, string fmt, Args&&... args) {
+    switch(log) {
+        case LOG_ERROR:
+            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("red", red) : hexStringToColor(red)), "ERROR: "); break;
+        case LOG_WARN:
+            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("yellow", yellow) : hexStringToColor(yellow)), "Warning: "); break;
+        case LOG_INFO:
+            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("cyan", cyan) : hexStringToColor(cyan)), "Info: "); break;
+        case LOG_DEBUG:
+            if (!config->debug)
+                return;
+            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("magenta", magenta) : hexStringToColor(magenta)), "[DEBUG]: ");
+            break;
+    }
+    fmt::print(fmt, std::forward<Args>(args)...);
 }
 
 // could use fmt::join, but doesn't work with vector<const char*>

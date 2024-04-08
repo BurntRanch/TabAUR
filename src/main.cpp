@@ -3,11 +3,14 @@
 #include "util.hpp"
 #include "args.hpp"
 #include "taur.hpp"
+#include <filesystem>
 
 #define BRANCH "libalpm-test"
 #define VERSION "0.1.0"
 
 std::unique_ptr<Config> config;
+
+namespace fs = std::filesystem;
 
 void usage(int op) {
     string help_op = R"#(
@@ -319,23 +322,20 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char* argv[]) {
     config = std::make_unique<Config>();
-    configfile = def_conffile;
-    themefile = def_themefile;
 
-    config->initializeVars();
-    fmt::disable_colors = config->colors == 0;
+    configfile = (getConfigDir() + "/config.toml");
+    themefile = (getConfigDir() + "/theme.toml");
 
     if (parseargs(argc, argv))
         return 1;
-    
-    config->loadConfigFile(configfile);
-    config->loadThemeFile(themefile);
 
-    signal(SIGINT, &interruptHandler);
+    // this will always be false
+    // i just want to feel good about having this check
+    if (!config->isInitialized())
+        config->init(configfile, themefile);
 
-    TaurBackend backend(*config);
-    
-    
+    fmt::disable_colors = config->colors == 0;
+
     if (!fs::exists(config->cacheDir)) {
         log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", config->cacheDir);
         fs::create_directories(config->cacheDir);
@@ -345,6 +345,11 @@ int main(int argc, char* argv[]) {
         test_colors();
         return 0;
     }
+
+    signal(SIGINT, &interruptHandler);
+
+    // the code you're likely interested in
+    TaurBackend backend(*config);
 
     if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.\n");
