@@ -9,8 +9,6 @@
 
 std::unique_ptr<Config> config;
 
-namespace fs = std::filesystem;
-
 void usage(int op) {
     string help_op = R"#(
 options:
@@ -26,19 +24,19 @@ options:
     taur {-U --upgrade}  [options] <file(s)>
     )#";
 
-    log_printf(LOG_NONE, "TabAUR usage: taur <op> [...]\n");
+    fmt::println("TabAUR usage: taur <op> [...]");
     
     if(op == OP_MAIN)
-        log_printf(LOG_NONE, "{}", help_op);
+        fmt::println("{}", help_op);
     else if (op == OP_SYNC)
-        log_printf(LOG_NONE, "-S,--sync test\n");
+        fmt::println("-S,--sync test");
 
-    log_printf(LOG_NONE, "TabAUR will assume -Syu if you pass no arguments to it.\n\n");
+    fmt::println("TabAUR will assume -Syu if you pass no arguments to it.");
 
     if (config->secretRecipe) {
         log_printf(LOG_INFO, "Loading secret recipe...\n");
         for (auto const& i : secret) {
-            log_printf(LOG_NONE, "{}\n", i);
+            fmt::println("{}", i);
             usleep(650000); // 0.65 seconds
         }
     }
@@ -46,17 +44,17 @@ options:
 
 void test_colors() {
     if(fmt::disable_colors)
-        log_printf(LOG_NONE, "Colors are disabled\n");
+        fmt::println("Colors are disabled");
     log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
     log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
     log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
     log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
-    log_printf(LOG_NONE, "red: {}\n",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
-    log_printf(LOG_NONE, "blue: {}\n",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
-    log_printf(LOG_NONE, "yellow: {}\n", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
-    log_printf(LOG_NONE, "green: {}\n",  fmt::format(fg(config->getThemeValue("green", green)), config->getThemeHexValue("green", green)));
-    log_printf(LOG_NONE, "cyan: {}\n",   fmt::format(fg(config->getThemeValue("cyan", cyan)), config->getThemeHexValue("cyan", cyan)));
-    log_printf(LOG_NONE, "magenta: {}\n",fmt::format(fg(config->getThemeValue("magenta", magenta)), config->getThemeHexValue("magenta", magenta)));
+    fmt::println("red: {}",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
+    fmt::println("blue: {}",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
+    fmt::println("yellow: {}", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
+    fmt::println("green: {}",  fmt::format(fg(config->getThemeValue("green", green)), config->getThemeHexValue("green", green)));
+    fmt::println("cyan: {}",   fmt::format(fg(config->getThemeValue("cyan", cyan)), config->getThemeHexValue("cyan", cyan)));
+    fmt::println("magenta: {}",fmt::format(fg(config->getThemeValue("magenta", magenta)), config->getThemeHexValue("magenta", magenta)));
 }
 
 bool execPacman(int argc, char* argv[]) {
@@ -203,8 +201,8 @@ bool queryPkgs(TaurBackend *backend) {
         if(config->quiet)
             fmt::println("{}", pkgs[i]);
         else {
-            log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkgs[i]);
-            log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "{}\n", pkgs_ver[i]);
+            fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
+            fmt::println(BOLD_TEXT(config->getThemeValue("green", green)), "{}", pkgs_ver[i]);
         }
     }
 
@@ -263,7 +261,7 @@ int parseargs(int argc, char* argv[]) {
     }
 
     if (op.version) {
-        log_printf(LOG_NONE, "TabAUR version {}, branch {}\n", VERSION, BRANCH);
+        fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
         exit(0);
     }
     if(op.help) {
@@ -342,11 +340,6 @@ int main(int argc, char* argv[]) {
         config->init(configfile, themefile);
 
     fmt::disable_colors = config->colors == 0;
-
-    if (!fs::exists(config->cacheDir)) {
-        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", config->cacheDir);
-        fs::create_directories(config->cacheDir);
-    }
 
     if(op.test_colors) {
         test_colors();

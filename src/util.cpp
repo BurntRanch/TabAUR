@@ -66,17 +66,17 @@ bool commitTransactionAndRelease(bool soft) {
 
     log_printf(LOG_INFO, "Changes to be made:\n");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
-        log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "    ++ ");
-        log_printf(LOG_NONE, fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
+        fmt::print(BOLD_TEXT(config->getThemeValue("green", green)), "    ++ ");
+        fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
         
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
-        log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("red", red)), "    -- ");
-        log_printf(LOG_NONE, fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
+        fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "    -- ");
+        fmt::print(fmt::emphasis::bold, "{}\n", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
-    log_printf(LOG_NONE, "Would you like to proceed with this transaction? [Y/n] ");
+    fmt::print("Would you like to proceed with this transaction? [Y/n] ");
     
     string response;
     std::cin >> response;
@@ -127,12 +127,7 @@ string expandVar(string& str) {
     if (str[0] == '~') {
         env = getenv("HOME");
         if (env == nullptr) {
-            // it's so bad we need to write the text all red
-            const string message = "$HOME enviroment variable is not set (how?)";
-            if (config && config->colors)
-                log_printf(LOG_ERROR, "{}", fmt::format(fmt::fg(config->getThemeValue("red", red)), message));
-            else
-                log_printf(LOG_ERROR, "{}", message);
+            log_printf(LOG_ERROR, "$HOME enviroment variable is not set (how?)\n");
             exit(-1);
         }
         str.replace(0, 1, string(env)); // replace ~ with the $HOME value
@@ -306,13 +301,13 @@ fmt::text_style getColorFromDBName(string db_name) {
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
 void printPkgInfo(TaurPkg_t &pkg, int index) {
     if (index > -1)
-        log_printf(LOG_NONE, fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
+        fmt::print(fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
     
-    log_printf(LOG_NONE, getColorFromDBName(pkg.db_name), "{}/", pkg.db_name);
-    log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkg.name);
-    log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "{} ", pkg.version);
-    log_printf(LOG_NONE, fmt::fg(config->getThemeValue("cyan", cyan)), " Popularity: {} ({})\n", pkg.popularity, getTitleForPopularity(pkg.popularity));
-    log_printf(LOG_NONE, "    {}\n", pkg.desc);
+    fmt::print(getColorFromDBName(pkg.db_name), "{}/", pkg.db_name);
+    fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
+    fmt::print(BOLD_TEXT(config->getThemeValue("green", green)), "{} ", pkg.version);
+    fmt::println(fmt::fg(config->getThemeValue("cyan", cyan)), " Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::println("    {}", pkg.desc);
 }
 
 /** Ask the user to select a package out of a list.
@@ -340,7 +335,7 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
             for (size_t i = 0; i < pkgs.size(); i++)
                 printPkgInfo(pkgs[i], i);
 
-            log_printf(LOG_NONE, "Choose a package to download: ");
+            fmt::print("Choose a package to download: ");
             std::cin >> input;
         } while (!is_number(input) || (size_t)std::stoi(input) >= pkgs.size());
 

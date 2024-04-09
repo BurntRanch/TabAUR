@@ -55,6 +55,11 @@ void Config::init(string configFile, string themeFile) {
     this->initializeVars();
 
     this->initialized = true;
+    if (!fs::exists(config->cacheDir)) {
+        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", config->cacheDir);
+        fs::create_directories(config->cacheDir);
+    }
+
 }
 
 // get initialized variable
