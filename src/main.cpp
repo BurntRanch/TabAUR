@@ -9,9 +9,11 @@
 
 std::unique_ptr<Config> config;
 
+// this may be hard to read, but better than calling fmt::println multiple times
 void usage(int op) {
-    string help_op = R"#(
-options:
+    if(op == OP_MAIN) {
+        fmt::println("TabAUR usage: taur <op> [...]");
+        fmt::print("options:\n{}", R"#(
     taur {-h --help}
     taur {-V --version}
     taur {-t, --test-colors}
@@ -22,15 +24,35 @@ options:
     taur {-S --sync}     [options] [package(s)]
     taur {-T --deptest}  [options] [package(s)]
     taur {-U --upgrade}  [options] <file(s)>
-    )#";
+    )#");
+    }
+    else {
+        if(op == OP_SYNC) {
+            fmt::println("usage:  taur {{-S --sync}} [options] [package(s)]");
+            fmt::println("options:{}", R"#(
+    -s, --search <regex> search remote repositories for matching strings
+    -u, --sysupgrade     upgrade installed packages (-uu enables downgrades)
+    -y, --refresh        download fresh package databases from the server
+            )#");
+        }
+        else if (op == OP_QUERY) {
+            fmt::println("usage: taur {{-Q --query}} [options] [package(s)]");
+            fmt::print("options:{}", R"#(
+    -q, --quiet         show less information for query and search
+                         )#");
+        }
+    }
 
-    fmt::println("TabAUR usage: taur <op> [...]");
-    
-    if(op == OP_MAIN)
-        fmt::println("{}", help_op);
-    else if (op == OP_SYNC)
-        fmt::println("-S,--sync test");
-
+    fmt::println("{}", R"#(
+    -a, --aur-only      do only AUR operations
+    -g, --use-git       use git instead of tarballs for AUR repos
+    --config    <path>  set an alternate configuration file
+    --theme     <path>  set an alternate theme file
+    --cachedir  <dir>   set an alternate package cache location
+    --colors    <1,0>   colorize the output
+    --debug     <1,0>   show debug messages
+    --sudo      <path>  choose which binary to use for privilage-escalation
+    )#");
     fmt::println("TabAUR will assume -Syu if you pass no arguments to it.");
 
     if (config->secretRecipe) {
@@ -216,7 +238,7 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-    const char *optstring = "SRQVDFTUahyuqst";
+    const char *optstring = "DFQRSTUVahqsuyt";
     static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
