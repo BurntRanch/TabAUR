@@ -3,7 +3,6 @@
 #include "util.hpp"
 #include "args.hpp"
 #include "taur.hpp"
-#include <filesystem>
 
 #define BRANCH "libalpm-test"
 #define VERSION "0.5.8"
@@ -201,8 +200,12 @@ bool queryPkgs(TaurBackend *backend) {
     for (size_t i = 0; i < pkgs.size(); i++) {
         if (!pkgs[i])
             continue;
-        log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkgs[i]);
-        log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "{}\n", pkgs_ver[i]);
+        if(config->quiet)
+            fmt::println("{}", pkgs[i]);
+        else {
+            log_printf(LOG_NONE, fmt::emphasis::bold, "{} ", pkgs[i]);
+            log_printf(LOG_NONE, BOLD_TEXT(config->getThemeValue("green", green)), "{}\n", pkgs_ver[i]);
+        }
     }
 
     return true;
@@ -215,7 +218,7 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-    const char *optstring = "SRQVDFTUahyust";
+    const char *optstring = "SRQVDFTUahyuqst";
     static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
@@ -238,7 +241,8 @@ int parseargs(int argc, char* argv[]) {
         {"config",     required_argument, 0, OP_CONFIG},
         {"theme",      required_argument, 0, OP_THEME},
         {"sudo",       required_argument, 0, OP_SUDO},
-        {"use-git",    no_argument,       0, OP_USEGIT},
+        {"use-git",    required_argument, 0, OP_USEGIT},
+        {"quiet",      no_argument,       0, OP_QUIET},
         {"debug",      no_argument,       0, OP_DEBUG},
         {0,0,0,0}
     };
@@ -283,6 +287,9 @@ int parseargs(int argc, char* argv[]) {
 		switch(op.op) {
             case OP_SYNC:
                 result = parsearg_sync(opt);
+                break;
+            case OP_QUERY:
+                result = parsearg_query(opt);
                 break;
             default:
 				result = 1;

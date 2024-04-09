@@ -28,6 +28,7 @@ enum {
     OP_CONFIG,
     OP_THEME,
     OP_SEARCH,
+    OP_QUIET,
     OP_TEST_COLORS,
 };
 
@@ -52,5 +53,6 @@ extern alpm_list_smart_deleter taur_targets;
 int parsearg_op(int opt, int dryrun);
 void invalid_opt();
 int parsearg_global(int opt);
+int parsearg_query(int opt);
 int parsearg_sync(int opt);
 #endif

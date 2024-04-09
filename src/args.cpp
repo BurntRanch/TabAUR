@@ -98,6 +98,18 @@ int parsearg_global(int opt) {
     return 0;
 }
 
+int parsearg_query(int opt) {
+    switch(opt) {
+        case OP_QUIET:
+        case 'q':
+            config->quiet = true;
+            break;
+        default:
+            return 1;
+    }
+    return 0;
+}
+
 int parsearg_sync(int opt) {
     switch (opt) {
         case OP_SYSUPGRADE:

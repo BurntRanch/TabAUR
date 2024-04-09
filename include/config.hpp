@@ -38,6 +38,7 @@ public:
     bool colors;
     bool secretRecipe;
     bool debug;
+    bool quiet;
 
     std::map<string, strOrBool> overrides;
 
@@ -141,7 +142,5 @@ inline string magenta = "#ff11cc";
 
 inline string configfile;
 inline string themefile;
-inline string def_conffile;
-inline string def_themefile;
 
 #endif
