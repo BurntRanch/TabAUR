@@ -103,11 +103,11 @@ bool execPacman(int argc, char* argv[]) {
     return false;
 }
 
-int installPkg(string pkgName, TaurBackend *backend) { 
+int installPkg(string pkgName, TaurBackend &backend) { 
     bool            useGit   = config->useGit;
     string          cacheDir = config->cacheDir;
 
-    vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
+    vector<TaurPkg_t>  pkgs = backend.search(pkgName, useGit);
 
     if (pkgs.empty() && !op.op_s_upgrade) {
         log_printf(LOG_WARN, "No results found, Exiting!\n");
@@ -119,7 +119,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
         if(op.op_s_upgrade)
             cmd.push_back("-u");
 
-        return taur_exec(cmd) && backend->update_all_pkgs(cacheDir, useGit);
+        return taur_exec(cmd) && backend.update_all_pkgs(cacheDir, useGit);
     }
 
     // ./taur -Ss -- list only, don't install.
@@ -129,7 +129,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
         return true;
     }
 
-    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, *backend, useGit);
+    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, backend, useGit);
 
     if (!oPkg)
         return false;
@@ -147,7 +147,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
 
         cmd.push_back(pkg.name.c_str());
 
-        return execPacman(cmd.size(), (char **)cmd.data()), backend->update_all_pkgs(config->cacheDir, useGit);
+        return execPacman(cmd.size(), (char **)cmd.data()), backend.update_all_pkgs(config->cacheDir, useGit);
     }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
@@ -155,7 +155,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
     if (useGit)
         filename = filename.substr(0, filename.rfind(".git"));
 
-    bool stat = backend->download_pkg(url, filename);
+    bool stat = backend.download_pkg(url, filename);
 
     if (!stat) {
         log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
@@ -163,12 +163,12 @@ int installPkg(string pkgName, TaurBackend *backend) {
     }
 
     if (!useGit){
-        stat = backend->handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
-        stat = backend->install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")));
+        stat = backend.handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
+        stat = backend.install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")));
     }
     else {
-        stat = backend->handle_aur_depends(pkg, filename, useGit);
-        stat = backend->install_pkg(pkg.name, filename);
+        stat = backend.handle_aur_depends(pkg, filename, useGit);
+        stat = backend.install_pkg(pkg.name, filename);
     }
 
     if (!stat) {
@@ -178,34 +178,25 @@ int installPkg(string pkgName, TaurBackend *backend) {
 
     if (op.op_s_upgrade) {
         log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.\n");
-        return backend->update_all_pkgs(cacheDir, useGit);
+        return backend.update_all_pkgs(cacheDir, useGit);
     }
 
     return true;
 }
 
-bool removePkg(string pkgName, TaurBackend *backend) {
-    return backend->remove_pkg(pkgName, config->aurOnly);
+bool removePkg(string pkgName, TaurBackend &backend) {
+    return backend.remove_pkg(pkgName, config->aurOnly);
 }
 
-bool updateAll(TaurBackend *backend) {
+bool updateAll(TaurBackend &backend) {
     string cacheDir = config->cacheDir;
 
-    return backend->update_all_pkgs(path(cacheDir), config->useGit);
+    return backend.update_all_pkgs(path(cacheDir), config->useGit);
 }
 
-bool queryPkgs(TaurBackend *backend) {
+bool queryPkgs(TaurBackend &backend) {
     log_printf(LOG_DEBUG, "AUR Only: {}\n", config->aurOnly);
-    alpm_list_t *pkg, *syncdbs;
-
-    if (config->aurOnly) {
-        syncdbs = alpm_get_syncdbs(config->handle);
-
-        if (!syncdbs) {
-            log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
-            return false;
-        }
-    }
+    alpm_list_t *pkg;
 
     vector<const char *> pkgs, pkgs_ver;
     for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)){
@@ -213,11 +204,21 @@ bool queryPkgs(TaurBackend *backend) {
         pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
     }
 
-    if (config->aurOnly)
+    if (config->aurOnly) {
+        alpm_list_t *syncdbs;
+
+        syncdbs = alpm_get_syncdbs(config->handle);
+
+        if (!syncdbs) {
+            log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
+            return false;
+        }
+
         for (; syncdbs; syncdbs = syncdbs->next)
             for (size_t i = 0; i < pkgs.size(); i++)
                 if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i]))
                     pkgs[i] = NULL; // wont be printed
+    }
 
     for (size_t i = 0; i < pkgs.size(); i++) {
         if (!pkgs[i])
@@ -385,13 +386,13 @@ int main(int argc, char* argv[]) {
 
     switch (op.op) {
     case OP_SYNC:
-        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "", &backend)) ? 0 : 1;
+        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "", backend)) ? 0 : 1;
     case OP_REM:
-        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "", &backend)) ? 0 : 1;
+        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "", backend)) ? 0 : 1;
     case OP_QUERY:
-        return (queryPkgs(&backend)) ? 0 : 1;
+        return (queryPkgs(backend)) ? 0 : 1;
     case OP_SYSUPGRADE:
-        return (updateAll(&backend)) ? 0 : 1;
+        return (updateAll(backend)) ? 0 : 1;
     case OP_PACMAN:
         // we are gonna use pacman to other ops than -S,-R,-Q
         return execPacman(argc, argv);
