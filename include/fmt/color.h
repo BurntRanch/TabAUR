@@ -530,7 +530,8 @@ void print(const text_style& ts, format_string<T...> fmt, T&&... args) {
 template <typename... T>
 void println(FILE* f, const text_style& ts, format_string<T...> fmt,
            T&&... args) {
-  print(f, ts, fmt, std::forward<T>(args)..., '\n');
+  print(f, ts, fmt, std::forward<T>(args)...);
+  print(f, ts, "\n");
 }
 
 /**
@@ -546,7 +547,8 @@ void println(FILE* f, const text_style& ts, format_string<T...> fmt,
  */
 template <typename... T>
 void println(const text_style& ts, format_string<T...> fmt, T&&... args) {
-  print(stdout, ts, fmt, std::forward<T>(args)..., '\n');
+  print(stdout, ts, fmt, std::forward<T>(args)...);
+  print(stdout, ts, "\n");
 }
 
 inline auto vformat(const text_style& ts, string_view fmt, format_args args)
