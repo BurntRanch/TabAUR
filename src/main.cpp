@@ -38,20 +38,20 @@ void usage(int op) {
         else if (op == OP_QUERY) {
             fmt::println("usage: taur {{-Q --query}} [options] [package(s)]");
             fmt::print("options:{}", R"#(
-    -q, --quiet         show less information for query and search
+    -q, --quiet          show less information for query and search
                          )#");
         }
     }
 
     fmt::println("{}", R"#(
-    -a, --aur-only      do only AUR operations
-    -g, --use-git       use git instead of tarballs for AUR repos
-    --config    <path>  set an alternate configuration file
-    --theme     <path>  set an alternate theme file
-    --cachedir  <dir>   set an alternate package cache location
-    --colors    <1,0>   colorize the output
-    --debug     <1,0>   show debug messages
-    --sudo      <path>  choose which binary to use for privilage-escalation
+    -a, --aur-only       do only AUR operations
+    -g, --use-git        use git instead of tarballs for AUR repos
+    --config    <path>   set an alternate configuration file
+    --theme     <path>   set an alternate theme file
+    --cachedir  <dir>    set an alternate package cache location
+    --colors    <1,0>    colorize the output
+    --debug     <1,0>    show debug messages
+    --sudo      <path>   choose which binary to use for privilage-escalation
     )#");
     fmt::println("TabAUR will assume -Syu if you pass no arguments to it.");
 
@@ -290,7 +290,7 @@ int parseargs(int argc, char* argv[]) {
     }
     if(op.help) {
 		usage(op.op);
-		exit(0);
+		exit(1);
     }
         
     /* parse all other options */
