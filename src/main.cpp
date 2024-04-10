@@ -111,7 +111,7 @@ int installPkg(string pkgName, TaurBackend *backend) {
 
     if (pkgs.empty() && !op.op_s_upgrade) {
         log_printf(LOG_WARN, "No results found, Exiting!\n");
-        return -1;
+        return false;
     } else if (pkgs.empty()) {
         vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
         if(op.op_s_sync)

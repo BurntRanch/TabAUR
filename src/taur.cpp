@@ -444,27 +444,6 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     return out;
 }
 
-// all local packages names
-vector<string> TaurBackend::list_all_local_pkgs(bool aurOnly, bool stripVersion) {
-    vector<string> pkgs;
-
-    alpm_list_t *pkg, *syncdbs;
-
-    syncdbs = config.repos;
-
-    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = alpm_list_next(pkg)) {
-        if ((aurOnly && !is_package_from_syncdb((alpm_pkg_t *)(pkg->data), syncdbs)) || !aurOnly) {
-            if (stripVersion) {
-                pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))));
-            } else {
-                pkgs.push_back(string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data))) + " " + string(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data))));
-            }
-        }
-    }
-
-    return pkgs;
-}
-
 // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
 vector<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool useGit) {
     int resultcount = doc["resultcount"].GetInt();

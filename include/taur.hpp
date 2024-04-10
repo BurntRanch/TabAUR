@@ -45,7 +45,6 @@ class TaurBackend {
     bool                install_pkg(string pkg_name, string extracted_path);
     bool                update_all_pkgs(path cacheDir, bool useGit);
     vector<TaurPkg_t>   get_all_local_pkgs(bool aurOnly);
-    vector<string>      list_all_local_pkgs(bool aurOnly, bool stripVersion);
 };
 
 #endif
