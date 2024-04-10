@@ -198,11 +198,13 @@ bool queryPkgs(TaurBackend *backend) {
     log_printf(LOG_DEBUG, "AUR Only: {}\n", config->aurOnly);
     alpm_list_t *pkg, *syncdbs;
 
-    syncdbs = alpm_get_syncdbs(config->handle);
+    if (config->aurOnly) {
+        syncdbs = alpm_get_syncdbs(config->handle);
 
-    if (!syncdbs) {
-        log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
-        return false;
+        if (!syncdbs) {
+            log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
+            return false;
+        }
     }
 
     vector<const char *> pkgs, pkgs_ver;
