@@ -113,13 +113,17 @@ int installPkg(string pkgName, TaurBackend &backend) {
         log_printf(LOG_WARN, "No results found, Exiting!\n");
         return false;
     } else if (pkgs.empty()) {
-        vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
-        if(op.op_s_sync)
-            cmd.push_back("-y");
-        if(op.op_s_upgrade)
-            cmd.push_back("-u");
-
-        return taur_exec(cmd) && backend.update_all_pkgs(cacheDir, useGit);
+        if (!config->aurOnly) {
+            vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
+            if(op.op_s_sync)
+                cmd.push_back("-y");
+            if(op.op_s_upgrade)
+                cmd.push_back("-u");
+            
+            if (!taur_exec(cmd))
+                return false;
+        }
+        return backend.update_all_pkgs(cacheDir, useGit);
     }
 
     // ./taur -Ss -- list only, don't install.
@@ -147,7 +151,7 @@ int installPkg(string pkgName, TaurBackend &backend) {
 
         cmd.push_back(pkg.name.c_str());
 
-        return execPacman(cmd.size(), (char **)cmd.data()), backend.update_all_pkgs(config->cacheDir, useGit);
+        return execPacman(cmd.size(), (char **)cmd.data()), backend.update_all_pkgs(cacheDir, useGit);
     }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
@@ -164,11 +168,11 @@ int installPkg(string pkgName, TaurBackend &backend) {
 
     if (!useGit){
         stat = backend.handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
-        stat = backend.install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")));
+        stat = backend.install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
     }
     else {
         stat = backend.handle_aur_depends(pkg, filename, useGit);
-        stat = backend.install_pkg(pkg.name, filename);
+        stat = backend.install_pkg(pkg.name, filename, false);
     }
 
     if (!stat) {
@@ -189,9 +193,7 @@ bool removePkg(string pkgName, TaurBackend &backend) {
 }
 
 bool updateAll(TaurBackend &backend) {
-    string cacheDir = config->cacheDir;
-
-    return backend.update_all_pkgs(path(cacheDir), config->useGit);
+    return backend.update_all_pkgs(config->cacheDir, config->useGit);
 }
 
 bool queryPkgs(TaurBackend &backend) {
@@ -205,9 +207,7 @@ bool queryPkgs(TaurBackend &backend) {
     }
 
     if (config->aurOnly) {
-        alpm_list_t *syncdbs;
-
-        syncdbs = alpm_get_syncdbs(config->handle);
+        alpm_list_t *syncdbs = alpm_get_syncdbs(config->handle);
 
         if (!syncdbs) {
             log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
@@ -220,12 +220,16 @@ bool queryPkgs(TaurBackend &backend) {
                     pkgs[i] = NULL; // wont be printed
     }
 
-    for (size_t i = 0; i < pkgs.size(); i++) {
-        if (!pkgs[i])
-            continue;
-        if(config->quiet)
+    if(config->quiet) {
+        for (size_t i = 0; i < pkgs.size(); i++) {
+            if (!pkgs[i])
+                continue;
             fmt::println("{}", pkgs[i]);
-        else {
+        }
+    } else {
+        for(size_t i = 0; i < pkgs.size(); i++) {
+            if (!pkgs[i])
+                continue;
             fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
             fmt::println(BOLD_TEXT(config->getThemeValue("green", green)), "{}", pkgs_ver[i]);
         }
