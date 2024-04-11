@@ -5,7 +5,7 @@
 #include "taur.hpp"
 
 #define BRANCH "libalpm-test"
-#define VERSION "0.5.8"
+#define VERSION "0.5.9"
 
 std::unique_ptr<Config> config;
 
