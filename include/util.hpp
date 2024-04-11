@@ -1,59 +1,110 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
+#define FMT_HEADER_ONLY 1
 
-#include <cstdarg>
 #include <string>
 #include <vector>
 #include <iostream>
-#include <sstream>
+#include <memory>
+#include <optional>
+
+#include "fmt/base.h"
+#include "fmt/color.h"
+#include "config.hpp"
 
 using std::string;
+using std::vector;
+using std::unique_ptr;
+
 // taken from pacman
-#define _(str) (char *)str
+#define _(str) (char*)str
+struct TaurPkg_t;
+class TaurBackend;
 
-// original on https://gitlab.archlinux.org/pacman/pacman/-/blob/master/src/pacman/conf.c#L45 
-#define NOCOLOR       "\033[0m"
+#define BOLD_TEXT(x) (fmt::emphasis::bold | fmt::fg(x))
+#define alpm_list_smart_pointer unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
+#define make_list_smart_pointer(pointer) (unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
 
-#define BOLD          "\033[0;1m"
-
-#define BLACK         "\033[0;30m"
-#define RED           "\033[0;31m"
-#define GREEN         "\033[0;32m"
-#define YELLOW        "\033[0;33m"
-#define BLUE          "\033[0;34m"
-#define MAGENTA       "\033[0;35m"
-#define CYAN          "\033[0;36m"
-#define WHITE         "\033[0;37m"
-
-#define BOLDBLACK     "\033[1;30m"
-#define BOLDRED       "\033[1;31m"
-#define BOLDGREEN     "\033[1;32m"
-#define BOLDYELLOW    "\033[1;33m"
-#define BOLDBLUE      "\033[1;34m"
-#define BOLDMAGENTA   "\033[1;35m"
-#define BOLDCYAN      "\033[1;36m"
-#define BOLDWHITE     "\033[1;37m"
-#define GREY46        "\033[38;5;243m"
+#define alpm_list_smart_deleter unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>
+#define make_list_smart_deleter(pointer) (unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>(pointer, free_list_and_internals))
 
 enum log_level {
     LOG_ERROR,
     LOG_WARN,
-    LOG_INFO
+    LOG_INFO,
+    LOG_DEBUG,
+    LOG_NONE    // display no prefix for this.
 };
 
-template<typename T>
-struct is_string {
-    static constexpr bool value = std::is_same_v<T, string> || std::is_convertible_v<T, string>;
-};
-
-// https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);
-void log_printf(int log, string fmt, ...);
-string expandHome(string& str);
+string expandVar(string& str);
+bool is_number(const string& s);
+bool taur_read_exec(std::vector<const char*> cmd, string *output);
+void interruptHandler(int);
+bool taur_exec(std::vector<const char*> cmd);
 void sanitizeStr(string& str);
-std::vector<string> split(string text, char delim);
+bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
+bool commitTransactionAndRelease(bool soft = false);
+void printPkgInfo(TaurPkg_t &pkg, int index = -1);
+void free_list_and_internals(alpm_list_t *list);
+fmt::text_style getColorFromDBName(string db_name);
+std::optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
+vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse);
+string shell_exec(string cmd);
+vector<string> split(string text, char delim);
+fmt::rgb hexStringToColor(string hexstr);
+string getTitleForPopularity(float popularity);
+string getConfigDir();
+string getHomeCacheDir();
+string getHomeConfigDir();
 
+template <typename... Args>
+void log_printf(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
+    switch(log) {
+        case LOG_ERROR:
+            fmt::print(config && config->colors ? ts : fmt::text_style(), "ERROR: "); break;
+        case LOG_WARN:
+            fmt::print(config && config->colors ? ts : fmt::text_style(), "Warning: "); break;
+        case LOG_INFO:
+            fmt::print(config && config->colors ? ts : fmt::text_style(), "Info: "); break;
+        case LOG_DEBUG:
+            if (!config->debug)
+                return;
+            fmt::print(config && config->colors ? ts : fmt::text_style(), "[DEBUG]: ");
+            break;
+    }
+    fmt::print(config && config->colors ? ts : fmt::text_style(), fmt, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_printf(int log, string fmt, Args&&... args) {
+    switch(log) {
+        case LOG_ERROR:
+            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("red", red) : hexStringToColor(red)), "ERROR: "); break;
+        case LOG_WARN:
+            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("yellow", yellow) : hexStringToColor(yellow)), "Warning: "); break;
+        case LOG_INFO:
+            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("cyan", cyan) : hexStringToColor(cyan)), "Info: "); break;
+        case LOG_DEBUG:
+            if (!config->debug)
+                return;
+            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("magenta", magenta) : hexStringToColor(magenta)), "[DEBUG]: ");
+            break;
+    }
+    fmt::print(fmt, std::forward<Args>(args)...);
+}
+
+// could use fmt::join, but doesn't work with vector<const char*>
+template <typename T>
+void print_vec(std::vector<T> vec) {
+    if(!config->debug)
+        return;
+    
+    for(auto& i : vec)
+        std::cout << i << " ";
+    std::cout << std::endl;
+}
 
 template <typename T>
 T sanitize(T beg, T end) {
@@ -67,5 +118,41 @@ T sanitize(T beg, T end) {
             *(dest++) = *itr;
     return dest;
 }
+
+static inline std::vector<string> secret = {
+    {"Ingredients:"},
+    {R"#(
+    3/4 cup milk
+    1/2 cup vegetable oil
+    1 large egg
+    2 cups all-purpose flour
+    1/2 cup white sugar
+    2 teaspoons baking powder
+    1/2 teaspoon salt
+    3/4 cup mini semi-sweet chocolate chips
+    1 and 1/2 tablespoons white sugar
+    1 tablespoon brown sugar
+    )#"},
+    {R"#(Step 1:
+    Preheat the oven to 400 degrees F (200 degrees C).
+    Grease a 12-cup muffin tin or line cups with paper liners.
+    )#"},
+    {R"#(Step 2:
+    Combine milk, oil, and egg in a small bowl until well blended. 
+    Combine flour, 1/2 cup sugar, baking powder, and salt together in a large bowl, making a well in the center. 
+    Pour milk mixture into well and stir until batter is just combined; fold in chocolate chips.
+    )#"},
+    {R"#(Step 3:
+    Spoon batter into the prepared muffin cups, filling each 2/3 full. 
+    Combine 1 and 1/2 tablespoons white sugar and 1 tablespoon brown sugar in a small bowl; sprinkle on tops of muffins.
+    )#"},
+    {R"#(Step 4:
+    Bake in the preheated oven until tops spring back when lightly pressed, about 18 to 20 minutes. 
+    Cool in the tin briefly, then transfer to a wire rack.
+            
+            Serve warm or cool completely.
+    )#"},
+    {"Credits to: https://www.allrecipes.com/recipe/7906/chocolate-chip-muffins/"}
+};
 
 #endif

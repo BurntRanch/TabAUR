@@ -1,69 +1,25 @@
 // Functions for TabAUR, These include printing stuff and others.
 // main.cpp simply pieces each function together to make the program work.
 #include "util.hpp"
-#include <taur.hpp>
-#include <config.hpp>
-#include <optional>
+#include "taur.hpp"
+#include "config.hpp"
+#include <fmt/ranges.h>
 
-TaurBackend::TaurBackend(Config cfg) : config(cfg) {
-    git2_inits = 0;
+namespace fs = std::filesystem;
 
-    int status = git_clone_options_init(&git_opt, GIT_CLONE_OPTIONS_VERSION);
-    if (status != 0)
-        return;
-
-    git2_inits++;
-    git_libgit2_init();
-}
-
-// Wrapper for git_libgit2_shutdown, This will call the function
-// multiple times until all resources are freed.
-TaurBackend::~TaurBackend() {
-    while (git2_inits-- > 0)
-        git_libgit2_shutdown();
-}
-
-// Clone from a remote git repository, and return a bool back.
-bool clone_git(string url, string out_path) {
-    git_repository* repo = nullptr;
-    git_clone_options options = GIT_CLONE_OPTIONS_INIT;
-    int status          = git_clone(&repo, url.c_str(), out_path.c_str(), &options);
-
-    return (status == 0 && repo != nullptr);
-}
-
-// Pull from a local git repository, and return a bool back.
-bool pull_git(string path) {
-    git_repository* repo;
-    int status           = git_repository_open(&repo, path.c_str());
-    if (status != 0)
-        return false;
-
-    git_remote *remote;
-    status               = git_remote_lookup(&remote, repo, "origin");
-    if (status != 0)
-        return false;
-
-    git_fetch_options options = GIT_FETCH_OPTIONS_INIT;
-    status               = git_remote_fetch(remote, NULL, &options, NULL);
-    if (status != 0)
-        return false;
-
-    return true;
-}
-
-using std::filesystem::path;
+TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string url, string out_path) {
-    if (std::filesystem::exists(path(out_path) / ".git"))
-        return pull_git(out_path);
-    else {
-        if (std::filesystem::exists(path(out_path)))
-            std::filesystem::remove_all(out_path);
-        return clone_git(url, out_path);
+    if (fs::exists(path(out_path) / ".git")) {
+        log_printf(LOG_DEBUG, "running {} -C {} pull --rebase --autostash --ff-only\n", config.git, out_path);
+        return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
+    } else {
+        if (fs::exists(path(out_path)))
+                fs::remove_all(out_path);
+        log_printf(LOG_DEBUG, "running {} clone {} {}\n", config.git, url, out_path);
+        return taur_exec({config.git.c_str(), "clone", url.c_str(), out_path.c_str()});
     }
 }
-
 
 bool TaurBackend::download_tar(string url, string out_path) {
     std::ofstream out(out_path);
@@ -78,13 +34,13 @@ bool TaurBackend::download_tar(string url, string out_path) {
 
     // if this is in a directory, it will change to that directory first.
     bool isNested = out_path.find("/") != (size_t)-1;
-
     sanitizeStr(out_path);
-    if (isNested)
-    	return system(("cd \"" + out_path.substr(0, out_path.rfind("/")) + "\" && tar -xf \"" + out_path.substr(out_path.rfind("/") + 1) + "\"").c_str()) == 0;
-    else
-    	return system((string("tar -xf \"") + out_path + string("\"")).c_str()) == 0;
 
+    if (isNested)
+        fs::current_path(out_path.substr(0, out_path.rfind("/")));
+
+    log_printf(LOG_DEBUG, "running tar -xf {}\n", out_path);
+    return taur_exec({"tar", "-xf", out_path.c_str()});
 }
 
 bool TaurBackend::download_pkg(string url, string out_path) {
@@ -99,15 +55,15 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
     if (returnGit)
         return ("https://aur.archlinux.org/" + string(pkgJson["Name"].GetString()) + ".git");
     else
-	    return ("https://aur.archlinux.org" + string(pkgJson["URLPath"].GetString()));
+        return ("https://aur.archlinux.org" + string(pkgJson["URLPath"].GetString()));
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
+    vector<string>          depends;
     if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
-        const rapidjson::Value& dependsArray = pkgJson["Depends"].GetArray();
+        const rapidjson::Value& dependsArray     = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
-        vector<string> depends;
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
         for (size_t i = 0; i < makeDependsArray.Size(); i++) {
@@ -115,28 +71,23 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                 continue;
             depends.push_back(makeDependsArray[i].GetString());
         }
-
-        return (TaurPkg_t) { 
-                             .name = pkgJson["Name"].GetString(),
-                             .version = pkgJson["Version"].GetString(),
-                             .url = getUrl(pkgJson, returnGit), 
-                             .desc = pkgJson["Description"].GetString(),
-                             .depends = depends
-                           };
     }
-    return (TaurPkg_t) {
-                         .name = pkgJson["Name"].GetString(),
-                         .version = pkgJson["Version"].GetString(),
-                         .url = getUrl(pkgJson, returnGit),
-                         .desc = pkgJson["Description"].GetString()
-                       };
+
+    TaurPkg_t out =   {pkgJson["Name"].GetString(), // name
+                       pkgJson["Version"].GetString(),  // version
+                       getUrl(pkgJson, returnGit),  // url
+                       pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "", // description
+                       pkgJson["Popularity"].GetFloat(),    // popularity
+                       depends};    // depends
+
+    return out;
 }
 
 optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
-    std::string  urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg);
+    std::string   urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg);
 
-    cpr::Url        url = cpr::Url(urlStr);
-    cpr::Response  resp = cpr::Get(url);
+    cpr::Url      url  = cpr::Url(urlStr);
+    cpr::Response resp = cpr::Get(url);
 
     if (resp.status_code != 200)
         return {};
@@ -153,15 +104,15 @@ optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
 vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     if (pkgs.empty())
         return vector<TaurPkg_t>();
-    
+
     std::string varName = cpr::util::urlEncode("arg[]");
-    std::string  urlStr = "https://aur.archlinux.org/rpc/v5/info?" + varName + "=" + pkgs[0];
+    std::string urlStr  = "https://aur.archlinux.org/rpc/v5/info?" + varName + "=" + pkgs[0];
 
     for (size_t i = 1; i < pkgs.size(); i++)
         urlStr += ("&" + varName + "=" + pkgs[i]);
 
-    cpr::Url        url = cpr::Url(urlStr);
-    cpr::Response  resp = cpr::Get(url);
+    cpr::Url      url  = cpr::Url(urlStr);
+    cpr::Response resp = cpr::Get(url);
 
     if (resp.status_code != 200)
         return vector<TaurPkg_t>();
@@ -176,101 +127,162 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     return out;
 }
 
-// http://stackoverflow.com/questions/478898/ddg#478960
-string exec(string cmd) {
-    std::array<char, 128> buffer;
-    string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
-        throw std::runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
-        result += buffer.data();
-    }
+bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
+    std::unique_ptr<alpm_list_t, decltype(&alpm_list_free)> list(alpm_list_add(NULL, (void *)(pkgName.c_str())), alpm_list_free);
+    alpm_list_t *temp_ret;
 
-    return result;
-}
-
-bool sanitizeAndRemove(string& input) {
-    sanitizeStr(config.sudo);
-    sanitizeStr(input);
-
-    return system((config.sudo + " pacman -R " + input).c_str()) == 0;
-}
-
-bool TaurBackend::remove_pkg(string pkgName, bool searchForeignPackagesOnly) {
-    /*if (!pkg) {
-        std::cerr << "Failed to find your package " << pkgName << " in the TabAUR DB" << std::endl; 
-        return false;
-    }*/
-    sanitizeStr(pkgName);
-
-    string packages_str;
-    if (searchForeignPackagesOnly)
-        packages_str = exec("pacman -Qmq | grep \"" + pkgName + "\"");
-    else
-        packages_str = exec("pacman -Qq | grep \"" + pkgName + "\"");
-
-    vector<string> packages = split(packages_str, '\n');
-
-    if (packages.empty())
+    if (alpm_db_search(alpm_get_localdb(config.handle), list.get(), &temp_ret) != 0)
         return false;
 
-    if (packages.size() == 1)
-        return sanitizeAndRemove(packages[0]);
+    std::unique_ptr<alpm_list_t, decltype(&alpm_list_free)> ret(temp_ret, alpm_list_free);
 
+    size_t ret_length = alpm_list_count(ret.get());
 
-    std::cout << "Choose packages to remove, (Seperate by spaces, type * to remove all):" << std::endl;
-    for (size_t i = 0; i < packages.size(); i++)
-        std::cout << "[" << i << "] " << packages[i] << std::endl;
+    if (alpm_trans_init(this->config.handle, 0)) {
+        log_printf(LOG_ERROR, "Failed to initialize transaction ({})\n", alpm_strerror(alpm_errno(this->config.handle)));
+        return false;
+    }
+
+    if (ret_length == 0) {
+        log_printf(LOG_ERROR, "Couldn't find any packages!\n");
+        return false;
+    } else if (ret_length == 1) {
+        log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(ret->data)));
+        if (alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(ret->data))) {
+            log_printf(LOG_ERROR, "Failed to remove package ({})\n", alpm_strerror(alpm_errno(this->config.handle)));
+            alpm_trans_release(this->config.handle);
+            return false;
+        }
+
+        return commitTransactionAndRelease();
+    }
+
+    fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
+    for (size_t i = 0; i < ret_length; i++) {
+        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
+    }
 
     string included;
     std::cin >> included;
 
     if (included == "*") {
-        string finalPackageList = "";
-        for (size_t i = 0; i < packages.size(); i++)
-            finalPackageList += packages[i] + " ";
-        return sanitizeAndRemove(finalPackageList);
+        for (size_t i = 0; i < ret_length; i++) {
+            log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
+            int code = alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data));
+            if (code != 0) {
+                log_printf(LOG_ERROR, "Failed to remove package, Exiting!\n");
+                alpm_trans_release(this->config.handle);
+                return false;
+            }
+        }
+
+        if (!commitTransactionAndRelease()) {
+            log_printf(LOG_ERROR, "Failed to prepare, commit, or release alpm transaction.\n");
+            return false;
+        }
+
+        return true;
     }
 
-    vector<string> includedIndexes = split(included, ' ');
-    string finalPackageList = "";
+    vector<string> includedIndexes  = split(included, ' ');
+    string         finalPackageList = "";
 
     for (size_t i = 0; i < includedIndexes.size(); i++) {
         try {
             size_t includedIndex = (size_t)stoi(includedIndexes[i]);
 
-            if (includedIndex >= packages.size())
+            if (includedIndex >= ret_length)
                 continue;
 
-            finalPackageList += packages[includedIndex] + " ";
+            log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), includedIndex)->data)));
+            int code = alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(alpm_list_nth(ret.get(), includedIndex)->data));
+            if (code != 0) {
+                log_printf(LOG_ERROR, "Failed to remove package, Exiting!\n");
+                alpm_trans_release(this->config.handle);
+                return false;
+            }
         } catch (std::invalid_argument const&) {
-            log_printf(LOG_WARN, _("Invalid argument! Assuming all.\n"));
+            log_printf(LOG_WARN, "Invalid argument! Assuming all.\n");
         }
     }
 
-    return sanitizeAndRemove(finalPackageList);
+    if (!commitTransactionAndRelease()) {
+        log_printf(LOG_ERROR, "Failed to prepare, commit, or release alpm transaction.\n");
+        return false;
+    }
+
+    return true;
 }
 
-bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit) {
-    string makepkg_bin = this->config.makepkgBin;
+// faster than makepkg --packagelist
+string makepkg_list(string pkg_name, string path) {
+    string ret;
 
+    string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
+    string pkgrel = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
+    
+    if (!pkgrel.empty())
+        versionInfo += "-" + pkgrel;
+    
+    string arch = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+    string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
+    
+    if (arch_field == "any")
+        arch = "any";
+    
+    string pkgext = shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+    
+    ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
+    return ret;
+}
+
+bool TaurBackend::install_pkg(string pkg_name, string extracted_path) {
     // never forget to sanitize
     sanitizeStr(extracted_path);
-    sanitizeStr(makepkg_bin);
+    fs::current_path(extracted_path);
 
-    if (pkg.depends.empty())
-        return system(("cd \"" + extracted_path + "\" && " + makepkg_bin + " -si").c_str()) == 0;
+    const char* makepkg_bin = this->config.makepkgBin.c_str();
+    
+    log_printf(LOG_DEBUG, "running {} --verifysource -f -Cc\n", makepkg_bin);
+    log_printf(LOG_INFO, "Verifying package sources..\n");
+    taur_exec({makepkg_bin, "--verifysource", "-f", "-Cc"});
 
+    log_printf(LOG_DEBUG, "running {} --nobuild -fd -C --ignorearch\n", makepkg_bin);
+    log_printf(LOG_INFO, "Preparing for compilation..\n");
+    taur_exec({makepkg_bin, "--nobuild", "-fd", "-C", "--ignorearch"});
+
+    string built_pkg = makepkg_list(pkg_name, extracted_path);
+    log_printf(LOG_DEBUG, "built_pkg = {}\n", built_pkg);
+    
+    if (!fs::exists(built_pkg)) {
+        log_printf(LOG_INFO, "Compiling {} in 3 seconds, you can cancel at this point if you can't compile.\n", pkg_name);
+        sleep(3);
+
+        log_printf(LOG_DEBUG, "running {} -fs --noconfirm --noextract --noprepare --holdver --ignorearch -c\n", makepkg_bin);
+        taur_exec({makepkg_bin, "-fs", "--noconfirm", "--noextract", "--noprepare", "--holdver", "--ignorearch", "-c"});   
+    }
+    else
+        log_printf(LOG_INFO, "{} exists already, no need to build\n", built_pkg);
+
+    log_printf(LOG_DEBUG, "running {} pacman -U {}\n", config.sudo, built_pkg);
+    return taur_exec({config.sudo.c_str(), "pacman", "-U", built_pkg.c_str()});
+}
+
+bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool useGit){
     vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
+    log_printf(LOG_DEBUG, "pkg.name = {}\n", pkg.name);
+    log_printf(LOG_DEBUG, "pkg.depends = {}\n", fmt::join(pkg.depends, "; "));
+    
     for (size_t i = 0; i < pkg.depends.size(); i++) {
+        
         optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg.depends[i], useGit);
         
         if (!oDepend)
             continue;
 
         TaurPkg_t depend = oDepend.value();
+
+        log_printf(LOG_DEBUG, "depend = {} -- depend.depends = {}\n", depend.name, fmt::join(depend.depends, "; "));
 
         bool alreadyExists = false;
         for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
@@ -280,61 +292,60 @@ bool TaurBackend::install_pkg(TaurPkg_t pkg, string extracted_path, bool useGit)
         if (alreadyExists)
             continue;
 
-        log_printf(LOG_INFO, _("Downloading dependency %s.\n"), depend.name.c_str());
+        log_printf(LOG_INFO, "Downloading dependency {}\n", depend.name);
 
         string filename = path(this->config.cacheDir) / depend.url.substr(depend.url.rfind("/") + 1);
 
         if (useGit)
             filename = filename.substr(0, filename.rfind(".git"));
-        
+
         bool downloadStatus = this->download_pkg(depend.url, filename);
 
         if (!downloadStatus) {
-            log_printf(LOG_ERROR, _("Failed to download dependency of %s (Source: %s)\n"), pkg.name.c_str(), depend.url.c_str());
+            log_printf(LOG_ERROR, "Failed to download dependency of {} (Source: {})\n", pkg.name, depend.url);
             return false;
         }
 
         string out_path = path(extracted_path.substr(0, extracted_path.rfind("/"))) / depend.name;
-        
-        bool installStatus = this->install_pkg(depend, out_path, useGit);
+
+        bool   installStatus = this->install_pkg(pkg.name, out_path);
 
         if (!installStatus) {
-            log_printf(LOG_ERROR, _("Failed to install dependency of %s (%s)\n"), pkg.name.c_str(), depend.name.c_str());
+            log_printf(LOG_ERROR, "Failed to install dependency of {} ({})\n", pkg.name, depend.name);
             return false;
         }
     }
 
-    return system(("cd \"" + extracted_path + "\" && " + makepkg_bin + " -si").c_str()) == 0;
+    return true;
 }
 
 bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
-    string sudo = config.sudo;
-    sanitizeStr(sudo);
-    
-    // first thing first
-    bool pacmanUpgradeSuccess = system((sudo + " pacman -Syu").c_str()) == 0;
-
-    if (!pacmanUpgradeSuccess)
-        return false;
-
+    // let's not run pacman -Syu if I we just want to update AUR packages 
+    /*if (!config.aurOnly) {
+        taur_exec({});
+    }*/
     vector<TaurPkg_t> pkgs = this->get_all_local_pkgs(true);
+
+    if (pkgs.empty()) {
+        log_printf(LOG_INFO, "No AUR packages found in your system.\n");
+        return true;
+    }
 
     vector<string> pkgNames;
     for (size_t i = 0; i < pkgs.size(); i++)
         pkgNames.push_back(pkgs[i].name);
 
-    // we don't care about url so lets set useGit to true
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
 
     int updatedPkgs = 0;
     int attemptedDownloads = 0;
 
     if (onlinePkgs.size() != pkgs.size())
-        log_printf(LOG_WARN, _("Couldn't get all packages! (looked up %d AUR packages online, looked up %d AUR packages locally) Still trying to update the others.\n"), onlinePkgs.size(), pkgs.size());
+        log_printf(LOG_WARN, "Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others.\n", pkgs.size(), onlinePkgs.size());
 
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
         size_t pkgIndex;
-        bool found = false;
+        bool   found = false;
 
         for (pkgIndex = 0; pkgIndex < pkgs.size(); pkgIndex++) {
             if (pkgs[pkgIndex].name == onlinePkgs[i].name) {
@@ -343,16 +354,20 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
             }
         }
 
+        log_printf(LOG_DEBUG, "onlinePkgs.name = {}\n", onlinePkgs[i].name);
+        log_printf(LOG_DEBUG, "onlinePkgs.depends = {}\n", fmt::join(onlinePkgs[i].depends, "; "));
+
         if (!found) {
-            log_printf(LOG_WARN, _("We couldn't find %s in the local pkg database, This shouldn't happen.\n"), onlinePkgs[i].name.c_str());
+            log_printf(LOG_WARN, "We couldn't find {} in the local pkg database, This shouldn't happen.\n", onlinePkgs[i].name);
             continue;
         }
 
         if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
+            log_printf(LOG_DEBUG, "pkg {} has no update, local: {}, online: {}, skipping!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);
             continue;
         }
 
-        log_printf(LOG_INFO, _("Downloading %s, This could take a bit.\n"), pkgs[pkgIndex].name.c_str());
+        log_printf(LOG_INFO, "Downloading {}.\n", pkgs[pkgIndex].name);
 
         string pkgFolder = cacheDir / onlinePkgs[i].name;
         sanitizeStr(pkgFolder);
@@ -360,24 +375,36 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgFolder);
 
         if (!downloadSuccess) {
-            log_printf(LOG_WARN, _("Failed to download package %s!\n"), onlinePkgs[i].name.c_str());
+            log_printf(LOG_WARN, "Failed to download package {}!\n", onlinePkgs[i].name);
             continue;
         }
 
-        string versionInfo = exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+        string versionInfo = shell_exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
         
         if (versionInfo.empty()) {
-            log_printf(LOG_WARN, _("Failed to parse version information from %s's PKGBUILD, You might be able to ignore this safely.\n"), pkgs[pkgIndex].name.c_str());
+            log_printf(LOG_WARN, "Failed to parse version information from {}'s PKGBUILD, You might be able to ignore this safely.\n", pkgs[pkgIndex].name);
+            continue;
+        }
+        
+        string pkgrel = shell_exec("grep 'pkgrel=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+        
+        if (!pkgrel.empty())
+            versionInfo += "-" + pkgrel;
+
+        log_printf(LOG_DEBUG, "pkg {} versions: local {} vs online {}\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
+                   onlinePkgs[i].version);
+
+        if (!alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str())) {
+            log_printf(LOG_DEBUG, "pkg {} has a different version on the AUR than in its PKGBUILD, local: {}, online: {}, PKGBUILD: {}, skipping!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version, versionInfo);
             continue;
         }
 
-        if (alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str()))
-            continue;
-
-        log_printf(LOG_INFO, _("Upgrading package %s from version %s to version %s!\n"), pkgs[pkgIndex].name.c_str(), pkgs[pkgIndex].version.c_str(), onlinePkgs[i].version.c_str());
+        log_printf(LOG_INFO, "Upgrading package {} from version {} to version {}!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
+                   onlinePkgs[i].version);
         attemptedDownloads++;
-
-        bool installSuccess = this->install_pkg(onlinePkgs[i], pkgFolder, useGit);
+        
+        this->handle_aur_depends(onlinePkgs[i], pkgFolder, useGit);
+        bool installSuccess = this->install_pkg(pkgs[pkgIndex].name, pkgFolder);
 
         if (!installSuccess)
             continue;
@@ -385,195 +412,118 @@ bool TaurBackend::update_all_pkgs(path cacheDir, bool useGit) {
         updatedPkgs++;
     }
 
-    log_printf(LOG_INFO, _("Upgraded %d/%d packages.\n"), updatedPkgs, attemptedDownloads);
+    log_printf(LOG_INFO, "Upgraded {}/{} packages.\n", updatedPkgs, attemptedDownloads);
 
     if (attemptedDownloads > updatedPkgs)
-        log_printf(LOG_WARN, _("Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.\n"));
+        log_printf(LOG_WARN,
+                   "Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.\n");
 
     return true;
 }
 
 // all AUR local packages
 vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
-    string pkgs_str;
+    vector<alpm_pkg_t *> pkgs;
+
+    alpm_list_t *pkg, *syncdbs;
+
+    syncdbs = config.repos;
+
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = pkg->next)
+        pkgs.push_back((alpm_pkg_t *)(pkg->data));
+
     if (aurOnly)
-        pkgs_str = exec("pacman -Qm");
-    else
-        pkgs_str = exec("pacman -Q");
-
-    vector<string> pkgs = split(pkgs_str, '\n');
-
-    if (pkgs.empty())
-        return {};
+        pkgs = filterAURPkgs(pkgs, syncdbs, true);
 
     vector<TaurPkg_t> out;
     for (size_t i = 0; i < pkgs.size(); i++) {
-        vector<string> pkg = split(pkgs[i], ' ');
-        if (pkg.size() < 2)
-            continue;
-        out.push_back((TaurPkg_t) { pkg[0], pkg[1], "https://aur.archlinux.org/" + cpr::util::urlEncode(pkg[0]) + ".git" });
+        alpm_pkg_t *pkg = pkgs[i];
+        out.push_back({alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg), "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git"});
     }
 
     return out;
-}
-
-// all local packages names
-vector<string> TaurBackend::list_all_local_pkgs(bool aurOnly, bool stripVersion) {
-    string cmd = "pacman -Q";
-    if (aurOnly)
-        cmd += "m";
-
-    if (stripVersion)
-        cmd += "q";
-
-    vector<string> pkgs = split(exec(cmd), '\n');
-
-    return pkgs;
-}
-
-// https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_number(const string& s) {
-    return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
 }
 
 // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
 vector<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool useGit) {
     int resultcount = doc["resultcount"].GetInt();
 
-    vector<TaurPkg_t> out;
+    vector<TaurPkg_t> out(resultcount);
     for (int i = 0; i < resultcount; i++) {
-        out.push_back(parsePkg(doc["results"][i], useGit));
+        out[i] = parsePkg(doc["results"][i], useGit);
     }
 
     return out;
-
 }
 
 vector<TaurPkg_t> TaurBackend::search_pac(string query) {
-    sanitizeStr(query);
     // we search for the package name and print only the name, not the description
-    string cmd = "pacman -Ss \"" + query + "\"";
-    vector<string> pkgs_string = split(exec(cmd), '\n');
-    TaurPkg_t taur_pkg;
+    alpm_list_t *pkg, *syncdbs;
+    string packages_str;
+
+    syncdbs = config.repos;
+
+    vector<alpm_pkg_t *> packages;
+
+    for (; syncdbs; syncdbs = alpm_list_next(syncdbs)) {
+        for (pkg = alpm_db_get_pkgcache((alpm_db_t *)(syncdbs->data)); pkg; pkg = alpm_list_next(pkg)) {
+            string name = string(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+            if (name.find(query) == string::npos)
+                continue;
+            packages.push_back((alpm_pkg_t *)(pkg->data));
+        }
+    }
+
     vector<TaurPkg_t> out;
 
-    for (size_t i = 0; i < pkgs_string.size(); i += 2) {
-        try {
-            vector<string> pkg = split(pkgs_string[i], '/');
+    for (size_t i = 0; i < packages.size(); i++) {
+        TaurPkg_t taur_pkg = { 
+                                string(alpm_pkg_get_name(packages[i])), // name
+                                string(alpm_pkg_get_version(packages[i])),  // version
+                                "", // url
+                                string(alpm_pkg_get_desc(packages[i])), // desc
+                                100,  // system packages are very trustable
+                                vector<string>(),   // depends
+                                string(alpm_db_get_name(alpm_pkg_get_db(packages[i]))), // db_name
+                             };
 
-            if (pkg.size() < 2) {
-                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str()); 
-                continue;
-            }
-
-            taur_pkg.db_name = pkg[0];
-
-            pkg = split(pkg[1], ' ');
-
-            if (pkg.size() < 2) {
-                log_printf(LOG_ERROR, _("Pacman returned an unexpected response:\n%s\n"), pkgs_string[i].c_str()); 
-                continue;
-            }
-
-            taur_pkg.name = pkg[0]; 
-            taur_pkg.version = pkg[1];
-
-            if (pkgs_string.size() <= (i + 1)) {
-                log_printf(LOG_ERROR, _("Pacman provided no description for package %s! Command: %s\n"), pkg[0].c_str(), cmd.c_str()); 
-                out.push_back(taur_pkg);
-                continue;
-            }
-
-            string desc = pkgs_string[i + 1];
-            
-            if (desc.size() > 4)
-                taur_pkg.desc = desc.substr(4);
-            else
-                std::cout << pkgs_string.size() << " " << i << " " << desc.size() << std::endl;
-
-            out.push_back(taur_pkg);
-        } catch (std::out_of_range const &e) {
-            log_printf(LOG_ERROR, _("Pacman did not return what we expected, Command: %s\n"), cmd.c_str());
-            exit(1);
-        }
+        out.push_back(taur_pkg);
     }
 
     return out;
 }
 
+
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-std::optional<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
+vector<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
+    if (query.empty())
+        return vector<TaurPkg_t>();
     // link to AUR API
     cpr::Url            url(("https://aur.archlinux.org/rpc/v5/search/" + cpr::util::urlEncode(query) + "?by=name"));
     cpr::Response       r = cpr::Get(url);
 
-    string         raw_text_response = r.text;
+    string              raw_text_response = r.text;
 
     rapidjson::Document json_response;
     json_response.Parse(raw_text_response.c_str());
 
-    if (strcmp(json_response["type"].GetString(), "error") == 0)
-        return {};
-
-    if (json_response["resultcount"].GetInt() == 0)
-        return {};
-
-    vector<TaurPkg_t> aurPkgs = this->getPkgFromJson(json_response, useGit);
+    vector<TaurPkg_t> aurPkgs;
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
-    db_colors db_color;
+    
+    if (json_response["resultcount"].GetInt() > 0)
+        aurPkgs = this->getPkgFromJson(json_response, useGit);
 
-    size_t count = aurPkgs.size() + pacPkgs.size();
-    string dbColor;
+    size_t            count = aurPkgs.size() + pacPkgs.size();
 
-    if (count == 1) {
-	    return aurPkgs.size() == 1 ? this->fetch_pkg(aurPkgs[0].name, useGit) : pacPkgs[0];
-    } else if (count > 1) {
-        log_printf(LOG_INFO, _("TabAUR has found multiple packages relating to your search query, Please pick one.\n"));
-        string input;
-        do {
-            // CTRL-D
-            if (!std::cin)
-                return {};
+    vector<TaurPkg_t> combined;
 
-            if (!input.empty())
-                log_printf(LOG_WARN, _("Invalid input!\n"));
+    combined.reserve(count);
 
-            for (size_t i = 0; i < aurPkgs.size(); i++)
-                std::cout 
-                    << MAGENTA << i
-                    << " " << BOLDBLUE << "aur/" << BOLD << aurPkgs[i].name
-                    << "\n    " << NOCOLOR << aurPkgs[i].desc
-                    << 
-                std::endl;
+    if (!aurPkgs.empty())
+        combined.insert(combined.end(), aurPkgs.begin(), aurPkgs.end());
+    if (!pacPkgs.empty())
+        combined.insert(combined.end(), pacPkgs.begin(), pacPkgs.end());
 
-            for (size_t i = 0; i < pacPkgs.size(); i++) {
-                if(pacPkgs[i].db_name == "extra")
-                    dbColor = db_color.extra;
-                else if(pacPkgs[i].db_name == "multilib")
-                    dbColor = db_color.multilib;
-                else
-                    dbColor = db_color.core;
-
-                std::cout
-                    << MAGENTA << i + aurPkgs.size() << " "
-                    << dbColor << pacPkgs[i].db_name << '/' << BOLD << pacPkgs[i].name
-                    << " " << BOLDGREEN << pacPkgs[i].version << "\n    "
-                    << NOCOLOR << pacPkgs[i].desc
-                    << NOCOLOR << 
-                std::endl;
-            }
-            std::cout << "Choose a package to download: ";
-            std::cin >> input;
-        } while (!is_number(input) || (size_t)std::stoi(input) >= count);
-
-        size_t selected = std::stoi(input);
-
-        if (selected >= aurPkgs.size())
-            return pacPkgs[selected - aurPkgs.size()];
-        else
-            return this->fetch_pkg(aurPkgs[selected].name, useGit);
-    }
-
-    return {};
+    return combined;
 }

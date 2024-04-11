@@ -1,43 +1,153 @@
-#include <stdbool.h>
-#include <taur.hpp>
-#include <config.hpp>
-#include <util.hpp>
-#include <args.hpp>
+#pragma GCC diagnostic ignored "-Wvla"
 
-using std::cout;
-using std::endl;
-using std::filesystem::path;
-using std::vector;
-using std::string;
+#include "util.hpp"
+#include "args.hpp"
+#include "taur.hpp"
 
-Config config;
-struct Operation_t operation;
+#define BRANCH "libalpm-test"
+#define VERSION "0.5.8"
 
-void usage() {
-    cout << "TabAUR Launch Options:" << endl;
-    cout << "\ttaur <pacman-like arguments> <parameters to the operation>" << endl << endl;
-    cout << "TabAUR will assume -Syu if you pass no arguments to it." << endl;
-}
+std::unique_ptr<Config> config;
 
-bool installPkg(string pkgName, TaurBackend *backend) { 
-    string      	cacheDir = config.cacheDir;
-    bool            useGit   = config.useGit;
-    
-    optional<TaurPkg_t>  pkg = backend->search(pkgName, useGit);
-
-    if (!pkg) {
-        log_printf(LOG_ERROR, _("An error has occurred and we could not search for your package.\n"));
-        return -1;
+// this may be hard to read, but better than calling fmt::println multiple times
+void usage(int op) {
+    if(op == OP_MAIN) {
+        fmt::println("TabAUR usage: taur <op> [...]");
+        fmt::print("options:\n{}", R"#(
+    taur {-h --help}
+    taur {-V --version}
+    taur {-t, --test-colors}
+    taur {-D --database} <options> <package(s)>
+    taur {-F --files}    [options] [file(s)]
+    taur {-Q --query}    [options] [package(s)]
+    taur {-R --remove}   [options] <package(s)>
+    taur {-S --sync}     [options] [package(s)]
+    taur {-T --deptest}  [options] [package(s)]
+    taur {-U --upgrade}  [options] <file(s)>
+    )#");
+    }
+    else {
+        if(op == OP_SYNC) {
+            fmt::println("usage:  taur {{-S --sync}} [options] [package(s)]");
+            fmt::println("options:{}", R"#(
+    -s, --search <regex> search remote repositories for matching strings
+    -u, --sysupgrade     upgrade installed packages (-uu enables downgrades)
+    -y, --refresh        download fresh package databases from the server
+            )#");
+        }
+        else if (op == OP_QUERY) {
+            fmt::println("usage: taur {{-Q --query}} [options] [package(s)]");
+            fmt::print("options:{}", R"#(
+    -q, --quiet          show less information for query and search
+                         )#");
+        }
     }
 
-    string url = pkg.value().url;
+    fmt::println("{}", R"#(
+    -a, --aur-only       do only AUR operations
+    -g, --use-git        use git instead of tarballs for AUR repos
+    --config    <path>   set an alternate configuration file
+    --theme     <path>   set an alternate theme file
+    --cachedir  <dir>    set an alternate package cache location
+    --colors    <1,0>    colorize the output
+    --debug     <1,0>    show debug messages
+    --sudo      <path>   choose which binary to use for privilage-escalation
+    )#");
+    fmt::println("TabAUR will assume -Syu if you pass no arguments to it.");
+
+    if (config->secretRecipe) {
+        log_printf(LOG_INFO, "Loading secret recipe...\n");
+        for (auto const& i : secret) {
+            fmt::println("{}", i);
+            usleep(650000); // 0.65 seconds
+        }
+    }
+}
+
+void test_colors() {
+    if(fmt::disable_colors)
+        fmt::println("Colors are disabled");
+    log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
+    log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
+    log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
+    log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
+    fmt::println("red: {}",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
+    fmt::println("blue: {}",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
+    fmt::println("yellow: {}", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
+    fmt::println("green: {}",  fmt::format(fg(config->getThemeValue("green", green)), config->getThemeHexValue("green", green)));
+    fmt::println("cyan: {}",   fmt::format(fg(config->getThemeValue("cyan", cyan)), config->getThemeHexValue("cyan", cyan)));
+    fmt::println("magenta: {}",fmt::format(fg(config->getThemeValue("magenta", magenta)), config->getThemeHexValue("magenta", magenta)));
+}
+
+bool execPacman(int argc, char* argv[]) {
+    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: {:d})\n", argc);
+    
+    if (0 > argc || argc > 512)
+        throw std::invalid_argument("argc is invalid! (512 > argc > 0)");
+
+    char* args[argc+3]; // sudo + pacman + null terminator
+
+    args[0] = _(config->sudo.c_str());
+    args[1] = _("pacman"); // The command to run as superuser (pacman)
+    for (int i = 0; i < argc; ++i) {
+        log_printf(LOG_DEBUG, "args[{}] = argv[{}] ({})\n", i + 2, i, argv[i]);
+        args[i+2] = argv[i];
+    }
+
+    args[argc+2] = nullptr; // null-terminate the array
+
+    execvp(args[0], args);
+
+    // If execvp returns, it means an error occurred
+    perror("execvp");
+    return false;
+}
+
+int installPkg(string pkgName, TaurBackend &backend) { 
+    bool            useGit   = config->useGit;
+    string          cacheDir = config->cacheDir;
+
+    vector<TaurPkg_t>  pkgs = backend.search(pkgName, useGit);
+
+    if (pkgs.empty() && !op.op_s_upgrade) {
+        log_printf(LOG_WARN, "No results found, Exiting!\n");
+        return false;
+    } else if (pkgs.empty()) {
+        vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
+        if(op.op_s_sync)
+            cmd.push_back("-y");
+        if(op.op_s_upgrade)
+            cmd.push_back("-u");
+
+        return taur_exec(cmd) && backend.update_all_pkgs(cacheDir, useGit);
+    }
+
+    // ./taur -Ss -- list only, don't install.
+    if (op.op_s_search) {
+        for (size_t i = 0; i < pkgs.size(); i++)
+            printPkgInfo(pkgs[i]);
+        return true;
+    }
+
+    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, backend, useGit);
+
+    if (!oPkg)
+        return false;
+
+    TaurPkg_t pkg = oPkg.value();
+
+    string url = pkg.url;
 
     if (url == "") {
-        string name = pkg.value().name;
-        sanitizeStr(config.sudo);
-        sanitizeStr(name);
-        
-        return system((config.sudo + " pacman -S " + name).c_str()) == 0;
+        vector<const char*> cmd = {"-S"};
+        if(op.op_s_sync)
+            cmd.push_back("-y");
+        if(op.op_s_upgrade)
+            cmd.push_back("-u");
+
+        cmd.push_back(pkg.name.c_str());
+
+        return execPacman(cmd.size(), (char **)cmd.data()), backend.update_all_pkgs(config->cacheDir, useGit);
     }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
@@ -45,120 +155,247 @@ bool installPkg(string pkgName, TaurBackend *backend) {
     if (useGit)
         filename = filename.substr(0, filename.rfind(".git"));
 
-    bool stat = backend->download_pkg(url, filename);
+    bool stat = backend.download_pkg(url, filename);
 
     if (!stat) {
-        log_printf(LOG_ERROR, _("An error has occurred and we could not download your package.\n"));
+        log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
         return false;
     }
 
-    if (!useGit)
-        stat = backend->install_pkg(pkg.value(), filename.substr(0, filename.rfind(".tar.gz")), useGit);
-    else
-        stat = backend->install_pkg(pkg.value(), filename, useGit);
+    if (!useGit){
+        stat = backend.handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
+        stat = backend.install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")));
+    }
+    else {
+        stat = backend.handle_aur_depends(pkg, filename, useGit);
+        stat = backend.install_pkg(pkg.name, filename);
+    }
 
     if (!stat) {
-        log_printf(LOG_ERROR, _("Building/Installing your package has failed.\n"));
+        log_printf(LOG_ERROR, "Building/Installing your package has failed.\n");
         return false;
+    }
+
+    if (op.op_s_upgrade) {
+        log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.\n");
+        return backend.update_all_pkgs(cacheDir, useGit);
     }
 
     return true;
 }
 
-bool removePkg(string pkgName, TaurBackend *backend) {
-    return backend->remove_pkg(pkgName, config.aurOnly);
+bool removePkg(string pkgName, TaurBackend &backend) {
+    return backend.remove_pkg(pkgName, config->aurOnly);
 }
 
-bool updateAll(TaurBackend *backend) {
-    string          cacheDir = config.cacheDir;
+bool updateAll(TaurBackend &backend) {
+    string cacheDir = config->cacheDir;
 
-    return backend->update_all_pkgs(path(cacheDir), config.useGit);
+    return backend.update_all_pkgs(path(cacheDir), config->useGit);
 }
 
-int parsearg_op(int opt){
-    switch(opt){
-        case 'S':
-            operation.op = OP_SYNC; operation.args.push_back(optarg); break;
-        case 'R':
-            operation.op = OP_REM; operation.args.push_back(optarg); break;
-        case 'Q':
-            operation.op = OP_QUERY; break;
-        case 'a':
-            config.aurOnly = true; break;
-        case 'h':
-            usage(); exit(0); break;
-        case 'V':
-            std::cout << "TabAUR version 0.0.1" << std::endl; break;
-        case ':':
-            std::cerr << "Option requires an argument!" << std::endl; break;
-        default:
-            return 1;
+bool queryPkgs(TaurBackend &backend) {
+    log_printf(LOG_DEBUG, "AUR Only: {}\n", config->aurOnly);
+    alpm_list_t *pkg;
+
+    vector<const char *> pkgs, pkgs_ver;
+    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)){
+        pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+        pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
     }
-    return 0;
+
+    if (config->aurOnly) {
+        alpm_list_t *syncdbs;
+
+        syncdbs = alpm_get_syncdbs(config->handle);
+
+        if (!syncdbs) {
+            log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
+            return false;
+        }
+
+        for (; syncdbs; syncdbs = syncdbs->next)
+            for (size_t i = 0; i < pkgs.size(); i++)
+                if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i]))
+                    pkgs[i] = NULL; // wont be printed
+    }
+
+    for (size_t i = 0; i < pkgs.size(); i++) {
+        if (!pkgs[i])
+            continue;
+        if(config->quiet)
+            fmt::println("{}", pkgs[i]);
+        else {
+            fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
+            fmt::println(BOLD_TEXT(config->getThemeValue("green", green)), "{}", pkgs_ver[i]);
+        }
+    }
+
+    return true;
 }
 
-int parseargs(int argc, char* argv[]){
+int parseargs(int argc, char* argv[]) {
     // default
-    operation.op = OP_SYSUPGRADE;
+    op.op = OP_MAIN;
 
-    int opt;
+    int opt = 0;
     int option_index = 0;
-	const char *optstring = "S:R:QahV";
-	static const struct option opts[] = 
+    int result = 0;
+    const char *optstring = "DFQRSTUVahqsuyt";
+    static const struct option opts[] =
     {
-        {"sync",    required_argument, 0, 'S'},
-        {"remove",  required_argument, 0, 'R'},
-        {"query",   no_argument,       0, 'Q'},
-        {"aur-only",no_argument,       0, 'a'},
-        {"help",    no_argument,       0, 'h'},
-        {"version", no_argument,       0, 'V'},
+        {"database",   no_argument,       0, 'D'},
+        {"files",      no_argument,       0, 'F'},
+        {"query",      no_argument,       0, 'Q'},
+        {"remove",     no_argument,       0, 'R'},
+        {"sync",       no_argument,       0, 'S'},
+        {"deptest",    no_argument,       0, 'T'}, /* used by makepkg */
+        {"upgrade",    no_argument,       0, 'U'},
+        {"version",    no_argument,       0, 'V'},
+        {"aur-only",   no_argument,       0, 'a'},
+        {"help",       no_argument,       0, 'h'},
+        {"test-colors",no_argument,       0, 't'},
+
+        {"refresh",    no_argument,       0, OP_REFRESH},
+        {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
+        {"search",     no_argument,       0, OP_SEARCH},
+        {"cachedir",   required_argument, 0, OP_CACHEDIR},
+        {"colors",     required_argument, 0, OP_COLORS},
+        {"config",     required_argument, 0, OP_CONFIG},
+        {"theme",      required_argument, 0, OP_THEME},
+        {"sudo",       required_argument, 0, OP_SUDO},
+        {"use-git",    required_argument, 0, OP_USEGIT},
+        {"quiet",      no_argument,       0, OP_QUIET},
+        {"debug",      no_argument,       0, OP_DEBUG},
         {0,0,0,0}
     };
 
     /* parse operation */
+    while ((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
+        if (opt == 0) {
+            continue;
+        } else if (opt == '?') {
+            return 1;
+        }
+        parsearg_op(opt, 0);
+    }
+
+    if(op.op == 0) {
+		log_printf(LOG_ERROR, "only one operation may be used at a time\n");
+		return 1;
+    }
+
+    if (op.version) {
+        fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
+        exit(0);
+    }
+    if(op.help) {
+		usage(op.op);
+		exit(1);
+    }
+        
+    /* parse all other options */
+	optind = 1;
 	while((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
 		if(opt == 0) {
 			continue;
 		} else if(opt == '?') {
+			/* this should have failed during first pass already */
 			return 1;
+		} else if(parsearg_op(opt, 1) == 0) {
+			/* opt is an operation */
+			continue;
 		}
-		parsearg_op(opt);
-	}
 
-    if ((operation.op == OP_SYNC || operation.op == OP_REM) && operation.args.size() < 1) {
-       usage(); 
-       return 1;
+		switch(op.op) {
+            case OP_SYNC:
+                result = parsearg_sync(opt);
+                break;
+            case OP_QUERY:
+                result = parsearg_query(opt);
+                break;
+            default:
+				result = 1;
+				break;
+        }
+
+        if(result == 0)
+		continue;
+
+        /* fall back to global options */
+	    result = parsearg_global(opt);
+	    if(result != 0) {
+		    if(result == 1) {
+		    /* global option parsing failed, abort */
+			    if(opt < 1000) {
+				    log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
+			    } else {
+				    log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);
+			    }
+		    }
+            return 1;
+	    }       
     }
 
+    while(optind < argc) {
+		/* add the target to our target array */
+        alpm_list_t *taur_targets_get = taur_targets.get();
+        (void)taur_targets.release();
+        alpm_list_append_strdup(&taur_targets_get, argv[optind]);
+		taur_targets = make_list_smart_deleter(taur_targets_get);
+		optind++;
+	}
+    
     return 0;
-}
-
-bool queryPkgs(TaurBackend *backend) {
-    vector<string> pkgs = backend->list_all_local_pkgs(config.aurOnly, false);
-
-    for (size_t i = 0; i < pkgs.size(); i++)
-        cout << pkgs[i] << endl;
-
-    return true;
 }
 
 // main
 int main(int argc, char* argv[]) {
+    config = std::make_unique<Config>();
 
-    TaurBackend backend(config);
+    configfile = (getConfigDir() + "/config.toml");
+    themefile = (getConfigDir() + "/theme.toml");
 
     if (parseargs(argc, argv))
         return 1;
 
-    switch (operation.op) {
+    // this will always be false
+    // i just want to feel good about having this check
+    if (!config->isInitialized())
+        config->init(configfile, themefile);
+
+    fmt::disable_colors = config->colors == 0;
+
+    if(op.test_colors) {
+        test_colors();
+        return 0;
+    }
+
+    signal(SIGINT, &interruptHandler);
+
+    // the code you're likely interested in
+    TaurBackend backend(*config);
+
+    if (op.requires_root && geteuid() != 0) {
+        log_printf(LOG_ERROR, "You need to be root to do this.\n");
+        return 1;
+    } else if (!op.requires_root && geteuid() == 0) {
+        log_printf(LOG_ERROR, "You are trying to run TabAUR as root when you don't need it.\n");
+        return 1;
+    }
+
+    switch (op.op) {
     case OP_SYNC:
-        return (installPkg(operation.args[0], &backend)) ? 0 : 1;
+        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "", backend)) ? 0 : 1;
     case OP_REM:
-        return (removePkg(operation.args[0], &backend)) ? 0 : 1;
+        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "", backend)) ? 0 : 1;
     case OP_QUERY:
-        return (queryPkgs(&backend)) ? 0 : 1;
+        return (queryPkgs(backend)) ? 0 : 1;
     case OP_SYSUPGRADE:
-        return (updateAll(&backend)) ? 0 : 1;
+        return (updateAll(backend)) ? 0 : 1;
+    case OP_PACMAN:
+        // we are gonna use pacman to other ops than -S,-R,-Q
+        return execPacman(argc, argv);
     }
 
     return 3;
