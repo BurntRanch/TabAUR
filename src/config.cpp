@@ -21,8 +21,11 @@ Config::~Config() {
         alpm_list_free(this->repos);
 }
 
-// initialize Config.
+// initialize Config, can only be ran once for each Config instance.
 void Config::init(string configFile, string themeFile) {
+    if (this->initialized)
+        return;
+    
     string configDir = getConfigDir();
     bool newUser = false;
 

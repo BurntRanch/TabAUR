@@ -365,8 +365,7 @@ int main(int argc, char* argv[]) {
 
     // this will always be false
     // i just want to feel good about having this check
-    if (!config->isInitialized())
-        config->init(configfile, themefile);
+    config->init(configfile, themefile);
 
     fmt::disable_colors = config->colors == 0;
 
