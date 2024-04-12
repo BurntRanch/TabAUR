@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     tags: "*"
-    branches: "dev"
 
 jobs:
   get-version:
@@ -15,8 +14,7 @@ jobs:
         run: |
           echo "Tag name from GITHUB_REF_NAME: $GITHUB_REF_NAME"
           echo "Tag name from github.ref_name: ${{ github.ref_name }}"
-        env:
-          ref: ${{ github.ref_name }}
+          echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           
   build:
     runs-on: ubuntu-latest
@@ -84,5 +82,5 @@ jobs:
         with:
           upload_url: ${{ needs.release.outputs.release-url }}
           asset_path: ./tabaur.tar.zst
-          asset_name: tabaur.tar.zst
+          asset_name: TabAUR-${{ needs.get-version.outputs.version }}.tar.zst
           asset_content_type: application/tar+zstd
