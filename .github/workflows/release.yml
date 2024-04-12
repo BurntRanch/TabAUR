@@ -2,9 +2,9 @@ name: release test
 
 on:
   push:
-    branches: [ "libalpm-test", "main" ]
+    branches: [ "libalpm-test", "dev", "main" ]
   pull_request:
-    branches: [ "libalpm-test", "main" ]
+    branches: [ "libalpm-test", "dev", "main" ]
 
 jobs:
   get-version:
@@ -44,7 +44,7 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: get-version
+    needs: [build, get-version]
     runs-on: ubuntu-latest
     outputs:
       release-url: ${{ steps.create-release.outputs.upload_url }}
