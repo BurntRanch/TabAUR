@@ -37,7 +37,7 @@ jobs:
       run: make clean
 
     - name: Compile
-      run: make -f ReleaseMakeFile
+      run: make
 
     - name: Build release
       run: tar --zstd -cf tabaur.tar.zst taur
