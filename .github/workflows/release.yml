@@ -1,0 +1,61 @@
+name: release test
+
+on:
+  push:
+    branches: [ "libalpm-test", "main" ]
+  pull_request:
+    branches: [ "libalpm-test", "main" ]
+
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - id: version
+        run: echo "version=${ref##test-release/}" >> $GITHUB_OUTPUT
+        env:
+          ref: ${{ github.ref_name }}
+          
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Install Packages
+      run: pacman -Syu gcc git base base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
+
+    - name: Get submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Clean
+      run: make clean
+
+    - name: Compile
+      run: make -f ReleaseMakeFile
+
+    - name: Build release
+      run: tar --zstd -cf tabaur.tar.zst taur
+
+  release:
+    name: Create GitHub Release
+    needs: get-version
+    runs-on: ubuntu-latest
+    outputs:
+      release-url: ${{ steps.create-release.outputs.upload_url }}
+    steps:
+    - name: Create Release
+      id: create-release
+      uses: actions/create-release@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ needs.get-version.outputs.version }}
+        release_name: TabAUR v${{ needs.get-version.outputs.version }}
+        draft: true
+        prerelease: false
