@@ -27,6 +27,7 @@ jobs:
       run: pacman -Syu gcc git base base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
 
     - name: Get submodules
+      uses: actions/checkout@v4
       with:
         submodules: recursive
 
