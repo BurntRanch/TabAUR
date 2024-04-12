@@ -11,7 +11,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - id: version
-        run: echo "version=${ref##test-release/}" >> $GITHUB_OUTPUT
+        run: echo "version=${ref##dev/}" >> $GITHUB_OUTPUT
         env:
           ref: ${{ github.ref_name }}
           
@@ -61,8 +61,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ needs.get-version.outputs.version }}
-        release_name: TabAUR ${{ needs.get-version.outputs.version }}
-        draft: true
+        release_name: TabAUR v${{ needs.get-version.outputs.version }}
+        draft: false
         prerelease: false
 
   upload-binaries:
