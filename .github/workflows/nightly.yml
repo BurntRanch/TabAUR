@@ -32,6 +32,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Delete nightly
+      env:
+        GH_REPO: ${{ github.repository }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
           gh release delete nightly --yes
           git push origin :nightly
@@ -64,9 +67,6 @@ jobs:
     needs: [build, get-version]
     runs-on: ubuntu-latest
     permissions: write-all
-    env:
-      GH_REPO: ${{ github.repository }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
       release-url: ${{ steps.create-release.outputs.upload_url }}
     steps:
