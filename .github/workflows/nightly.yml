@@ -55,7 +55,7 @@ jobs:
   upload-binaries:
     name: Upload binaries to Githib relase
     runs-on: ubuntu-latest
-    needs: get-version
+    needs: [build, get-version]
     permissions: write-all
     steps:
       - uses: actions/download-artifact@v4
