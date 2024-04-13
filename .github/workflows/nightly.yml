@@ -15,10 +15,12 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - id: version
+      - name: Creating version
         run: |
           echo "sha_short=$(echo $GITHUB_SHA | cut -c1-7)" >> "$GITHUB_ENV"
           echo "branch=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> "$GITHUB_ENV"
+      - id: version
+        run: |
           echo "version=${{ env.sha_short }}-${{ env.branch }}" >> $GITHUB_OUTPUT
           
   build:
@@ -85,8 +87,6 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/download-artifact@v4
-        with:
-          name: tabaur
           
       - uses: actions/upload-release-asset@v1
         env:
