@@ -27,13 +27,6 @@ jobs:
       image: archlinux
 
     steps:
-    - name: Re-tag nightly
-      uses: dev-drprasad/delete-tag-and-release@v1.1
-      with:
-        tag_name: nightly
-        delete_release: true
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        
     - uses: actions/checkout@v4
     
     - name: Install Packages
@@ -67,6 +60,13 @@ jobs:
     outputs:
       release-url: ${{ steps.create-release.outputs.upload_url }}
     steps:
+    - name: Re-tag nightly
+      uses: dev-drprasad/delete-tag-and-release@v1.1
+      with:
+        tag_name: nightly
+        delete_release: false
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: Create Release
       id: create-release
       uses: actions/create-release@master
@@ -74,7 +74,7 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ needs.get-version.outputs.version }}
-        release_name: TabAUR v${{ needs.get-version.outputs.version }}
+        release_name: TabAUR nightly ${{ needs.get-version.outputs.version }}
         draft: false
         prerelease: true
 
@@ -87,7 +87,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: tabaur
-
+          
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
