@@ -27,13 +27,15 @@ jobs:
       image: archlinux
 
     steps:
+    - name: Re-tag nightly
+      uses: dev-drprasad/delete-tag-and-release@v1.1
+      with:
+        tag_name: nightly
+        delete_release: true
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        
     - uses: actions/checkout@v4
     
-    - name: Re-tag nightly
-      run: |
-          git tag --delete nightly
-          git push origin :nightly
-
     - name: Install Packages
       run: pacman -Syu gcc git base base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
 
@@ -56,11 +58,30 @@ jobs:
       with:
         name: tabaur
         path: tabaur.tar.zst
-        
+
+  release:
+    name: Create GitHub Release
+    needs: [build, get-version]
+    runs-on: ubuntu-latest
+    permissions: write-all
+    outputs:
+      release-url: ${{ steps.create-release.outputs.upload_url }}
+    steps:
+    - name: Create Release
+      id: create-release
+      uses: actions/create-release@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ needs.get-version.outputs.version }}
+        release_name: TabAUR v${{ needs.get-version.outputs.version }}
+        draft: false
+        prerelease: true
+
   upload-binaries:
     name: Upload binaries to Githib relase
     runs-on: ubuntu-latest
-    needs: [build, get-version]
+    needs: [release, get-version]
     permissions: write-all
     steps:
       - uses: actions/download-artifact@v4
