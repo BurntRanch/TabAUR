@@ -44,7 +44,7 @@ jobs:
       run: make clean
 
     - name: Compile
-      run: make CPPFLAGS="-ggdb -mtune=generic -funroll-all-loops -march=native -isystem include -std=c++17"
+      run: make CPPFLAGS="-mtune=generic -funroll-all-loops -march=native -isystem include -std=c++17"
 
     - name: Build release
       run: tar --zstd -cf tabaur.tar.zst taur
@@ -54,20 +54,24 @@ jobs:
       with:
         name: tabaur
         path: tabaur.tar.zst
-
-    - name: Delete nightly
-      run: |
-          gh release delete nightly --yes
-          git push origin :nightly
         
   release:
     name: Create GitHub Release
     needs: [build, get-version]
     runs-on: ubuntu-latest
     permissions: write-all
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
       release-url: ${{ steps.create-release.outputs.upload_url }}
     steps:
+    - uses: actions/checkout@v4
+    - name: Delete nightly
+      run: |
+          gh release delete nightly --yes
+          git push origin :nightly
+
     - name: Create Release
       id: create-release
       uses: actions/create-release@master
@@ -83,7 +87,7 @@ jobs:
     needs: [release, get-version]
     permissions: write-all
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: tabaur
 
