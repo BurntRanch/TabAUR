@@ -31,6 +31,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Delete nightly
+      run: |
+          gh release delete nightly --yes
+          git push origin :nightly
 
     - name: Install Packages
       run: pacman -Syu gcc git base base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
@@ -66,12 +70,6 @@ jobs:
     outputs:
       release-url: ${{ steps.create-release.outputs.upload_url }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Delete nightly
-      run: |
-          gh release delete nightly --yes
-          git push origin :nightly
-
     - name: Create Release
       id: create-release
       uses: actions/create-release@master
