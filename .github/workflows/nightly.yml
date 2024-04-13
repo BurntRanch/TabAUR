@@ -17,8 +17,8 @@ jobs:
     steps:
       - id: version
         run: |
-          echo "sha_short=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_ENV"
-          echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> "$GITHUB_ENV"
+          echo "sha_short=$(echo $GITHUB_SHA | cut -c1-7)" >> "$GITHUB_ENV"
+          echo "branch=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> "$GITHUB_ENV"
           echo "version=${{ env.sha_short }}-${{ env.branch }}" >> $GITHUB_OUTPUT
           
   build:
@@ -73,7 +73,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ needs.get-version.outputs.version }}
+        tag_name: nightly
         release_name: TabAUR nightly ${{ needs.get-version.outputs.version }}
         draft: false
         prerelease: true
