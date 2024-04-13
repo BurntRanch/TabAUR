@@ -21,7 +21,7 @@ jobs:
           echo "branch=$(echo $GITHUB_REF | cut -d'/' -f 3)" >> "$GITHUB_ENV"
       - id: version
         run: |
-          echo "version=${{ env.sha_short }}.${{ env.branch }}" >> $GITHUB_OUTPUT
+          echo "version=${{ env.sha_short }}-${{ env.branch }}" >> $GITHUB_OUTPUT
           
   build:
     runs-on: ubuntu-latest
@@ -49,10 +49,10 @@ jobs:
       run: tar --zstd -cf tabaur.tar.zst taur
     
     - name: Upload to github artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: tabaur
-        path: tabaur.tar.zst
+        path: ./tabaur.tar.zst
 
   release:
     name: Create GitHub Release
@@ -66,7 +66,7 @@ jobs:
       uses: dev-drprasad/delete-tag-and-release@v1.1
       with:
         tag_name: nightly
-        delete_release: false
+        delete_release: true
         github_token: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Create Release
@@ -87,12 +87,14 @@ jobs:
     permissions: write-all
     steps:
       - uses: actions/download-artifact@v4
+        with:
+          name: tabaur
           
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release.outputs.release-url }}
-          asset_path: tabaur.tar.zst
+          asset_path: ./tabaur.tar.zst
           asset_name: TabAUR-nightly-${{ needs.get-version.outputs.version }}.tar.zst
           asset_content_type: application/tar+zstd
