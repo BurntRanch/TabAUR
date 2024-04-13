@@ -54,6 +54,11 @@ jobs:
       with:
         name: tabaur
         path: tabaur.tar.zst
+
+    - name: Delete nightly
+      run: |
+          gh release delete nightly --yes
+          git push origin :nightly
         
   release:
     name: Create GitHub Release
@@ -63,11 +68,6 @@ jobs:
     outputs:
       release-url: ${{ steps.create-release.outputs.upload_url }}
     steps:
-    - name: Delete nightly
-      run: |
-          gh release delete nightly --yes || true
-          git push origin :nightly || true
-          
     - name: Create Release
       id: create-release
       uses: actions/create-release@master
