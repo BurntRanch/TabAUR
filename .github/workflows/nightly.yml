@@ -28,6 +28,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Re-tag nightly
+      run: |
+          git tag --delete nightly
+          git push origin :nightly
 
     - name: Install Packages
       run: pacman -Syu gcc git base base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
@@ -61,11 +66,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: tabaur
-          
-      - name: Re-tag nightly
-        run: |
-            git tag --delete nightly
-            git push origin :nightly
 
       - uses: actions/upload-release-asset@v1
         env:
