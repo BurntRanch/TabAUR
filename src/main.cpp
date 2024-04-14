@@ -6,7 +6,7 @@
 #include "taur.hpp"
 
 #define BRANCH "libalpm-test"
-#define VERSION "0.5.9"
+#define VERSION "0.6.0"
 
 std::unique_ptr<Config> config;
 std::unique_ptr<TaurBackend> backend;
@@ -135,57 +135,67 @@ int installPkg(string pkgName) {
         return true;
     }
 
-    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, *backend, useGit);
+    optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
-    if (!oPkg)
+    if (!oSelectedPkgs)
         return false;
 
-    TaurPkg_t pkg = oPkg.value();
+    vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
 
-    string url = pkg.url;
+    for (size_t i = 0; i < selectedPkgs.size(); i++) {
+        TaurPkg_t pkg = selectedPkgs[i];
 
-    if (url == "") {
-        vector<const char*> cmd = {"-S"};
-        if(op.op_s_sync)
-            cmd.push_back("-y");
-        if(op.op_s_upgrade)
-            cmd.push_back("-u");
+        string url = pkg.url;
 
-        cmd.push_back(pkg.name.c_str());
+        if (url == "") {
+            vector<const char *> cmd = {"sudo", "pacman", "-S"};
+            if(op.op_s_sync)
+                cmd.push_back("-y");
+            if(op.op_s_upgrade)
+                cmd.push_back("-u");
 
-        return execPacman(cmd.size(), (char **)cmd.data()), backend->update_all_pkgs(cacheDir, useGit);
-    }
+            cmd.push_back(pkg.name.c_str());
 
-    string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
+            cmd.push_back(NULL);
 
-    if (useGit)
-        filename = filename.substr(0, filename.rfind(".git"));
+            if (taur_exec(cmd))
+                continue;
+            else
+                return false;
+        }
 
-    bool stat = backend->download_pkg(url, filename);
+        string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
-    if (!stat) {
-        log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
-        return false;
-    }
+        if (useGit)
+            filename = filename.substr(0, filename.rfind(".git"));
 
-    if (!useGit){
-        stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-        stat = backend->install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
-    }
-    else {
-        stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-        stat = backend->install_pkg(pkg.name, filename, false);
-    }
+        bool stat = backend->download_pkg(url, filename);
 
-    if (!stat) {
-        log_printf(LOG_ERROR, "Building your package has failed.\n");
-        return false;
-    }
+        if (!stat) {
+            log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
+            return false;
+        }
 
-    log_printf(LOG_DEBUG, "Installing {}.\n", pkg.name);
-    if (!taur_exec({config->sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
-        log_printf(LOG_ERROR, "Failed to install {}.\n", pkg.name);
-        return false;
+        if (!useGit){
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+            stat = backend->install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
+        }
+        else {
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+            stat = backend->install_pkg(pkg.name, filename, false);
+        }
+
+        if (!stat) {
+            log_printf(LOG_ERROR, "Building your package has failed.\n");
+            return false;
+        }
+
+        log_printf(LOG_DEBUG, "Installing {}.\n", pkg.name);
+        if (!taur_exec({config->sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
+            log_printf(LOG_ERROR, "Failed to install {}.\n", pkg.name);
+            return false;
+        }
+
     }
 
     if (op.op_s_upgrade) {

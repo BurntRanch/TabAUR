@@ -170,7 +170,7 @@ bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
     }
 
     string included;
-    std::cin >> included;
+    std::getline(std::cin, included);
 
     if (included == "*") {
         for (size_t i = 0; i < ret_length; i++) {
