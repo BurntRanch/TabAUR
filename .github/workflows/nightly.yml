@@ -63,6 +63,13 @@ jobs:
     outputs:
       release-url: ${{ steps.create-release.outputs.upload_url }}
     steps:
+    - name: Re-tag nightly
+      uses: dev-drprasad/delete-tag-and-release@v1.1
+      with:
+        tag_name: nightly
+        delete_release: true
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: Create Release
       id: create-release
       uses: actions/create-release@master
@@ -71,7 +78,6 @@ jobs:
       with:
         tag_name: nightly
         release_name: TabAUR nightly ${{ needs.get-version.outputs.version }}
-        allowUpdates: true
         draft: false
         prerelease: true
 
