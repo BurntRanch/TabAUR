@@ -128,7 +128,7 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
 }
 
 bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
-    std::unique_ptr<alpm_list_t, decltype(&alpm_list_free)> list(alpm_list_add(NULL, (void *)(pkgName.c_str())), alpm_list_free);
+    std::unique_ptr<alpm_list_t, decltype(&alpm_list_free)> list(alpm_list_add(NULL, (void *)((".*" + pkgName + ".*").c_str())), alpm_list_free);
     alpm_list_t *temp_ret;
 
     if (alpm_db_search(alpm_get_localdb(config.handle), list.get(), &temp_ret) != 0)
@@ -278,8 +278,7 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path, bool onlyd
     return true;
 }
 
-bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool useGit){
-    vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
+bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit){
     log_printf(LOG_DEBUG, "pkg.name = {}\n", pkg.name);
     log_printf(LOG_DEBUG, "pkg.depends = {}\n", pkg.depends);
     
@@ -294,17 +293,58 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool 
 
         log_printf(LOG_DEBUG, "depend = {} -- depend.depends = {}\n", depend.name, depend.depends);
 
+        for (size_t i = 0; i < depend.depends.size(); i++) {
+            optional<TaurPkg_t> oSubDepend = this->fetch_pkg(depend.depends[i], useGit);
+            if (!oSubDepend)
+                continue;
+
+            TaurPkg_t subDepend = oSubDepend.value();    
+            string filename = out_path / subDepend.url.substr(subDepend.url.rfind("/") + 1);
+
+            if (useGit)
+                filename = filename.substr(0, filename.rfind(".git"));
+
+            log_printf(LOG_DEBUG, "Downloading dependency {} of dependency {}.\n", subDepend.name, depend.name);
+            if (!this->download_pkg(subDepend.url, filename)) {
+                log_printf(LOG_ERROR, "Failed to download dependency {} of dependency {}.\n", subDepend.name, depend.name);
+                continue;
+            }
+
+            log_printf(LOG_DEBUG, "Handling dependencies for dependency {} of dependency {}.\n", subDepend.name, depend.name);
+            if (!depend.depends.empty() && !handle_aur_depends(subDepend, out_path, localPkgs, useGit)) {
+                log_printf(LOG_ERROR, "Failed to handle dependencies for dependency {} of dependency {}.\n", subDepend.name, depend.name);
+                continue;
+            }
+
+            if (!useGit)
+                filename = filename.substr(0, filename.rfind(".tar.gz"));
+
+            log_printf(LOG_DEBUG, "Installing dependency {} of dependency {}.\n", subDepend.name, depend.name);
+            if (!this->install_pkg(subDepend.name, filename, false)) {
+                log_printf(LOG_ERROR, "Failed to compile dependency {} of dependency {}.\n", subDepend.name, depend.name);
+                continue;
+            }
+
+            log_printf(LOG_DEBUG, "Installing dependency {} of dependency {}.\n", subDepend.name, depend.name);
+            if (!taur_exec({config.sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
+                log_printf(LOG_ERROR, "Failed to install dependency {} of dependency {}.", subDepend.name, depend.name);
+                continue;
+            }
+        }
+            
         bool alreadyExists = false;
         for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
             if (depend.name == localPkgs[j].name)
                 alreadyExists = true;
 
-        if (alreadyExists)
+        if (alreadyExists) {
+            log_printf(LOG_DEBUG, "dependency {} already exists, skipping!\n", depend.name);
             continue;
+        }
 
         log_printf(LOG_INFO, "Downloading dependency {}\n", depend.name);
 
-        string filename = path(this->config.cacheDir) / depend.url.substr(depend.url.rfind("/") + 1);
+        string filename = out_path / depend.url.substr(depend.url.rfind("/") + 1);
 
         if (useGit)
             filename = filename.substr(0, filename.rfind(".git"));
@@ -316,9 +356,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool 
             return false;
         }
 
-        string out_path = path(extracted_path.substr(0, extracted_path.rfind("/"))) / depend.name;
-
-        bool   installStatus = this->install_pkg(pkg.name, out_path, false);
+        bool   installStatus = this->install_pkg(pkg.name, out_path / depend.name, false);
 
         if (!installStatus) {
             log_printf(LOG_ERROR, "Failed to install dependency of {} ({})\n", pkg.name, depend.name);
@@ -413,7 +451,7 @@ bool TaurBackend::update_all_pkgs(string cacheDir, bool useGit) {
                    onlinePkgs[i].version);
         attemptedDownloads++;
         
-        this->handle_aur_depends(onlinePkgs[i], pkgFolder, useGit);
+        this->handle_aur_depends(onlinePkgs[i], pkgFolder, this->get_all_local_pkgs(true), useGit);
         bool installSuccess = this->install_pkg(pkgs[pkgIndex].name, pkgFolder, false);
 
         pkgs_to_install += built_pkg + ' ';

@@ -41,7 +41,7 @@ class TaurBackend {
     optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
     vector<TaurPkg_t>   fetch_pkgs(vector<string> pkgs, bool returnGit);
     bool                remove_pkg(string name, bool searchForeignPackages);
-    bool                handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool useGit);
+    bool                handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit);
     bool                install_pkg(string pkg_name, string extracted_path, bool onlydownload);
     bool                update_all_pkgs(string cacheDir, bool useGit);
     vector<TaurPkg_t>   get_all_local_pkgs(bool aurOnly);

@@ -1,3 +1,4 @@
+#include <memory>
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include "util.hpp"
@@ -8,6 +9,7 @@
 #define VERSION "0.5.9"
 
 std::unique_ptr<Config> config;
+std::unique_ptr<TaurBackend> backend;
 
 // this may be hard to read, but better than calling fmt::println multiple times
 void usage(int op) {
@@ -103,11 +105,11 @@ bool execPacman(int argc, char* argv[]) {
     return false;
 }
 
-int installPkg(string pkgName, TaurBackend &backend) { 
+int installPkg(string pkgName) { 
     bool            useGit   = config->useGit;
     string          cacheDir = config->cacheDir;
 
-    vector<TaurPkg_t>  pkgs = backend.search(pkgName, useGit);
+    vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
 
     if (pkgs.empty() && !op.op_s_upgrade) {
         log_printf(LOG_WARN, "No results found, Exiting!\n");
@@ -123,7 +125,7 @@ int installPkg(string pkgName, TaurBackend &backend) {
             if (!taur_exec(cmd))
                 return false;
         }
-        return backend.update_all_pkgs(cacheDir, useGit);
+        return backend->update_all_pkgs(cacheDir, useGit);
     }
 
     // ./taur -Ss -- list only, don't install.
@@ -133,7 +135,7 @@ int installPkg(string pkgName, TaurBackend &backend) {
         return true;
     }
 
-    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, backend, useGit);
+    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, *backend, useGit);
 
     if (!oPkg)
         return false;
@@ -151,7 +153,7 @@ int installPkg(string pkgName, TaurBackend &backend) {
 
         cmd.push_back(pkg.name.c_str());
 
-        return execPacman(cmd.size(), (char **)cmd.data()), backend.update_all_pkgs(cacheDir, useGit);
+        return execPacman(cmd.size(), (char **)cmd.data()), backend->update_all_pkgs(cacheDir, useGit);
     }
 
     string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
@@ -159,7 +161,7 @@ int installPkg(string pkgName, TaurBackend &backend) {
     if (useGit)
         filename = filename.substr(0, filename.rfind(".git"));
 
-    bool stat = backend.download_pkg(url, filename);
+    bool stat = backend->download_pkg(url, filename);
 
     if (!stat) {
         log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
@@ -167,12 +169,12 @@ int installPkg(string pkgName, TaurBackend &backend) {
     }
 
     if (!useGit){
-        stat = backend.handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
-        stat = backend.install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
+        stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+        stat = backend->install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
     }
     else {
-        stat = backend.handle_aur_depends(pkg, filename, useGit);
-        stat = backend.install_pkg(pkg.name, filename, false);
+        stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+        stat = backend->install_pkg(pkg.name, filename, false);
     }
 
     if (!stat) {
@@ -182,21 +184,21 @@ int installPkg(string pkgName, TaurBackend &backend) {
 
     if (op.op_s_upgrade) {
         log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.\n");
-        return backend.update_all_pkgs(cacheDir, useGit);
+        return backend->update_all_pkgs(cacheDir, useGit);
     }
 
     return true;
 }
 
-bool removePkg(string pkgName, TaurBackend &backend) {
-    return backend.remove_pkg(pkgName, config->aurOnly);
+bool removePkg(string pkgName) {
+    return backend->remove_pkg(pkgName, config->aurOnly);
 }
 
-bool updateAll(TaurBackend &backend) {
-    return backend.update_all_pkgs(config->cacheDir, config->useGit);
+bool updateAll() {
+    return backend->update_all_pkgs(config->cacheDir, config->useGit);
 }
 
-bool queryPkgs(TaurBackend &backend) {
+bool queryPkgs() {
     log_printf(LOG_DEBUG, "AUR Only: {}\n", config->aurOnly);
     alpm_list_t *pkg;
 
@@ -378,7 +380,7 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, &interruptHandler);
 
     // the code you're likely interested in
-    TaurBackend backend(*config);
+    backend = std::make_unique<TaurBackend>(*config);
 
     if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.\n");
@@ -390,13 +392,13 @@ int main(int argc, char* argv[]) {
 
     switch (op.op) {
     case OP_SYNC:
-        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "", backend)) ? 0 : 1;
+        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "")) ? 0 : 1;
     case OP_REM:
-        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "", backend)) ? 0 : 1;
+        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "")) ? 0 : 1;
     case OP_QUERY:
-        return (queryPkgs(backend)) ? 0 : 1;
+        return (queryPkgs()) ? 0 : 1;
     case OP_SYSUPGRADE:
-        return (updateAll(backend)) ? 0 : 1;
+        return (updateAll()) ? 0 : 1;
     case OP_PACMAN:
         // we are gonna use pacman to other ops than -S,-R,-Q
         return execPacman(argc, argv);
