@@ -227,11 +227,12 @@ bool queryPkgs(TaurBackend &backend) {
             fmt::println("{}", pkgs[i]);
         }
     } else {
+        fmt::rgb _green = config->getThemeValue("green", green);
         for(size_t i = 0; i < pkgs.size(); i++) {
             if (!pkgs[i])
                 continue;
             fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
-            fmt::println(BOLD_TEXT(config->getThemeValue("green", green)), "{}", pkgs_ver[i]);
+            fmt::println(BOLD_TEXT(_green), "{}", pkgs_ver[i]);
         }
     }
 

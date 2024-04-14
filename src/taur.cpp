@@ -250,8 +250,8 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path, bool onlyd
     if (onlydownload) {
         log_printf(LOG_DEBUG, "running {} --verifysource -fA\n", makepkg_bin);
         taur_exec({makepkg_bin, "--verifysource", "-fA"});
-        log_printf(LOG_DEBUG, "running {} -ofA\n", makepkg_bin);
-        return taur_exec({makepkg_bin, "-ofA"});
+        log_printf(LOG_DEBUG, "running {} --nobuild -fA\n", makepkg_bin);
+        return taur_exec({makepkg_bin, "--nobuild", "-fA"});
     }
 
     log_printf(LOG_DEBUG, "running {} --verifysource --skippgpcheck -f -Cc\n", makepkg_bin);
@@ -262,7 +262,7 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path, bool onlyd
     log_printf(LOG_INFO, "Preparing for compilation..\n");
     taur_exec({makepkg_bin, "--nobuild", "--skippgpcheck", "-fd", "-C", "--ignorearch"});
 
-    string built_pkg = makepkg_list(pkg_name, extracted_path);
+    built_pkg = makepkg_list(pkg_name, extracted_path);
     log_printf(LOG_DEBUG, "built_pkg = {}\n", built_pkg);
     
     if (!fs::exists(built_pkg)) {
@@ -274,9 +274,8 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path, bool onlyd
     }
     else
         log_printf(LOG_INFO, "{} exists already, no need to build\n", built_pkg);
-
-    log_printf(LOG_DEBUG, "running {} pacman -U {}\n", config.sudo, built_pkg);
-    return taur_exec({config.sudo.c_str(), "pacman", "-U", built_pkg.c_str()});
+    
+    return true;
 }
 
 bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, string extracted_path, bool useGit){
@@ -343,6 +342,8 @@ bool TaurBackend::update_all_pkgs(string cacheDir, bool useGit) {
         pkgNames.push_back(pkgs[i].name);
 
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
+
+    vector<const char*> cmd;
 
     int updatedPkgs = 0;
     int attemptedDownloads = 0;
@@ -415,11 +416,23 @@ bool TaurBackend::update_all_pkgs(string cacheDir, bool useGit) {
         this->handle_aur_depends(onlinePkgs[i], pkgFolder, useGit);
         bool installSuccess = this->install_pkg(pkgs[pkgIndex].name, pkgFolder, false);
 
+        pkgs_to_install += built_pkg + ' ';
+        log_printf(LOG_WARN, "pkgs_to_install = {}\n", pkgs_to_install);
+
         if (!installSuccess)
             continue;
 
         updatedPkgs++;
     }
+    
+    // remove the last ' ' so we can pass it to pacman
+    pkgs_to_install.erase(pkgs_to_install.end()-1, pkgs_to_install.end());
+    vector<string> _pkgs = split(pkgs_to_install, ' ');
+    log_printf(LOG_DEBUG, "running {} pacman -U --needed -- {}\n", config.sudo, pkgs_to_install);
+    cmd = {config.sudo.c_str(), "pacman", "-U", "--needed", "--"};
+    for(auto& str : _pkgs)
+        cmd.push_back(str.data());
+    taur_exec(cmd);
 
     log_printf(LOG_INFO, "Upgraded {}/{} packages.\n", updatedPkgs, attemptedDownloads);
 
