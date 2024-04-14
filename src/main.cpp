@@ -178,7 +178,13 @@ int installPkg(string pkgName) {
     }
 
     if (!stat) {
-        log_printf(LOG_ERROR, "Building/Installing your package has failed.\n");
+        log_printf(LOG_ERROR, "Building your package has failed.\n");
+        return false;
+    }
+
+    log_printf(LOG_DEBUG, "Installing {}.\n", pkg.name);
+    if (!taur_exec({config->sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
+        log_printf(LOG_ERROR, "Failed to install {}.\n", pkg.name);
         return false;
     }
 
