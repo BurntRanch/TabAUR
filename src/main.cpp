@@ -67,18 +67,42 @@ void usage(int op) {
 }
 
 void test_colors() {
+    TaurPkg_t pkg = { 
+                        "TabAUR", // name
+                        VERSION,  // version
+                        "https://github.com/BurntRanch/TabAUR", // url
+                        "A customizable and lightweight AUR helper, designed to be simple but powerful.", // desc
+                        10,  // Popularity
+                        vector<string>(),   // depends
+                        "aur", // db_name
+                    };
+
     if(fmt::disable_colors)
         fmt::println("Colors are disabled");
     log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
     log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
     log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
     log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
-    fmt::println("red: {}",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
-    fmt::println("blue: {}",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
-    fmt::println("yellow: {}", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
-    fmt::println("green: {}",  fmt::format(fg(config->getThemeValue("green", green)), config->getThemeHexValue("green", green)));
-    fmt::println("cyan: {}",   fmt::format(fg(config->getThemeValue("cyan", cyan)), config->getThemeHexValue("cyan", cyan)));
-    fmt::println("magenta: {}",fmt::format(fg(config->getThemeValue("magenta", magenta)), config->getThemeHexValue("magenta", magenta)));
+    fmt::println(fg(config->getThemeValue("red", red)), "red");
+    fmt::println(fg(config->getThemeValue("blue", blue)), "blue");
+    fmt::println(fg(config->getThemeValue("yellow", yellow)), "yellow");
+    fmt::println(fg(config->getThemeValue("green", green)), "green");
+    fmt::println(fg(config->getThemeValue("cyan", cyan)), "cyan");
+    fmt::println(fg(config->getThemeValue("magenta", magenta)), "magenta");
+
+    fmt::println("\ndb colors:");
+    fmt::println(getColorFromDBName("aur"), "(bold) aur");
+    fmt::println(getColorFromDBName("extra"), "(bold) extra");
+    fmt::println(getColorFromDBName("core"), "(bold) core");
+    fmt::println(getColorFromDBName("multilib"), "(bold) multilib");
+    fmt::println(getColorFromDBName("others"), "(bold) others");
+
+    fmt::println(BOLD_TEXT(config->getThemeValue("version", green)), "\n(bold) version " VERSION);
+    fmt::println(fg(config->getThemeValue("popularity", cyan)), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::println(fg(config->getThemeValue("index", magenta)), "index [1]");
+
+    fmt::println("\nexamples package search preview:");
+    printPkgInfo(pkg, pkg.db_name);
 }
 
 bool execPacman(int argc, char* argv[]) {
@@ -131,7 +155,7 @@ int installPkg(string pkgName) {
     // ./taur -Ss -- list only, don't install.
     if (op.op_s_search) {
         for (size_t i = 0; i < pkgs.size(); i++)
-            printPkgInfo(pkgs[i]);
+            printPkgInfo(pkgs[i], pkgs[i].db_name);
         return true;
     }
 
@@ -148,7 +172,7 @@ int installPkg(string pkgName) {
         string url = pkg.url;
 
         if (url == "") {
-            vector<const char *> cmd = {"sudo", "pacman", "-S"};
+            vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
             if(op.op_s_sync)
                 cmd.push_back("-y");
             if(op.op_s_upgrade)
@@ -245,7 +269,7 @@ bool queryPkgs() {
             fmt::println("{}", pkgs[i]);
         }
     } else {
-        fmt::rgb _green = config->getThemeValue("green", green);
+        fmt::rgb _green = config->getThemeValue("version", green);
         for(size_t i = 0; i < pkgs.size(); i++) {
             if (!pkgs[i])
                 continue;

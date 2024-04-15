@@ -293,24 +293,26 @@ void free_list_and_internals(alpm_list_t *list) {
  */
 fmt::text_style getColorFromDBName(string db_name) {
     if (db_name == "aur")
-        return BOLD_TEXT(config->getThemeValue("blue", blue));
+        return BOLD_TEXT(config->getThemeValue("aur", blue));
     else if (db_name == "extra")
-        return BOLD_TEXT(config->getThemeValue("green", green));
+        return BOLD_TEXT(config->getThemeValue("extra", green));
+    else if (db_name == "core")
+        return BOLD_TEXT(config->getThemeValue("core", yellow));
     else if (db_name == "multilib")
-        return BOLD_TEXT(config->getThemeValue("cyan", cyan));
+        return BOLD_TEXT(config->getThemeValue("multilib", cyan));
     else
-        return BOLD_TEXT(config->getThemeValue("yellow", yellow));
+        return BOLD_TEXT(config->getThemeValue("others", magenta));
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t &pkg, int index) {
+void printPkgInfo(TaurPkg_t &pkg, string db_name, int index) {
     if (index > -1)
         fmt::print(fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
     
-    fmt::print(getColorFromDBName(pkg.db_name), "{}/", pkg.db_name);
+    fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::print(BOLD_TEXT(config->getThemeValue("green", green)), "{} ", pkg.version);
-    fmt::println(fmt::fg(config->getThemeValue("cyan", cyan)), " Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::print(BOLD_TEXT(config->getThemeValue("version", green)), "{} ", pkg.version);
+    fmt::println(fmt::fg(config->getThemeValue("popularity", cyan)), " Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
     fmt::println("    {}", pkg.desc);
 }
 
@@ -337,7 +339,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
                 log_printf(LOG_WARN, "Invalid input!\n");
 
             for (size_t i = 0; i < pkgs.size(); i++)
-                printPkgInfo(pkgs[i], i);
+                printPkgInfo(pkgs[i], pkgs[i].db_name, i);
 
             fmt::print("Choose a package to download: ");
             std::getline(std::cin, input);

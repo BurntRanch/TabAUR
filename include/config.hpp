@@ -131,6 +131,19 @@ blue = "#00aaff"
 cyan = "#00ffff"
 yellow = "#ffff00"
 magenta = "#ff11cc"
+
+# custom DB colors such as extra, aur, etc.
+# Unfortunatly toml doesn't support things like `aur = blue`
+aur = "#00aaff"
+extra = "#00ff00"
+core = "#ffff00"
+multilib = "#00ffff"
+# Other DBs such as extra-testing, core-testing, custom ones in custom repos, etc.
+others = "#ff11cc"
+
+version = "#00ff00"
+popularity = "#00ffff"
+index = "#ff11cc"
 )#";
 
 inline string red = "#ff2000";
