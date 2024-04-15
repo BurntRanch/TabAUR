@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     tags: "*"
+    paths:
+      # trigger release workflow only if this file changed
+      - .github/workflows/release.yml
 
 jobs:
   get-version:
