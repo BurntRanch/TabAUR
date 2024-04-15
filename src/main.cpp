@@ -1,3 +1,4 @@
+#include <memory>
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include "util.hpp"
@@ -5,9 +6,10 @@
 #include "taur.hpp"
 
 #define BRANCH "libalpm-test"
-#define VERSION "0.5.8"
+#define VERSION "0.6.0"
 
 std::unique_ptr<Config> config;
+std::unique_ptr<TaurBackend> backend;
 
 // this may be hard to read, but better than calling fmt::println multiple times
 void usage(int op) {
@@ -103,23 +105,27 @@ bool execPacman(int argc, char* argv[]) {
     return false;
 }
 
-int installPkg(string pkgName, TaurBackend &backend) { 
+int installPkg(string pkgName) { 
     bool            useGit   = config->useGit;
     string          cacheDir = config->cacheDir;
 
-    vector<TaurPkg_t>  pkgs = backend.search(pkgName, useGit);
+    vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
 
     if (pkgs.empty() && !op.op_s_upgrade) {
         log_printf(LOG_WARN, "No results found, Exiting!\n");
         return false;
     } else if (pkgs.empty()) {
-        vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
-        if(op.op_s_sync)
-            cmd.push_back("-y");
-        if(op.op_s_upgrade)
-            cmd.push_back("-u");
-
-        return taur_exec(cmd) && backend.update_all_pkgs(cacheDir, useGit);
+        if (!config->aurOnly) {
+            vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
+            if(op.op_s_sync)
+                cmd.push_back("-y");
+            if(op.op_s_upgrade)
+                cmd.push_back("-u");
+            
+            if (!taur_exec(cmd))
+                return false;
+        }
+        return backend->update_all_pkgs(cacheDir, useGit);
     }
 
     // ./taur -Ss -- list only, don't install.
@@ -129,72 +135,86 @@ int installPkg(string pkgName, TaurBackend &backend) {
         return true;
     }
 
-    optional<TaurPkg_t> oPkg = askUserForPkg(pkgs, backend, useGit);
+    optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
-    if (!oPkg)
+    if (!oSelectedPkgs)
         return false;
 
-    TaurPkg_t pkg = oPkg.value();
+    vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
 
-    string url = pkg.url;
+    for (size_t i = 0; i < selectedPkgs.size(); i++) {
+        TaurPkg_t pkg = selectedPkgs[i];
 
-    if (url == "") {
-        vector<const char*> cmd = {"-S"};
-        if(op.op_s_sync)
-            cmd.push_back("-y");
-        if(op.op_s_upgrade)
-            cmd.push_back("-u");
+        string url = pkg.url;
 
-        cmd.push_back(pkg.name.c_str());
+        if (url == "") {
+            vector<const char *> cmd = {"sudo", "pacman", "-S"};
+            if(op.op_s_sync)
+                cmd.push_back("-y");
+            if(op.op_s_upgrade)
+                cmd.push_back("-u");
 
-        return execPacman(cmd.size(), (char **)cmd.data()), backend.update_all_pkgs(config->cacheDir, useGit);
-    }
+            cmd.push_back(pkg.name.c_str());
 
-    string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
+            cmd.push_back(NULL);
 
-    if (useGit)
-        filename = filename.substr(0, filename.rfind(".git"));
+            if (taur_exec(cmd))
+                continue;
+            else
+                return false;
+        }
 
-    bool stat = backend.download_pkg(url, filename);
+        string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
-    if (!stat) {
-        log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
-        return false;
-    }
+        if (useGit)
+            filename = filename.substr(0, filename.rfind(".git"));
 
-    if (!useGit){
-        stat = backend.handle_aur_depends(pkg, filename.substr(0, filename.rfind(".tar.gz")), useGit);
-        stat = backend.install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")));
-    }
-    else {
-        stat = backend.handle_aur_depends(pkg, filename, useGit);
-        stat = backend.install_pkg(pkg.name, filename);
-    }
+        bool stat = backend->download_pkg(url, filename);
 
-    if (!stat) {
-        log_printf(LOG_ERROR, "Building/Installing your package has failed.\n");
-        return false;
+        if (!stat) {
+            log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
+            return false;
+        }
+
+        if (!useGit){
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+            stat = backend->install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
+        }
+        else {
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+            stat = backend->install_pkg(pkg.name, filename, false);
+        }
+
+        if (!stat) {
+            log_printf(LOG_ERROR, "Building your package has failed.\n");
+            return false;
+        }
+
+        log_printf(LOG_DEBUG, "Installing {}.\n", pkg.name);
+        if (!taur_exec({config->sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
+            log_printf(LOG_ERROR, "Failed to install {}.\n", pkg.name);
+            return false;
+        }
+
     }
 
     if (op.op_s_upgrade) {
         log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.\n");
-        return backend.update_all_pkgs(cacheDir, useGit);
+        return backend->update_all_pkgs(cacheDir, useGit);
     }
 
     return true;
 }
 
-bool removePkg(string pkgName, TaurBackend &backend) {
-    return backend.remove_pkg(pkgName, config->aurOnly);
+bool removePkg(string pkgName) {
+    return backend->remove_pkg(pkgName, config->aurOnly);
 }
 
-bool updateAll(TaurBackend &backend) {
-    string cacheDir = config->cacheDir;
-
-    return backend.update_all_pkgs(path(cacheDir), config->useGit);
+bool updateAll() {
+    return backend->update_all_pkgs(config->cacheDir, config->useGit);
 }
 
-bool queryPkgs(TaurBackend &backend) {
+bool queryPkgs() {
     log_printf(LOG_DEBUG, "AUR Only: {}\n", config->aurOnly);
     alpm_list_t *pkg;
 
@@ -205,9 +225,7 @@ bool queryPkgs(TaurBackend &backend) {
     }
 
     if (config->aurOnly) {
-        alpm_list_t *syncdbs;
-
-        syncdbs = alpm_get_syncdbs(config->handle);
+        alpm_list_t *syncdbs = alpm_get_syncdbs(config->handle);
 
         if (!syncdbs) {
             log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
@@ -220,14 +238,19 @@ bool queryPkgs(TaurBackend &backend) {
                     pkgs[i] = NULL; // wont be printed
     }
 
-    for (size_t i = 0; i < pkgs.size(); i++) {
-        if (!pkgs[i])
-            continue;
-        if(config->quiet)
+    if(config->quiet) {
+        for (size_t i = 0; i < pkgs.size(); i++) {
+            if (!pkgs[i])
+                continue;
             fmt::println("{}", pkgs[i]);
-        else {
+        }
+    } else {
+        fmt::rgb _green = config->getThemeValue("green", green);
+        for(size_t i = 0; i < pkgs.size(); i++) {
+            if (!pkgs[i])
+                continue;
             fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
-            fmt::println(BOLD_TEXT(config->getThemeValue("green", green)), "{}", pkgs_ver[i]);
+            fmt::println(BOLD_TEXT(_green), "{}", pkgs_ver[i]);
         }
     }
 
@@ -361,8 +384,7 @@ int main(int argc, char* argv[]) {
 
     // this will always be false
     // i just want to feel good about having this check
-    if (!config->isInitialized())
-        config->init(configfile, themefile);
+    config->init(configfile, themefile);
 
     fmt::disable_colors = config->colors == 0;
 
@@ -374,7 +396,7 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, &interruptHandler);
 
     // the code you're likely interested in
-    TaurBackend backend(*config);
+    backend = std::make_unique<TaurBackend>(*config);
 
     if (op.requires_root && geteuid() != 0) {
         log_printf(LOG_ERROR, "You need to be root to do this.\n");
@@ -386,13 +408,13 @@ int main(int argc, char* argv[]) {
 
     switch (op.op) {
     case OP_SYNC:
-        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "", backend)) ? 0 : 1;
+        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "")) ? 0 : 1;
     case OP_REM:
-        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "", backend)) ? 0 : 1;
+        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "")) ? 0 : 1;
     case OP_QUERY:
-        return (queryPkgs(backend)) ? 0 : 1;
+        return (queryPkgs()) ? 0 : 1;
     case OP_SYSUPGRADE:
-        return (updateAll(backend)) ? 0 : 1;
+        return (updateAll()) ? 0 : 1;
     case OP_PACMAN:
         // we are gonna use pacman to other ops than -S,-R,-Q
         return execPacman(argc, argv);

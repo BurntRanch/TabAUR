@@ -177,8 +177,11 @@ string shell_exec(string cmd) {
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_number(const string& s) {
-    return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isdigit(c); }) == s.end();
+bool is_number(const string& s, bool allowSpace) {
+    if (allowSpace)
+        return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
+    else
+        return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
 }
 
 bool taur_read_exec(vector<const char*> cmd, string *output) {
@@ -239,10 +242,10 @@ bool taur_read_exec(vector<const char*> cmd, string *output) {
 
 /** Executes commands with execvp() and keep the program running without existing
  * @param cmd The command to execute 
+ * @param exitOnFailure Whether to call exit(-1) on command failure.
  * @return true if the command successed, else false 
- * P.S. it's likely impossible to return false because if the command failed, the program will just exists
  */ 
-bool taur_exec(vector<const char*> cmd) {
+bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
     cmd.push_back(nullptr);
 
     int pid = fork();
@@ -265,7 +268,8 @@ bool taur_exec(vector<const char*> cmd) {
         else {
             log_printf(LOG_ERROR, "Failed to execute the command: ");
             print_vec(cmd); // fmt::join() doesn't work with vector<const char*>
-            exit(-1);
+            if (exitOnFailure)
+                exit(-1);
         }
     }
 
@@ -316,9 +320,9 @@ void printPkgInfo(TaurPkg_t &pkg, int index) {
  * @param useGit Whether the fetched pkg should use a .git url
  * @return Optional TaurPkg_t, will not return if interrupted.
 */
-optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
+optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
-        return pkgs[0].url.empty() ? pkgs[0] : backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]);
+        return pkgs[0].url.empty() ? pkgs : vector<TaurPkg_t>({ backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]) });
     } else if (pkgs.size() > 1) {
         log_printf(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.\n");
         string input;
@@ -336,12 +340,25 @@ optional<TaurPkg_t> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, 
                 printPkgInfo(pkgs[i], i);
 
             fmt::print("Choose a package to download: ");
-            std::cin >> input;
-        } while (!is_number(input) || (size_t)std::stoi(input) >= pkgs.size());
+            std::getline(std::cin, input);
 
-        size_t selected = std::stoi(input);
+            input.end() = input.end()-1;    // remove leading newline
+        } while (!is_number(input, true));
 
-        return pkgs[selected].url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]);
+        vector<string> indices = split(input, ' ');
+
+        vector<TaurPkg_t> output;
+
+        for (size_t i = 0; i < indices.size(); i++) {
+            size_t selected = std::stoi(indices[i]);
+
+            if (selected >= pkgs.size())
+                continue;
+
+            output.push_back(pkgs[selected].url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]));
+        }
+        
+        return output;
     }
 
     return {};
