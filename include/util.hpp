@@ -6,9 +6,11 @@
 #include <vector>
 #include <memory>
 #include <optional>
+#include <iostream>
 
 #include "fmt/base.h"
 #include "fmt/color.h"
+#include "fmt/ranges.h"
 #include "config.hpp"
 
 using std::string;
