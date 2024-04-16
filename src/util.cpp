@@ -266,7 +266,7 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
         else {
-            log_printf(LOG_ERROR, "Failed to execute the command: ");
+            log_printf(LOG_ERROR, "Failed to execute command: ");
             print_vec(cmd); // fmt::join() doesn't work with vector<const char*>
             if (exitOnFailure)
                 exit(-1);
@@ -312,7 +312,11 @@ void printPkgInfo(TaurPkg_t &pkg, string db_name, int index) {
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
     fmt::print(BOLD_TEXT(config->getThemeValue("version", green)), "{} ", pkg.version);
-    fmt::println(fmt::fg(config->getThemeValue("popularity", cyan)), " Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::print(fmt::fg(config->getThemeValue("popularity", cyan)), " Popularity: {} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    if (pkg.installed)
+        fmt::println(fmt::fg(config->getThemeValue("gray", gray)), "[Installed]");
+    else
+        fmt::println("");
     fmt::println("    {}", pkg.desc);
 }
 
@@ -343,8 +347,6 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
 
             fmt::print("Choose a package to download: ");
             std::getline(std::cin, input);
-
-            input.end() = input.end()-1;    // remove leading newline
         } while (!is_number(input, true));
 
         vector<string> indices = split(input, ' ');

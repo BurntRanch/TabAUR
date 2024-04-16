@@ -131,6 +131,7 @@ blue = "#00aaff"
 cyan = "#00ffff"
 yellow = "#ffff00"
 magenta = "#ff11cc"
+gray = "#5a5a5a"
 
 # custom DB colors such as extra, aur, etc.
 # Unfortunatly toml doesn't support things like `aur = blue`
@@ -152,6 +153,7 @@ inline string blue = "#00aaff";
 inline string cyan = "#00ffff";
 inline string yellow = "#ffff00";
 inline string magenta = "#ff11cc";
+inline string gray = "#5a5a5a";
 
 inline string configfile;
 inline string themefile;

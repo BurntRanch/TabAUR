@@ -1,6 +1,7 @@
 #ifndef GIT_HPP
 #define GIT_HPP
 
+#include <alpm_list.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <optional>
@@ -24,6 +25,7 @@ struct TaurPkg_t {
     string         desc;
     float          popularity = 1; // normal
     vector<string> depends;
+    bool           installed = false;
     string         db_name = "aur";
 };
 
@@ -34,13 +36,13 @@ class TaurBackend {
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
     vector<TaurPkg_t>   getPkgFromJson(rapidjson::Document& doc, bool useGit);
     vector<TaurPkg_t>   search_pac(string query);
-    vector<TaurPkg_t> search(string query, bool useGit);
+    vector<TaurPkg_t>   search(string query, bool useGit);
     bool                download_tar(string url, string out_path);
     bool                download_git(string url, string out_path);
     bool                download_pkg(string url, string out_path);
     optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
     vector<TaurPkg_t>   fetch_pkgs(vector<string> pkgs, bool returnGit);
-    bool                remove_pkg(string name, bool searchForeignPackages);
+    bool                remove_pkg(alpm_list_t *name, bool searchForeignPackages);
     bool                handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit);
     bool                install_pkg(string pkg_name, string extracted_path, bool onlydownload);
     bool                update_all_pkgs(string cacheDir, bool useGit);

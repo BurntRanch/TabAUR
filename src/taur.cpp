@@ -81,7 +81,9 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                        getUrl(pkgJson, returnGit),  // url
                        pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "", // description
                        pkgJson["Popularity"].GetFloat(),    // popularity
-                       depends};    // depends
+                       depends,    // depends
+                       alpm_db_get_pkg(alpm_get_localdb(config->handle), pkgJson["Name"].GetString()) != nullptr,
+                       };
 
     return out;
 }
@@ -130,15 +132,10 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     return out;
 }
 
-bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
-    alpm_list_smart_pointer list(alpm_list_add(nullptr, (void *)((".*" + pkgName + ".*").c_str())), alpm_list_free);
+bool TaurBackend::remove_pkg(alpm_list_t *pkgQueries, bool aurOnly) {
     alpm_list_t *temp_ret = nullptr;
 
-    alpm_pkg_t *potential_pkg = alpm_db_get_pkg(alpm_get_localdb(config.handle), pkgName.c_str());
-
-    if (potential_pkg)
-        temp_ret = alpm_list_add(temp_ret, potential_pkg);
-    else if (alpm_db_search(alpm_get_localdb(config.handle), list.get(), &temp_ret) != 0)
+    if (alpm_db_search(alpm_get_localdb(config.handle), pkgQueries, &temp_ret) != 0)
         return false;
 
     alpm_list_smart_pointer ret(temp_ret, alpm_list_free);
@@ -506,6 +503,7 @@ bool TaurBackend::update_all_pkgs(string cacheDir, bool useGit) {
 }
 
 // all AUR local packages
+// returns a barebones TaurPkg_t structure, with no description/depends list
 vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     vector<alpm_pkg_t *> pkgs;
 
@@ -522,7 +520,7 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     vector<TaurPkg_t> out;
     for (size_t i = 0; i < pkgs.size(); i++) {
         alpm_pkg_t *pkg = pkgs[i];
-        out.push_back({alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg), "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git"});
+        out.push_back({alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg), "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git", "", 1, {}, true});
     }
 
     return out;
@@ -573,6 +571,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
                                 string(alpm_pkg_get_desc(pkg)), // desc
                                 100,  // system packages are very trustable
                                 vector<string>(),   // depends
+                                alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
                                 string(alpm_db_get_name(alpm_pkg_get_db(pkg))), // db_name
                              };
 

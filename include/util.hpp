@@ -98,8 +98,10 @@ void log_printf(int log, string fmt, Args&&... args) {
 // could use fmt::join, but doesn't work with vector<const char*>
 template <typename T>
 void print_vec(std::vector<T> vec) {
-    if(!config->debug)
+    if(!config->debug) {
+        std::cout << std::endl;
         return;
+    }
     
     for(auto& i : vec)
         std::cout << i << " ";
