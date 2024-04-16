@@ -129,10 +129,7 @@ bool execPacman(int argc, char* argv[]) {
     return false;
 }
 
-int installPkg(alpm_list_t *pkgNames) { 
-    if (!pkgNames)
-        return false;
-
+int installPkg(alpm_list_t *pkgNames) {
     bool            useGit   = config->useGit;
     string          cacheDir = config->cacheDir;
 

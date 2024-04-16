@@ -182,7 +182,7 @@ bool is_number(const string& s, bool allowSpace) {
     if (allowSpace)
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
     else
-        return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
+        return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c)); }) == s.end();
 }
 
 bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure) {
@@ -325,6 +325,32 @@ void printPkgInfo(TaurPkg_t &pkg, string db_name, int index) {
     else
         fmt::println("");
     fmt::println("    {}", pkg.desc);
+}
+
+// faster than makepkg --packagelist
+string makepkg_list(string pkg_name, string path) {
+    string ret;
+
+    string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
+    string pkgrel = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
+    string epoch = shell_exec("grep 'epoch=' " + path + "/PKGBUILD | cut -d= -f2");
+    
+    if (!pkgrel.empty() && pkgrel[0] != '\0')
+        versionInfo += '-' + pkgrel;
+
+    if (!epoch.empty() && epoch[0] != '\0')
+        versionInfo = epoch + ':' + versionInfo;
+    
+    string arch = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+    string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
+    
+    if (arch_field == "any")
+        arch = "any";
+    
+    string pkgext = shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+    
+    ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
+    return ret;
 }
 
 /** Ask the user to select a package out of a list.
