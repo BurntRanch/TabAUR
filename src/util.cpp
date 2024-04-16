@@ -214,6 +214,11 @@ bool taur_read_exec(vector<const char*> cmd, string *output) {
 
             return true;
         }
+        else {
+            log_printf(LOG_ERROR, "Failed to execute the command: ");
+            print_vec(cmd, true); // fmt::join() doesn't work with vector<const char*>
+            exit(-1);
+        }
     } else if (pid == 0) {
         if (dup2(pipeout[1], STDOUT_FILENO) == -1)
             exit(127);
@@ -265,10 +270,11 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
 
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
-        else if (exitOnFailure) {
-            log_printf(LOG_ERROR, "Failed to execute command: ");
-            print_vec(cmd); // fmt::join() doesn't work with vector<const char*>
-            exit(-1);
+        else {
+            log_printf(LOG_ERROR, "Failed to execute the command: ");
+            print_vec(cmd, true); // fmt::join() doesn't work with vector<const char*>
+            if (exitOnFailure)
+                exit(-1);
         }
     }
 

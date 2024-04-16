@@ -30,38 +30,37 @@ void Config::init(string configFile, string themeFile) {
     bool newUser = false;
 
     if (!fs::exists(configDir)) {
-        log_printf(LOG_WARN, "TabAUR config folder was not found, Creating folders at {}!\n", configDir);
+        log_printf(LOG_NONE, "Warning: TabAUR config folder was not found, Creating folders at {}!\n", configDir);
         fs::create_directories(configDir);
 
         newUser = true;
     }
     if (!fs::exists(configFile)) {
-        log_printf(LOG_WARN, "{} not found, generating new one\n", configFile);
+        log_printf(LOG_NONE, "Warning: {} not found, generating new one\n", configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         ofstream f(configFile, std::ios::trunc);
         f << defConfig;
         f.close();
     }
     if (!fs::exists(themeFile)) {
-        log_printf(LOG_WARN, "{} not found, generating new one\n", themeFile);
+        log_printf(LOG_NONE, "Warning: {} not found, generating new one\n", themeFile);
         ofstream f(themeFile, std::ios::trunc);
         f << defTheme;
         f.close();
     }
 
-    if (newUser) 
-        // ye i'm sorry for if it's too wide
-        fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
-
     this->loadConfigFile(configFile);
     this->loadThemeFile(themeFile);
-    this->initializeVars();
 
     this->initialized = true;
     if (!fs::exists(config->cacheDir)) {
         log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", config->cacheDir);
         fs::create_directories(config->cacheDir);
     }
+
+    if (newUser) 
+        // ye i'm sorry for if it's too wide
+        fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
 
 }
 
@@ -92,7 +91,7 @@ void Config::initializeVars() {
     sanitizeStr(this->cacheDir);
     sanitizeStr(this->git);
         
-    fmt::disable_colors = config->colors == 0;
+    fmt::disable_colors = this->colors == 0;
 }
 
 /** parse the config file (aka "config.toml")
@@ -104,10 +103,11 @@ void Config::loadConfigFile(string filename) {
     try {
         this->tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_printf(LOG_ERROR, "Parsing config file {} failed:\n", filename);
+        log_printf(LOG_NONE, "ERROR: Parsing config file {} failed:\n", filename);
         std::cerr << err << std::endl;
         exit(-1);
     }
+    this->initializeVars();
 
     alpm_errno_t err;
     this->handle    = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);

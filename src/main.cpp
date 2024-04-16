@@ -1,4 +1,3 @@
-#include <memory>
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include "util.hpp"
