@@ -265,11 +265,10 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
 
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
-        else {
+        else if (exitOnFailure) {
             log_printf(LOG_ERROR, "Failed to execute command: ");
             print_vec(cmd); // fmt::join() doesn't work with vector<const char*>
-            if (exitOnFailure)
-                exit(-1);
+            exit(-1);
         }
     }
 
@@ -314,7 +313,7 @@ void printPkgInfo(TaurPkg_t &pkg, string db_name, int index) {
     fmt::print(BOLD_TEXT(config->getThemeValue("version", green)), "{} ", pkg.version);
     fmt::print(fmt::fg(config->getThemeValue("popularity", cyan)), " Popularity: {} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
     if (pkg.installed)
-        fmt::println(fmt::fg(config->getThemeValue("gray", gray)), "[Installed]");
+        fmt::println(fmt::fg(config->getThemeValue("installed", gray)), "[Installed]");
     else
         fmt::println("");
     fmt::println("    {}", pkg.desc);

@@ -144,6 +144,7 @@ others = "#ff11cc"
 
 version = "#00ff00"
 popularity = "#00ffff"
+installed = "#5a5a5a"
 index = "#ff11cc"
 )#";
 
