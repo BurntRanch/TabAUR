@@ -4,7 +4,6 @@
 
 #include <string>
 #include <vector>
-#include <iostream>
 #include <memory>
 #include <optional>
 
@@ -93,17 +92,6 @@ void log_printf(int log, string fmt, Args&&... args) {
             break;
     }
     fmt::print(fmt, std::forward<Args>(args)...);
-}
-
-// could use fmt::join, but doesn't work with vector<const char*>
-template <typename T>
-void print_vec(std::vector<T> vec, bool display) {
-    if(!display)
-        return;
-    
-    for(auto& i : vec)
-        std::cout << i << " ";
-    std::cout << std::endl;
 }
 
 template <typename T>
