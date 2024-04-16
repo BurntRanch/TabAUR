@@ -1,3 +1,4 @@
+#include <unistd.h>
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
 #include "util.hpp"
@@ -184,7 +185,7 @@ bool is_number(const string& s, bool allowSpace) {
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
 }
 
-bool taur_read_exec(vector<const char*> cmd, string *output) {
+bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure) {
     cmd.push_back(nullptr);
     int pipeout[2];
 
@@ -215,9 +216,10 @@ bool taur_read_exec(vector<const char*> cmd, string *output) {
             return true;
         }
         else {
-            log_printf(LOG_ERROR, "Failed to execute the command: ");
-            print_vec(cmd, true); // fmt::join() doesn't work with vector<const char*>
-            exit(-1);
+            cmd.erase(cmd.end());   // remove nullptr
+            log_printf(LOG_ERROR, "Failed to execute the command: {}\n", fmt::join(cmd, " "));
+            if (exitOnFailure)
+                exit(-1);
         }
     } else if (pid == 0) {
         if (dup2(pipeout[1], STDOUT_FILENO) == -1)
@@ -271,8 +273,8 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
         else {
-            log_printf(LOG_ERROR, "Failed to execute the command: ");
-            print_vec(cmd, true); // fmt::join() doesn't work with vector<const char*>
+            cmd.erase(cmd.end());   // remove nullptr
+            log_printf(LOG_ERROR, "Failed to execute the command: {}\n", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
         }
