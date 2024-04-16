@@ -1,9 +1,9 @@
-#include <unistd.h>
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
 #include "util.hpp"
 #include "config.hpp"
 #include "taur.hpp"
+#include <iostream>
 #include <filesystem>
 #include <fmt/ranges.h>
 
