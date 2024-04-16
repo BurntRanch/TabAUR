@@ -403,7 +403,8 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char* argv[]) {
     config = std::make_unique<Config>();
-
+    char *no_color = getenv("NO_COLOR");
+    
     configfile = (getConfigDir() + "/config.toml");
     themefile = (getConfigDir() + "/theme.toml");
 
@@ -414,7 +415,10 @@ int main(int argc, char* argv[]) {
     // i just want to feel good about having this check
     config->init(configfile, themefile);
 
-    fmt::disable_colors = config->colors == 0;
+    fmt::disable_colors = config->colors == false;
+    if (no_color != NULL && no_color[0] != '\0')
+      fmt::disable_colors = true;
+
 
     if(op.test_colors) {
         test_colors();
