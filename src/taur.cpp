@@ -3,6 +3,7 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
+#include "args.hpp"
 #include <iostream>
 
 namespace fs = std::filesystem;
@@ -365,6 +366,16 @@ bool TaurBackend::update_all_pkgs(string cacheDir, bool useGit) {
     if (pkgs.empty()) {
         log_println(LOG_INFO, "No AUR packages found in your system.");
         return true;
+    }
+
+    if (!config.aurOnly) {
+        vector<const char *> cmd_upg = {config.sudo.c_str(), "pacman", "-S"};
+        if(op.op_s_sync)
+            cmd_upg.push_back("-y");
+        if(op.op_s_upgrade)
+            cmd_upg.push_back("-u");
+        if (!taur_exec(cmd_upg, false))
+            return false;
     }
 
     vector<string> pkgNames;

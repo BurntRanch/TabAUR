@@ -273,7 +273,7 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
         else {
-            cmd.erase(cmd.end());   // remove nullptr
+            cmd.erase(cmd.end()-1);   // remove nullptr
             log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
