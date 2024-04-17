@@ -6,7 +6,6 @@
 #include <vector>
 #include <memory>
 #include <optional>
-#include <iostream>
 
 #include "fmt/base.h"
 #include "fmt/color.h"
@@ -47,7 +46,7 @@ bool taur_exec(std::vector<const char*> cmd, bool exitOnFailure = true);
 void sanitizeStr(string& str);
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool commitTransactionAndRelease(bool soft = false);
-void printPkgInfo(TaurPkg_t &pkg, string db_name, int index = -1);// faster than makepkg --packagelist
+void printPkgInfo(TaurPkg_t &pkg, string db_name, int index = -1);
 string makepkg_list(string pkg_name, string path);
 void free_list_and_internals(alpm_list_t *list);
 fmt::text_style getColorFromDBName(string db_name);
@@ -62,21 +61,40 @@ string getHomeCacheDir();
 string getHomeConfigDir();
 
 template <typename... Args>
-void log_printf(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
+void log_println(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            fmt::print(ts, "ERROR: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "ERROR: "); break;
         case LOG_WARN:
-            fmt::print(ts, "Warning: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "Warning: "); break;
         case LOG_INFO:
-            fmt::print(ts, "Info: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(ts, "[DEBUG]: ");
+            fmt::print(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "[DEBUG]: ");
             break;
     }
-    fmt::print(ts, fmt, std::forward<Args>(args)...);
+    // I don't want to add a '\n' each time i'm writing a log_printf(), I just forget it all the time
+    fmt::println(ts, fmt, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_println(int log, string fmt, Args&&... args) {
+    switch(log) {
+        case LOG_ERROR:
+            fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "ERROR: "); break;
+        case LOG_WARN:
+            fmt::print(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "Warning: "); break;
+        case LOG_INFO:
+            fmt::print(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "Info: "); break;
+        case LOG_DEBUG:
+            if (!config->debug)
+                return;
+            fmt::print(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "[DEBUG]: ");
+            break;
+    }
+    fmt::println(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>

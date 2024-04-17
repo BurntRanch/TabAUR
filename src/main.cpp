@@ -57,7 +57,7 @@ void usage(int op) {
     fmt::println("TabAUR will assume -Syu if you pass no arguments to it.");
 
     if (config->secretRecipe) {
-        log_printf(LOG_INFO, "Loading secret recipe...\n");
+        log_println(LOG_INFO, "Loading secret recipe...");
         for (auto const& i : secret) {
             fmt::println("{}", i);
             usleep(650000); // 0.65 seconds
@@ -79,10 +79,10 @@ void test_colors() {
 
     if(fmt::disable_colors)
         fmt::println("Colors are disabled");
-    log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
-    log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
-    log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
-    log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
+    log_println(LOG_DEBUG, "Debug color: {}",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
+    log_println(LOG_INFO, "Info color: {}",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
+    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
+    log_println(LOG_ERROR, "Error color: {}",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
     fmt::println(fg(config->getThemeValue("red", red)), "red");
     fmt::println(fg(config->getThemeValue("blue", blue)), "blue");
     fmt::println(fg(config->getThemeValue("yellow", yellow)), "yellow");
@@ -106,7 +106,7 @@ void test_colors() {
 }
 
 bool execPacman(int argc, char* argv[]) {
-    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: {:d})\n", argc);
+    log_println(LOG_DEBUG, "Passing command to pacman! (argc: {:d})", argc);
     
     if (0 > argc || argc > 512)
         throw std::invalid_argument("argc is invalid! (512 > argc > 0)");
@@ -116,7 +116,7 @@ bool execPacman(int argc, char* argv[]) {
     args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
     for (int i = 0; i < argc; ++i) {
-        log_printf(LOG_DEBUG, "args[{}] = argv[{}] ({})\n", i + 2, i, argv[i]);
+        log_println(LOG_DEBUG, "args[{}] = argv[{}] ({})", i + 2, i, argv[i]);
         args[i+2] = argv[i];
     }
 
@@ -140,7 +140,7 @@ int installPkg(alpm_list_t *pkgNames) {
         vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
 
         if (pkgs.empty()) {
-            log_printf(LOG_WARN, "No results found!\n");
+            log_println(LOG_WARN, "No results found!");
             returnStatus = false;
             continue;
         }
@@ -192,7 +192,7 @@ int installPkg(alpm_list_t *pkgNames) {
             bool stat = backend->download_pkg(url, filename);
 
             if (!stat) {
-                log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
+                log_println(LOG_ERROR, "An error has occurred and we could not download your package.");
                 returnStatus = false;
                 continue;
             }
@@ -207,14 +207,14 @@ int installPkg(alpm_list_t *pkgNames) {
             }
 
             if (!stat) {
-                log_printf(LOG_ERROR, "Building your package has failed.\n");
+                log_println(LOG_ERROR, "Building your package has failed.");
                 returnStatus = false;
                 continue;
             }
 
-            log_printf(LOG_DEBUG, "Installing {}.\n", pkg.name);
+            log_println(LOG_DEBUG, "Installing {}.", pkg.name);
             if (!taur_exec({config->sudo.c_str(), "pacman", "-U", built_pkg.c_str()}, false)) {
-                log_printf(LOG_ERROR, "Failed to install {}.\n", pkg.name);
+                log_println(LOG_ERROR, "Failed to install {}.", pkg.name);
                 returnStatus = false;
                 continue;
             }
@@ -224,7 +224,7 @@ int installPkg(alpm_list_t *pkgNames) {
     }
 
     if (op.op_s_upgrade) {
-        log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.\n");
+        log_println(LOG_INFO, "-u flag specified, upgrading AUR packages.");
         return backend->update_all_pkgs(cacheDir, useGit) && returnStatus;
     }
 
@@ -243,7 +243,7 @@ bool updateAll() {
 }
 
 bool queryPkgs() {
-    log_printf(LOG_DEBUG, "AUR Only: {}\n", config->aurOnly);
+    log_println(LOG_DEBUG, "AUR Only: {}", config->aurOnly);
     alpm_list_t *pkg;
 
     vector<const char *> pkgs, pkgs_ver;
@@ -256,7 +256,7 @@ bool queryPkgs() {
         alpm_list_t *syncdbs = alpm_get_syncdbs(config->handle);
 
         if (!syncdbs) {
-            log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
+            log_println(LOG_ERROR, "Failed to get syncdbs!");
             return false;
         }
 
@@ -332,7 +332,7 @@ int parseargs(int argc, char* argv[]) {
     }
 
     if(op.op == 0) {
-		log_printf(LOG_ERROR, "only one operation may be used at a time\n");
+		log_println(LOG_ERROR, "only one operation may be used at a time");
 		return 1;
     }
 
@@ -379,9 +379,9 @@ int parseargs(int argc, char* argv[]) {
 		    if(result == 1) {
 		    /* global option parsing failed, abort */
 			    if(opt < 1000) {
-				    log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
+				    log_println(LOG_ERROR, "invalid option '-{}'", opt);
 			    } else {
-				    log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);
+				    log_println(LOG_ERROR, "invalid option '--{}'", opts[option_index].name);
 			    }
 		    }
             return 1;
@@ -415,7 +415,6 @@ int main(int argc, char* argv[]) {
     // i just want to feel good about having this check
     config->init(configfile, themefile);
 
-    fmt::disable_colors = config->colors == false;
     if (no_color != NULL && no_color[0] != '\0')
       fmt::disable_colors = true;
 
@@ -431,10 +430,10 @@ int main(int argc, char* argv[]) {
     backend = std::make_unique<TaurBackend>(*config);
 
     if (op.requires_root && geteuid() != 0) {
-        log_printf(LOG_ERROR, "You need to be root to do this.\n");
+        log_println(LOG_ERROR, "You need to be root to do this.");
         return 1;
     } else if (!op.requires_root && geteuid() == 0) {
-        log_printf(LOG_ERROR, "You are trying to run TabAUR as root when you don't need it.\n");
+        log_println(LOG_ERROR, "You are trying to run TabAUR as root when you don't need it.");
         return 1;
     }
 

@@ -10,7 +10,7 @@ alpm_list_smart_deleter taur_targets(nullptr, free_list_and_internals);
 
 void invalid_opt(int used, string opt1, string opt2) {
     if (used)
-        log_printf(LOG_ERROR, "invalid option: '{}' and '{}' may not be used together", opt1, opt2);
+        log_println(LOG_ERROR, "invalid option: '{}' and '{}' may not be used together", opt1, opt2);
 }
 
 /** Helper function for parsing operation from command-line arguments.

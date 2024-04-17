@@ -3,6 +3,7 @@
 #include "util.hpp"
 #include "ini.h"
 #include <filesystem>
+#include <iostream>
 
 using std::ofstream;
 using std::ifstream;
@@ -30,20 +31,20 @@ void Config::init(string configFile, string themeFile) {
     bool newUser = false;
 
     if (!fs::exists(configDir)) {
-        log_printf(LOG_NONE, "Warning: TabAUR config folder was not found, Creating folders at {}!\n", configDir);
+        log_println(LOG_NONE, "Warning: TabAUR config folder was not found, Creating folders at {}!", configDir);
         fs::create_directories(configDir);
 
         newUser = true;
     }
     if (!fs::exists(configFile)) {
-        log_printf(LOG_NONE, "Warning: {} not found, generating new one\n", configFile);
+        log_println(LOG_NONE, "Warning: {} not found, generating new one", configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         ofstream f(configFile, std::ios::trunc);
         f << defConfig;
         f.close();
     }
     if (!fs::exists(themeFile)) {
-        log_printf(LOG_NONE, "Warning: {} not found, generating new one\n", themeFile);
+        log_println(LOG_NONE, "Warning: {} not found, generating new one", themeFile);
         ofstream f(themeFile, std::ios::trunc);
         f << defTheme;
         f.close();
@@ -54,7 +55,7 @@ void Config::init(string configFile, string themeFile) {
 
     this->initialized = true;
     if (!fs::exists(config->cacheDir)) {
-        log_printf(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!\n", config->cacheDir);
+        log_println(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!", config->cacheDir);
         fs::create_directories(config->cacheDir);
     }
 
@@ -103,7 +104,7 @@ void Config::loadConfigFile(string filename) {
     try {
         this->tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_printf(LOG_NONE, "ERROR: Parsing config file {} failed:\n", filename);
+        log_println(LOG_NONE, "ERROR: Parsing config file {} failed:", filename);
         std::cerr << err << std::endl;
         exit(-1);
     }
@@ -125,14 +126,14 @@ void Config::loadThemeFile(string filename) {
     try {
         this->theme_tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_printf(LOG_ERROR, "Parsing theme file {} failed:\n", filename);
+        log_println(LOG_ERROR, "Parsing theme file {} failed:", filename);
         std::cerr << err << std::endl;
         exit(-1);
     }
 }
 
 /** Get the theme color variable and return a fmt::rgb type variable
- * Which can be used for colorize the text (useful for functions like log_printf())
+ * Which can be used for colorize the text (useful for functions like log_println())
  * @param value The value we want
  * @param fallback The default value if it doesn't exists
  * @return fmt::rgb type variable 
@@ -195,7 +196,7 @@ void Config::loadPacmanConfigFile(string filename) {
 
         bool serversStatus = addServers(db, ini[section]["Include"], section);
         if (!serversStatus)
-            log_printf(LOG_ERROR, "Failed to open mirrors file! ({})\n", ini[section]["Include"]);
+            log_println(LOG_ERROR, "Failed to open mirrors file! ({})", ini[section]["Include"]);
 
         alpm_db_set_usage(db, ALPM_DB_USAGE_ALL);
 
