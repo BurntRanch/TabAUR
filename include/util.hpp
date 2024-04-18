@@ -1,6 +1,5 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
-#define FMT_HEADER_ONLY
 
 #include <string>
 #include <vector>

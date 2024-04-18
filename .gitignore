@@ -1,3 +1,4 @@
 taur
 *.o
 *.out
+*.so
