@@ -19,7 +19,8 @@ ifneq ($(is_cpr_installed), yes)
 	cmake -S $@ -B $@/build -DCMAKE_BUILD_TYPE=Release -DCPR_BUILD_TESTS=OFF -DCPR_USE_SYSTEM_CURL=OFF -DBUILD_SHARED_LIBS=OFF
 	cmake --build $@/build --parallel
 	mv -f $@/build/lib/*.a src/cpr/
-	mv -f $@/build/include/*.h include/cpr/
+# the absence of this one line didn't matter for a long time, despite it being critical, this caused toni to go mentally insane when trying to make changes to the way the project is being built.
+	mv -f $@/cpr_generated_includes/cpr/cprver.h include/cpr/
 	#sudo cmake --install $@/build --prefix /usr
 endif
 
