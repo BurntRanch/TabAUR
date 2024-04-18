@@ -17,7 +17,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Install Packages
-      run: pacman -Syu gcc git libgit2 base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
+      run: pacman -Syu git base-devel sudo fakeroot cmake make --noconfirm --needed
 
     - name: Get submodules
       uses: actions/checkout@v2
@@ -29,3 +29,6 @@ jobs:
 
     - name: Compile
       run: make
+
+    - name: Test taur
+      run: ./taur -t

@@ -1,5 +1,4 @@
 #define TOML_IMPLEMENTATION
-#define FMT_HEADER_ONLY
 #include "config.hpp"
 #include "util.hpp"
 #include "ini.h"

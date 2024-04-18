@@ -243,6 +243,7 @@ int installPkg(alpm_list_t *pkgNames) {
             cmd.push_back(pacmanPkgs[i].c_str());
         }
 
+        log_println(LOG_DEBUG, "running ", fmt::join(cmd, " "));
         taur_exec(cmd);
     }
 
@@ -489,8 +490,6 @@ int main(int argc, char* argv[]) {
     if (parseargs(argc, argv))
         return 1;
 
-    // this will always be false
-    // i just want to feel good about having this check
     config->init(configfile, themefile);
 
     if (no_color != NULL && no_color[0] != '\0')
@@ -527,7 +526,10 @@ int main(int argc, char* argv[]) {
     case OP_PACMAN:
         // we are gonna use pacman to other ops than -S,-R,-Q
         return execPacman(argc, argv);
+    default:
+        log_println(LOG_ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
+        return EXIT_SUCCESS;
     }
 
-    return 3;
+    return EXIT_SUCCESS;
 }

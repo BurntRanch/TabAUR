@@ -9,7 +9,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
-#include <cpr/cpr.h>
+#include "cpr/cpr.h"
 #include <sys/wait.h>
 
 class Config;
