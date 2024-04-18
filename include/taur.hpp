@@ -1,6 +1,7 @@
 #ifndef GIT_HPP
 #define GIT_HPP
 
+#include <alpm.h>
 #include <alpm_list.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -42,7 +43,8 @@ class TaurBackend {
     bool                download_pkg(string url, string out_path);
     optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
     vector<TaurPkg_t>   fetch_pkgs(vector<string> pkgs, bool returnGit);
-    bool                remove_pkg(alpm_list_t *name, bool searchForeignPackages);
+    bool                remove_pkg(alpm_pkg_t *pkgs, bool ownTransaction = true);
+    bool                remove_pkgs(alpm_list_t *pkgs);
     bool                handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit);
     bool                install_pkg(string pkg_name, string extracted_path, bool onlydownload);
     bool                update_all_aur_pkgs(string cacheDir, bool useGit);

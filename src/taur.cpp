@@ -4,7 +4,6 @@
 #include "taur.hpp"
 #include "config.hpp"
 #include "args.hpp"
-#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -130,81 +129,63 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     return out;
 }
 
-bool TaurBackend::remove_pkg(alpm_list_t *pkgQueries, bool aurOnly) {
-    alpm_list_t *temp_ret = nullptr;
-
-    if (alpm_db_search(alpm_get_localdb(config.handle), pkgQueries, &temp_ret) != 0)
+/** Removes a single packages using libalpm.
+  @param pkgs an alpm package to remove.
+  @param ownTransaction a bool that dictates whether this function owns the transaction, this is used for remove_pkgs, if not, it will not initialize it and not release it.
+  @return success.
+*/
+bool TaurBackend::remove_pkg(alpm_pkg_t *pkg, bool ownTransaction) {
+    if (!pkg)
         return false;
 
-    alpm_list_smart_pointer ret(temp_ret, alpm_list_free);
+    if (ownTransaction && alpm_trans_init(this->config.handle, 0)) {
+        log_println(LOG_ERROR, "Failed to initialize transaction ({})", alpm_strerror(alpm_errno(this->config.handle)));
+        return false;
+    }
 
-    size_t ret_length = alpm_list_count(ret.get());
+    log_println(LOG_INFO, "Removing package {}.", string(alpm_pkg_get_name(pkg)));
+
+    if (alpm_remove_pkg(this->config.handle, pkg) != 0) {
+        log_println(LOG_ERROR, "Failed to remove package ({})", alpm_strerror(alpm_errno(this->config.handle)));
+        if (ownTransaction) alpm_trans_release(this->config.handle);
+        return false;
+    }
+
+    if (ownTransaction)
+        return commitTransactionAndRelease();
+
+    return true;
+}
+
+/** Removes a list of packages using libalpm.
+  * Will automatically call remove_pkg instead, if the size of pkgs is equal to 1.
+  @param pkgs alpm list of alpm_pkg_t pointers to remove.
+  @return success.
+*/
+bool TaurBackend::remove_pkgs(alpm_list_t *pkgs) {
+    if (!pkgs)
+        return false;
 
     if (alpm_trans_init(this->config.handle, 0)) {
         log_println(LOG_ERROR, "Failed to initialize transaction ({})", alpm_strerror(alpm_errno(this->config.handle)));
         return false;
     }
 
-    if (ret_length == 0) {
+    size_t pkgs_length = alpm_list_count(pkgs);
+
+    if (pkgs_length == 0) {
         log_println(LOG_ERROR, "Couldn't find any packages!");
+        alpm_trans_release(this->config.handle);
         return false;
-    } else if (ret_length == 1) {
-        log_println(LOG_INFO, "Removing package {}.", alpm_pkg_get_name((alpm_pkg_t *)(ret->data)));
-        if (alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(ret->data))) {
-            log_println(LOG_ERROR, "Failed to remove package ({})", alpm_strerror(alpm_errno(this->config.handle)));
+    } else if (pkgs_length == 1) {
+        return this->remove_pkg((alpm_pkg_t *)(pkgs->data), false) && commitTransactionAndRelease();
+    }
+
+    for (; pkgs; pkgs = pkgs->next) {
+        bool success = this->remove_pkg((alpm_pkg_t *)(pkgs->data), false);
+        if (!success) {
             alpm_trans_release(this->config.handle);
             return false;
-        }
-
-        return commitTransactionAndRelease();
-    }
-
-    fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
-    for (size_t i = 0; i < ret_length; i++) {
-        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
-    }
-
-    string included;
-    std::getline(std::cin, included);
-
-    if (included == "*") {
-        for (size_t i = 0; i < ret_length; i++) {
-            log_println(LOG_INFO, "Removing package {}.", alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
-            int code = alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data));
-            if (code != 0) {
-                log_println(LOG_ERROR, "Failed to remove package, Exiting!");
-                alpm_trans_release(this->config.handle);
-                return false;
-            }
-        }
-
-        if (!commitTransactionAndRelease()) {
-            log_println(LOG_ERROR, "Failed to prepare, commit, or release alpm transaction.");
-            return false;
-        }
-
-        return true;
-    }
-
-    vector<string> includedIndexes  = split(included, ' ');
-    string         finalPackageList = "";
-
-    for (size_t i = 0; i < includedIndexes.size(); i++) {
-        try {
-            size_t includedIndex = (size_t)stoi(includedIndexes[i]);
-
-            if (includedIndex >= ret_length)
-                continue;
-
-            log_println(LOG_INFO, "Removing package {}.", alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), includedIndex)->data)));
-            int code = alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(alpm_list_nth(ret.get(), includedIndex)->data));
-            if (code != 0) {
-                log_println(LOG_ERROR, "Failed to remove package, Exiting!");
-                alpm_trans_release(this->config.handle);
-                return false;
-            }
-        } catch (std::invalid_argument const&) {
-            log_println(LOG_WARN, "Invalid argument! Assuming all.");
         }
     }
 

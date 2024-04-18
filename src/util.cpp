@@ -68,13 +68,13 @@ bool commitTransactionAndRelease(bool soft) {
     log_println(LOG_INFO, "Changes to be made:");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
         fmt::print(BOLD_TEXT(config->getThemeValue("green", green)), "    ++ ");
-        fmt::print(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
+        fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
         
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
         fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "    -- ");
-        fmt::print(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
+        fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
     fmt::print("Would you like to proceed with this transaction? [Y/n] ");

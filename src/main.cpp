@@ -1,3 +1,5 @@
+#include <alpm_list.h>
+#include <iostream>
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include "util.hpp"
@@ -256,7 +258,57 @@ bool removePkg(alpm_list_t *pkgNames) {
     if (!pkgNames)
         return false;
 
-    return backend->remove_pkg(pkgNames, config->aurOnly);
+    alpm_list_t *ret = nullptr;
+
+    alpm_list_t *regexQuery = nullptr;
+
+    for (; pkgNames; pkgNames = pkgNames->next)
+        regexQuery = alpm_list_add(regexQuery, (void *)(".*" + string((const char *)(pkgNames->data)) + ".*").c_str());
+
+    if (alpm_db_search(alpm_get_localdb(config->handle), regexQuery, &ret) != 0)
+        return false;
+
+    size_t ret_length = alpm_list_count(ret);
+
+    if (ret_length == 1)
+        return backend->remove_pkg((alpm_pkg_t *)ret->data);
+
+    fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
+
+    for (size_t i = 0; i < ret_length; i++) {
+        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret, i)->data)));
+    }
+
+    string included;
+    std::getline(std::cin, included);
+
+    vector<string> includedIndexes  = split(included, ' ');
+
+    alpm_list_t   *finalPackageList = nullptr;
+    alpm_list_t   *finalPackageListStart = nullptr;
+
+    if (included == "*")
+        return backend->remove_pkgs(ret);
+    
+    for (size_t i = 0; i < includedIndexes.size(); i++) {
+        try {
+            size_t includedIndex = (size_t)stoi(includedIndexes[i]);
+
+            if (includedIndex >= ret_length)
+                continue;
+
+            finalPackageList = alpm_list_add(finalPackageList, alpm_list_nth(ret, includedIndex)->data);
+
+            if (finalPackageList != nullptr && finalPackageListStart == nullptr)
+                finalPackageListStart = finalPackageList;
+
+        } catch (std::invalid_argument const&) {
+            log_println(LOG_WARN, "Invalid argument! Assuming all.");
+            return backend->remove_pkgs(ret);
+        }
+    }
+
+    return backend->remove_pkgs(finalPackageListStart);
 }
 
 bool updateAll() {
