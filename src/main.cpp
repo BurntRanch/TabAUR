@@ -263,12 +263,17 @@ bool removePkg(alpm_list_t *pkgNames) {
     alpm_list_t *regexQuery = nullptr;
 
     for (; pkgNames; pkgNames = pkgNames->next)
-        regexQuery = alpm_list_add(regexQuery, (void *)(".*" + string((const char *)(pkgNames->data)) + ".*").c_str());
+        regexQuery = alpm_list_add(regexQuery, (void *)((".*" + string((const char *)(pkgNames->data)) + ".*").c_str()));
 
     if (alpm_db_search(alpm_get_localdb(config->handle), regexQuery, &ret) != 0)
         return false;
 
     size_t ret_length = alpm_list_count(ret);
+
+    if (ret_length == 0) {
+        log_println(LOG_ERROR, "No packages found!");
+        return false;
+    }
 
     if (ret_length == 1)
         return backend->remove_pkg((alpm_pkg_t *)ret->data);
