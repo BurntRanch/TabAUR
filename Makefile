@@ -18,7 +18,7 @@ ifneq ($(is_cpr_installed), yes)
 	mkdir -p src/cpr
 	cmake -S $@ -B $@/build -DCMAKE_BUILD_TYPE=Release -DCPR_BUILD_TESTS=OFF -DCPR_USE_SYSTEM_CURL=ON -DBUILD_SHARED_LIBS=OFF
 	cmake --build $@/build --parallel
-	mv -f $@/build/lib/libcpr.a $@/build/lib/libz.a src/cpr
+	mv -f $@/build/lib/libcpr.a src/cpr/libcpr.a
 	#sudo cmake --install $@/build --prefix /usr
 endif
 
