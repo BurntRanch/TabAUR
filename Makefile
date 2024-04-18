@@ -1,7 +1,7 @@
 CXX	?= g++
 SRC 	 = $(sort $(wildcard src/*.cpp))
 OBJ 	 = $(SRC:.cpp=.o)
-LDFLAGS  = -L./src/fmt -L./src/cpr -lcpr -lalpm -lfmt -lssl -lcrypto -lcurl -lz -lidn2
+LDFLAGS  = -L./src/fmt -L./src/cpr -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
 TARGET   = taur
 CPPFLAGS = -ggdb -pedantic -funroll-all-loops -march=native -isystem include -Wall -std=c++17
 
