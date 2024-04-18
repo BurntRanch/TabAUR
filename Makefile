@@ -21,7 +21,7 @@ ifneq ($(is_cpr_installed), yes)
 endif
 
 fmt:
-ifeq (,$(wildcard ./src/fmt/libfmt.so))
+ifeq (,$(wildcard ./src/fmt/libfmt.a))
 	make -C src/fmt
 endif
 
