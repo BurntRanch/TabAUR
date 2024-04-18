@@ -135,6 +135,8 @@ int installPkg(alpm_list_t *pkgNames) {
 
     bool returnStatus = true;
 
+    vector<string> pacmanPkgs;  // list of pacman packages to install, to avoid spamming pacman.
+
     for (; pkgNames; pkgNames = pkgNames->next) {
         string pkgName = string((char *)(pkgNames->data));
         vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
@@ -167,22 +169,25 @@ int installPkg(alpm_list_t *pkgNames) {
 
             string url = pkg.url;
 
-        if (url == "") {
-            vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
-            if(op.op_s_sync)
-                cmd.push_back("-y");
-            if(op.op_s_upgrade)
-                cmd.push_back("-u");
-
-            cmd.push_back(pkg.name.c_str());
-
-            if (taur_exec(cmd, false))
+            if (url == "") {
+                log_printf(LOG_DEBUG, "Scheduled system package {} for installation!\n", pkg.name);
+                pacmanPkgs.push_back(pkg.name);
                 continue;
-            else {
-                returnStatus = false;
-                continue;
+                // vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
+                // if(op.op_s_sync)
+                //     cmd.push_back("-y");
+                // if(op.op_s_upgrade)
+                //     cmd.push_back("-u");
+
+                // cmd.push_back(pkg.name.c_str());
+
+                // if (taur_exec(cmd, false))
+                //     continue;
+                // else {
+                //     returnStatus = false;
+                //     continue;
+                // }
             }
-        }
 
             string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
@@ -223,9 +228,25 @@ int installPkg(alpm_list_t *pkgNames) {
 
     }
 
+    if (!config->aurOnly && (op.op_s_upgrade || !pacmanPkgs.empty())) {
+        log_printf(LOG_DEBUG, "{} system packages!\n", (op.op_s_upgrade ? "Upgrading" : "Installing"));
+        vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
+
+        if(op.op_s_sync)
+            cmd.push_back("-y");
+        if(op.op_s_upgrade)
+            cmd.push_back("-u");
+
+        for (size_t i = 0; i < pacmanPkgs.size(); i++) {
+            cmd.push_back(pacmanPkgs[i].c_str());
+        }
+
+        taur_exec(cmd);
+    }
+
     if (op.op_s_upgrade) {
         log_println(LOG_INFO, "-u flag specified, upgrading AUR packages.");
-        return backend->update_all_pkgs(cacheDir, useGit) && returnStatus;
+        return backend->update_all_aur_pkgs(cacheDir, useGit) && returnStatus;
     }
 
     return returnStatus;
@@ -239,7 +260,7 @@ bool removePkg(alpm_list_t *pkgNames) {
 }
 
 bool updateAll() {
-    return backend->update_all_pkgs(config->cacheDir, config->useGit);
+    return backend->update_all_aur_pkgs(config->cacheDir, config->useGit);
 }
 
 bool queryPkgs() {
