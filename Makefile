@@ -1,7 +1,7 @@
 CXX	?= g++
 SRC 	 = $(sort $(wildcard src/*.cpp))
 OBJ 	 = $(SRC:.cpp=.o)
-LDFLAGS  = -L./src/fmt -lcpr -lalpm -lfmt
+LDFLAGS  = -L./src/fmt -L./src/cpr/lib -lcpr -lalpm -lfmt -lssl -lcrypto -lcurl -lz
 TARGET   = taur
 CPPFLAGS = -ggdb -pedantic -funroll-all-loops -march=native -isystem include -Wall -std=c++17
 
@@ -15,9 +15,10 @@ ifneq ($(is_cpr_installed), yes)
 	#git submodule init
 	#git submodule update --init --recursive
 	#git -C $@ checkout 3b15fa8
-	cmake -S $@ -B $@/build -DCMAKE_BUILD_TYPE=Release -DCPR_BUILD_TESTS=OFF -DCPR_USE_SYSTEM_CURL=ON
+	cmake -S $@ -B $@/build -DCMAKE_BUILD_TYPE=Release -DCPR_BUILD_TESTS=OFF -DCPR_USE_SYSTEM_CURL=ON -DBUILD_SHARED_LIBS=OFF
 	cmake --build $@/build --parallel
-	sudo cmake --install $@/build --prefix /usr
+	mv $@/build/lib/libcpr.a $@/build/lib/libz.a src/cpr/lib
+	#sudo cmake --install $@/build --prefix /usr
 endif
 
 fmt:
