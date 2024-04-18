@@ -29,3 +29,6 @@ jobs:
 
     - name: Compile
       run: make
+    
+    - name: Test taur
+      run: ./taur -t
