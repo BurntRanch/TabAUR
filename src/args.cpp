@@ -82,6 +82,9 @@ int parsearg_global(int opt) {
         case OP_SUDO:
                 config->overrides["general.sudo"] = {STR, strndup(optarg, PATH_MAX)};
                 break;
+        case OP_NOCONFIRM:
+                config->noconfirm = true;
+                break;
         case OP_USEGIT:
         case 'g':
                 config->overrides["general.useGit"] = {BOOL, "", true};

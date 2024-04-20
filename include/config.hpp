@@ -30,6 +30,7 @@ public:
     alpm_list_t *repos = nullptr;
     string makepkgBin;
     string cacheDir;
+    string pmConfig;
     string sudo;
     string git;
     string makepkgConf;
@@ -39,6 +40,7 @@ public:
     bool secretRecipe;
     bool debug;
     bool quiet;
+    bool noconfirm;
 
     std::map<string, strOrBool> overrides;
 

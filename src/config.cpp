@@ -75,7 +75,8 @@ bool Config::isInitialized() {
 * and sanitize them (never trust user's input)
 */
 void Config::initializeVars() {
-    this->cacheDir     = this->getConfigValue<string>("general.cacheDir", getHomeCacheDir() + "/TabAUR");;
+    this->cacheDir     = this->getConfigValue<string>("general.cacheDir", getHomeCacheDir() + "/TabAUR");
+    this->pmConfig     = this->getConfigValue<string>("pacman.ConfigFile", "/etc/pacman.conf");
     this->makepkgConf  = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
     this->makepkgBin   = this->getConfigValue<string>("bins.makepkg", "makepkg");
     this->git          = this->getConfigValue<string>("bins.git", "git");

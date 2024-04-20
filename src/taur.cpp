@@ -196,27 +196,22 @@ bool TaurBackend::remove_pkgs(alpm_list_t *pkgs) {
     return true;
 }
 
-bool TaurBackend::install_pkg(string pkg_name, string extracted_path, bool onlydownload) {
+bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool alreadyprepared) {
     // never forget to sanitize
     sanitizeStr(extracted_path);
     fs::current_path(extracted_path);
 
     const char* makepkg_bin = config.makepkgBin.c_str();
     
-    if (onlydownload) {
-        log_println(LOG_DEBUG, "running {} --verifysource -fA", makepkg_bin);
-        taur_exec({makepkg_bin, "--verifysource", "-fA"});
-        log_println(LOG_DEBUG, "running {} --nobuild -fA", makepkg_bin);
-        return taur_exec({makepkg_bin, "--nobuild", "-fA"});
+    if (!alreadyprepared) {
+        log_println(LOG_INFO, "Verifying package sources..");
+        log_println(LOG_DEBUG, "running {} --verifysource --skippgpcheck -f -Cc", makepkg_bin);
+        makepkg_exec("--verifysource --skippgpcheck -f -Cc");
+
+        log_println(LOG_INFO, "Preparing for compilation..");
+        log_println(LOG_DEBUG, "running {} --nobuild --skippgpcheck -fs -C --ignorearch", makepkg_bin);
+        makepkg_exec("--nobuild --skippgpcheck -fs -C --ignorearch");
     }
-
-    log_println(LOG_DEBUG, "running {} --verifysource --skippgpcheck -f -Cc", makepkg_bin);
-    log_println(LOG_INFO, "Verifying package sources..");
-    taur_exec({makepkg_bin, "--verifysource", "--skippgpcheck", "-f", "-Cc"});
-
-    log_println(LOG_DEBUG, "running {} --nobuild --skippgpcheck -fd -C --ignorearch", makepkg_bin);
-    log_println(LOG_INFO, "Preparing for compilation..");
-    taur_exec({makepkg_bin, "--nobuild", "--skippgpcheck", "-fd", "-C", "--ignorearch"});
 
     built_pkg = makepkg_list(pkg_name, extracted_path);
     log_println(LOG_DEBUG, "built_pkg = {}", built_pkg);
@@ -226,7 +221,7 @@ bool TaurBackend::install_pkg(string pkg_name, string extracted_path, bool onlyd
         sleep(3);*/
 
         log_println(LOG_DEBUG, "running {} -f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", makepkg_bin);
-        taur_exec({makepkg_bin, "-f", "--noconfirm", "--noextract", "--noprepare", "--nocheck", "--holdver", "--ignorearch", "-c", "-s"});
+        makepkg_exec("-f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", false);
     }
     else
         log_println(LOG_INFO, "{} exists already, no need to build", built_pkg);
@@ -297,7 +292,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
                 filename = filename.substr(0, filename.rfind(".tar.gz"));
 
             log_println(LOG_DEBUG, "Installing dependency {} of dependency {}.", subDepend.name, depend.name);
-            if (!this->install_pkg(subDepend.name, filename, false)) {
+            if (!this->build_pkg(subDepend.name, filename, false)) {
                 log_println(LOG_ERROR, "Failed to compile dependency {} of dependency {}.", subDepend.name, depend.name);
                 continue;
             }
@@ -323,7 +318,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
             return false;
         }
 
-        bool   installStatus = this->install_pkg(depend.name, out_path / depend.name, false);
+        bool   installStatus = this->build_pkg(depend.name, out_path / depend.name, false);
 
         if (!installStatus) {
             log_println(LOG_ERROR, "Failed to install dependency of {} ({})", pkg.name, depend.name);
@@ -358,6 +353,7 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
 
     int updatedPkgs = 0;
     int attemptedDownloads = 0;
+    bool alrprepared = false;
 
     if (onlinePkgs.size() != pkgs.size())
         log_println(LOG_WARN, "Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others.", pkgs.size(), onlinePkgs.size());
@@ -398,7 +394,15 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
             continue;
         }
 
-        this->install_pkg(pkgs[pkgIndex].name, pkgFolder, true);
+        // workaround for -git package because they are "special"  
+        if (hasEnding(pkgs[pkgIndex].name, "-git")) {
+            alrprepared = true;
+            fs::current_path(pkgFolder);
+            log_println(LOG_DEBUG, "running {} --verifysource -fA", config.makepkgBin);
+            makepkg_exec("--verifysource -fA");
+            log_println(LOG_DEBUG, "running {} --nobuild -dfA", config.makepkgBin);
+            makepkg_exec("--nobuild -dfA");
+        }
 
         string versionInfo = shell_exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
         
@@ -408,9 +412,13 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
         }
         
         string pkgrel = shell_exec("grep 'pkgrel=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
-        
+        string epoch = shell_exec("grep 'epoch=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+    
         if (!pkgrel.empty() && pkgrel[0] != '\0')
-            versionInfo += "-" + pkgrel;
+            versionInfo += '-' + pkgrel;
+
+        if (!epoch.empty() && epoch[0] != '\0')
+            versionInfo = epoch + ':' + versionInfo;
 
         log_println(LOG_DEBUG, "pkg {} versions: local {} vs online {}", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
                    onlinePkgs[i].version);
@@ -425,15 +433,16 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
         attemptedDownloads++;
         
         this->handle_aur_depends(onlinePkgs[i], pkgFolder, this->get_all_local_pkgs(true), useGit);
-        bool installSuccess = this->install_pkg(pkgs[pkgIndex].name, pkgFolder, false);
+        bool installSuccess = this->build_pkg(pkgs[pkgIndex].name, pkgFolder, alrprepared);
 
         pkgs_to_install += built_pkg + ' ';
-        log_println(LOG_WARN, "pkgs_to_install = {}", pkgs_to_install);
+        log_println(LOG_DEBUG, "pkgs_to_install = {}", pkgs_to_install);
 
         if (!installSuccess)
             continue;
 
         updatedPkgs++;
+        alrprepared = false;
     }
     
     if (pkgs_to_install.size() <= 0) {
@@ -444,10 +453,14 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
     // remove the last ' ' so we can pass it to pacman
     pkgs_to_install.erase(pkgs_to_install.end()-1);
     vector<string> _pkgs = split(pkgs_to_install, ' ');
-    log_println(LOG_DEBUG, "running {} pacman -U --needed -- {}", config.sudo, pkgs_to_install);
-    cmd = {config.sudo.c_str(), "pacman", "-U", "--needed", "--"};
+    cmd = {config.sudo.c_str(), "pacman", "-U", "--config", config.pmConfig.c_str()};
+    if (config.noconfirm)
+        cmd.push_back("--noconfirm");
+    cmd.push_back("--");
     for(auto& str : _pkgs)
         cmd.push_back(str.data());
+
+    log_println(LOG_DEBUG, "{}", fmt::join(cmd, " "));
     taur_exec(cmd);
 
     log_println(LOG_INFO, "Upgraded {}/{} packages.", updatedPkgs, attemptedDownloads);
@@ -477,7 +490,14 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     vector<TaurPkg_t> out;
     for (size_t i = 0; i < pkgs.size(); i++) {
         alpm_pkg_t *pkg = pkgs[i];
-        out.push_back({alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg), "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git", "", 1, {}, true});
+        out.push_back({
+                    alpm_pkg_get_name(pkg), 
+                    alpm_pkg_get_version(pkg), 
+                    "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git", 
+                    "", 
+                    1, 
+                    {}, 
+                    true});
     }
 
     return out;

@@ -39,9 +39,9 @@ bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);
 string expandVar(string& str);
 bool is_number(const string& s, bool allowSpace = false);
-bool taur_read_exec(std::vector<const char*> cmd, string *output, bool exitOnFailure = true);
+bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure = true);
 void interruptHandler(int);
-bool taur_exec(std::vector<const char*> cmd, bool exitOnFailure = true);
+bool taur_exec(vector<const char*> cmd, bool exitOnFailure = true);
 void sanitizeStr(string& str);
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool commitTransactionAndRelease(bool soft = false);
@@ -49,7 +49,7 @@ void printPkgInfo(TaurPkg_t &pkg, string db_name, int index = -1);
 string makepkg_list(string pkg_name, string path);
 void free_list_and_internals(alpm_list_t *list);
 fmt::text_style getColorFromDBName(string db_name);
-std::optional<std::vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
+std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
@@ -58,6 +58,7 @@ string getTitleForPopularity(float popularity);
 string getConfigDir();
 string getHomeCacheDir();
 string getHomeConfigDir();
+bool makepkg_exec(string cmd, bool exitOnFailure = true);
 
 template <typename... Args>
 void log_println(int log, const fmt::text_style &ts, string fmt, Args&&... args) {

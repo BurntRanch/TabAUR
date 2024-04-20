@@ -206,11 +206,11 @@ int installPkg(alpm_list_t *pkgNames) {
 
             if (!useGit){
                 stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
+                stat = backend->build_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
             }
             else {
                 stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->install_pkg(pkg.name, filename, false);
+                stat = backend->build_pkg(pkg.name, filename, false);
             }
 
             if (!stat) {
@@ -397,6 +397,7 @@ int parseargs(int argc, char* argv[]) {
         {"use-git",    required_argument, 0, OP_USEGIT},
         {"quiet",      no_argument,       0, OP_QUIET},
         {"debug",      no_argument,       0, OP_DEBUG},
+        {"noconfirm",  no_argument,       0, OP_NOCONFIRM},
         {0,0,0,0}
     };
 

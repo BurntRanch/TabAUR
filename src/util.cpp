@@ -283,6 +283,28 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
     return false;
 }
 
+/** Convinient way to executes makepkg commands with taur_exec() and keep the program running without existing
+ * @param cmd The command to execute 
+ * @param exitOnFailure Whether to call exit(-1) on command failure.
+ * @return true if the command successed, else false 
+ */ 
+bool makepkg_exec(string cmd, bool exitOnFailure) {
+    vector<const char *> ccmd = {config->makepkgBin.c_str()};
+    
+    if (config->noconfirm)
+        ccmd.push_back("--noconfirm");
+    if (!config->colors)
+        ccmd.push_back("--nocolor");
+
+    ccmd.push_back("--config"); 
+    ccmd.push_back(config->makepkgConf.c_str());
+
+    for (auto& str : split(cmd, ' '))
+        ccmd.push_back(str.c_str());
+
+    return taur_exec(ccmd, exitOnFailure);
+}
+
 /** Free a list and every single item in it.
  * This will attempt to free everything, should be used for strings that contain C strings only.
  * @param list the list to free
