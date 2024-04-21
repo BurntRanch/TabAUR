@@ -256,17 +256,21 @@ bool removePkg(alpm_list_t *pkgNames) {
     if (!pkgNames)
         return false;
 
-    alpm_list_t *ret = nullptr;
+    alpm_list_t *temp_ret = nullptr;
 
     alpm_list_t *regexQuery = nullptr;
 
     for (; pkgNames; pkgNames = pkgNames->next)
         regexQuery = alpm_list_add(regexQuery, (void *)((".*" + string((const char *)(pkgNames->data)) + ".*").c_str()));
 
-    if (alpm_db_search(alpm_get_localdb(config->handle), regexQuery, &ret) != 0)
+    alpm_list_free(regexQuery);
+
+    if (alpm_db_search(alpm_get_localdb(config->handle), regexQuery, &temp_ret) != 0)
         return false;
 
-    size_t ret_length = alpm_list_count(ret);
+    alpm_list_smart_pointer ret(temp_ret, alpm_list_free);
+
+    size_t ret_length = alpm_list_count(ret.get());
 
     if (ret_length == 0) {
         log_println(LOG_ERROR, "No packages found!");
@@ -279,7 +283,7 @@ bool removePkg(alpm_list_t *pkgNames) {
     fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
 
     for (size_t i = 0; i < ret_length; i++) {
-        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret, i)->data)));
+        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
     }
 
     string included;
@@ -287,8 +291,8 @@ bool removePkg(alpm_list_t *pkgNames) {
 
     vector<string> includedIndexes  = split(included, ' ');
 
-    alpm_list_t   *finalPackageList = nullptr;
-    alpm_list_t   *finalPackageListStart = nullptr;
+    alpm_list_t *finalPackageList = nullptr;
+    alpm_list_t *finalPackageListStart = nullptr;
 
     if (included == "*")
         return backend->remove_pkgs(ret);
@@ -300,18 +304,27 @@ bool removePkg(alpm_list_t *pkgNames) {
             if (includedIndex >= ret_length)
                 continue;
 
-            finalPackageList = alpm_list_add(finalPackageList, alpm_list_nth(ret, includedIndex)->data);
+            finalPackageList = alpm_list_add(finalPackageList, alpm_list_nth(ret.get(), includedIndex)->data);
 
             if (finalPackageList != nullptr && finalPackageListStart == nullptr)
                 finalPackageListStart = finalPackageList;
 
         } catch (std::invalid_argument const&) {
             log_println(LOG_WARN, "Invalid argument! Assuming all.");
+
+            if (finalPackageListStart != nullptr)
+                alpm_list_free(finalPackageListStart);
+            else if (finalPackageList != nullptr)
+                alpm_list_free(finalPackageList);
+
             return backend->remove_pkgs(ret);
         }
     }
 
-    return backend->remove_pkgs(finalPackageListStart);
+    // take control of the list and pass it to the smart pointer
+    alpm_list_smart_pointer finalList = make_list_smart_pointer(finalPackageListStart);
+
+    return backend->remove_pkgs(finalList);
 }
 
 bool updateAll() {

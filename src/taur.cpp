@@ -3,6 +3,7 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
+#include <filesystem>
 
 namespace fs = std::filesystem;
 
@@ -158,7 +159,7 @@ bool TaurBackend::remove_pkg(alpm_pkg_t *pkg, bool ownTransaction) {
   @param pkgs alpm list of alpm_pkg_t pointers to remove.
   @return success.
 */
-bool TaurBackend::remove_pkgs(alpm_list_t *pkgs) {
+bool TaurBackend::remove_pkgs(alpm_list_smart_pointer &pkgs) {
     if (!pkgs)
         return false;
 
@@ -167,7 +168,7 @@ bool TaurBackend::remove_pkgs(alpm_list_t *pkgs) {
         return false;
     }
 
-    size_t pkgs_length = alpm_list_count(pkgs);
+    size_t pkgs_length = alpm_list_count(pkgs.get());
 
     if (pkgs_length == 0) {
         log_println(LOG_ERROR, "Couldn't find any packages!");
@@ -177,8 +178,8 @@ bool TaurBackend::remove_pkgs(alpm_list_t *pkgs) {
         return this->remove_pkg((alpm_pkg_t *)(pkgs->data), false) && commitTransactionAndRelease();
     }
 
-    for (; pkgs; pkgs = pkgs->next) {
-        bool success = this->remove_pkg((alpm_pkg_t *)(pkgs->data), false);
+    for (alpm_list_t *pkgsGet = pkgs.get(); pkgsGet; pkgsGet = pkgsGet->next) {
+        bool success = this->remove_pkg((alpm_pkg_t *)(pkgsGet->data), false);
         if (!success) {
             alpm_trans_release(this->config.handle);
             return false;
@@ -378,6 +379,9 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
 
         string pkgFolder = cacheDir + '/' + onlinePkgs[i].name;
         sanitizeStr(pkgFolder);
+
+        if (!useGit)
+            std::filesystem::remove_all(pkgFolder);
 
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgFolder);
 
