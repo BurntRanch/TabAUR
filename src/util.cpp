@@ -186,7 +186,6 @@ bool is_number(const string& s, bool allowSpace) {
 }
 
 bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure) {
-    cmd.push_back(nullptr);
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
@@ -216,7 +215,6 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
             return true;
         }
         else {
-            cmd.erase(cmd.end());   // remove nullptr
             log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
@@ -227,7 +225,8 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
         
         close(pipeout[0]);
         close(pipeout[1]);
-
+        log_println(LOG_DEBUG, "reading {}", fmt::join(cmd, " "));
+        cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
 
         log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
@@ -253,7 +252,6 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
  * @return true if the command successed, else false 
  */ 
 bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
-    cmd.push_back(nullptr);
 
     int pid = fork();
 
@@ -263,7 +261,10 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
     }
 
     if (pid == 0) {
+        log_println(LOG_DEBUG, "running {}", fmt::join(cmd, " "));
+        cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
+        // execvp() returns instead of exiting when failed
         log_println(LOG_ERROR, "An error as occured: {}", strerror(errno));
         exit(-1);
     } else if (pid > 0) { // we wait for the command to finish then start executing the rest
@@ -273,7 +274,6 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
         else {
-            cmd.erase(cmd.end()-1);   // remove nullptr
             log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
@@ -301,7 +301,41 @@ bool makepkg_exec(string cmd, bool exitOnFailure) {
 
     for (auto& str : split(cmd, ' '))
         ccmd.push_back(str.c_str());
+    
+    return taur_exec(ccmd, exitOnFailure);
+}
 
+/** Convinient way to executes pacman commands with taur_exec() and keep the program running without existing
+ * Note: execPacman() in main.cpp and this are different functions
+ * @param op The pacman operation (can and must be like -Syu)
+ * @param args The packages to be installed
+ * @param exitOnFailure Whether to call exit(-1) on command failure. (Default true)
+ * @param root If pacman should be executed as root (Default true)
+ * @return true if the command successed, else false 
+ */ 
+bool pacman_exec(string op, vector<string> args, bool exitOnFailure, bool root) {
+    vector<const char *> ccmd;
+
+    if (root)
+        ccmd = {config->sudo.c_str(), "pacman", op.c_str()};
+    else
+        ccmd = {"pacman", op.c_str()};
+    
+    if (config->noconfirm)
+        ccmd.push_back("--noconfirm");
+    
+    if (config->colors)
+        ccmd.push_back("--color=auto");
+    else
+        ccmd.push_back("--color=never");
+
+    ccmd.push_back("--config"); 
+    ccmd.push_back(config->pmConfig.c_str());
+    ccmd.push_back("--");
+
+    for (auto& str : args)
+        ccmd.push_back(str.c_str());
+    
     return taur_exec(ccmd, exitOnFailure);
 }
 

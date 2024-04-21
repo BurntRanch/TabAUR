@@ -59,6 +59,7 @@ string getConfigDir();
 string getHomeCacheDir();
 string getHomeConfigDir();
 bool makepkg_exec(string cmd, bool exitOnFailure = true);
+bool pacman_exec(string op, vector<string> args, bool exitOnFailure = true, bool root = true);
 
 template <typename... Args>
 void log_println(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
@@ -128,7 +129,7 @@ T sanitize(T beg, T end) {
     return dest;
 }
 
-static inline std::vector<string> secret = {
+static inline std::vector<std::string_view> secret = {
     {"Ingredients:"},
     {R"#(
     3/4 cup milk

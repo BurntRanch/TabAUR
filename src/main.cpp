@@ -91,6 +91,7 @@ void test_colors() {
     fmt::println(fg(config->getThemeValue("green", green)), "green");
     fmt::println(fg(config->getThemeValue("cyan", cyan)), "cyan");
     fmt::println(fg(config->getThemeValue("magenta", magenta)), "magenta");
+    fmt::println(fg(config->getThemeValue("gray", gray)), "gray");
 
     fmt::println("\ndb colors:");
     fmt::println(getColorFromDBName("aur"), "(bold) aur");
@@ -102,9 +103,10 @@ void test_colors() {
     fmt::println(BOLD_TEXT(config->getThemeValue("version", green)), "\n(bold) version " VERSION);
     fmt::println(fg(config->getThemeValue("popularity", cyan)), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
     fmt::println(fg(config->getThemeValue("index", magenta)), "index [1]");
+    fmt::println(fg(config->getThemeValue("installed", gray)), "indicator [Installed]");
 
     fmt::println("\nexamples package search preview:");
-    printPkgInfo(pkg, pkg.db_name);
+    printPkgInfo(pkg, pkg.db_name, 1);
 }
 
 bool execPacman(int argc, char* argv[]) {
@@ -220,7 +222,7 @@ int installPkg(alpm_list_t *pkgNames) {
             }
 
             log_println(LOG_DEBUG, "Installing {}.", pkg.name);
-            if (!taur_exec({config->sudo.c_str(), "pacman", "-U", built_pkg.c_str()}, false)) {
+            if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
                 log_println(LOG_ERROR, "Failed to install {}.", pkg.name);
                 returnStatus = false;
                 continue;
@@ -232,19 +234,14 @@ int installPkg(alpm_list_t *pkgNames) {
 
     if (!config->aurOnly && (op.op_s_upgrade || !pacmanPkgs.empty())) {
         log_printf(LOG_DEBUG, "{} system packages!\n", (op.op_s_upgrade ? "Upgrading" : "Installing"));
-        vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
+        string op_s = "-S";
 
         if(op.op_s_sync)
-            cmd.push_back("-y");
+            op_s += "y";
         if(op.op_s_upgrade)
-            cmd.push_back("-u");
+            op_s += "u";
 
-        for (size_t i = 0; i < pacmanPkgs.size(); i++) {
-            cmd.push_back(pacmanPkgs[i].c_str());
-        }
-
-        log_println(LOG_DEBUG, "running ", fmt::join(cmd, " "));
-        taur_exec(cmd);
+        pacman_exec(op_s, pacmanPkgs, true, false);
     }
 
     if (op.op_s_upgrade) {
@@ -493,8 +490,10 @@ int main(int argc, char* argv[]) {
 
     config->init(configfile, themefile);
 
-    if (no_color != NULL && no_color[0] != '\0')
-      fmt::disable_colors = true;
+    if (no_color != NULL && no_color[0] != '\0'){
+        fmt::disable_colors = true;
+        config->colors = false;
+    }
 
 
     if(op.test_colors) {

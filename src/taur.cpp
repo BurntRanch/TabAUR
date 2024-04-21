@@ -10,12 +10,10 @@ TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string url, string out_path) {
     if (fs::exists(path(out_path) / ".git")) {
-        log_println(LOG_DEBUG, "running {} -C {} pull --rebase --autostash --ff-only", config.git, out_path);
         return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
     } else {
         if (fs::exists(path(out_path)))
                 fs::remove_all(out_path);
-        log_println(LOG_DEBUG, "running {} clone {} {}", config.git, url, out_path);
         return taur_exec({config.git.c_str(), "clone", url.c_str(), out_path.c_str()});
     }
 }
@@ -38,7 +36,6 @@ bool TaurBackend::download_tar(string url, string out_path) {
     if (isNested)
         fs::current_path(out_path.substr(0, out_path.rfind("/")));
 
-    log_println(LOG_DEBUG, "running tar -xf {}", out_path);
     return taur_exec({"tar", "-xf", out_path.c_str()});
 }
 
@@ -201,15 +198,11 @@ bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool already
     sanitizeStr(extracted_path);
     fs::current_path(extracted_path);
 
-    const char* makepkg_bin = config.makepkgBin.c_str();
-    
     if (!alreadyprepared) {
         log_println(LOG_INFO, "Verifying package sources..");
-        log_println(LOG_DEBUG, "running {} --verifysource --skippgpcheck -f -Cc", makepkg_bin);
         makepkg_exec("--verifysource --skippgpcheck -f -Cc");
 
         log_println(LOG_INFO, "Preparing for compilation..");
-        log_println(LOG_DEBUG, "running {} --nobuild --skippgpcheck -fs -C --ignorearch", makepkg_bin);
         makepkg_exec("--nobuild --skippgpcheck -fs -C --ignorearch");
     }
 
@@ -220,7 +213,6 @@ bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool already
         /*log_println(LOG_INFO, "Compiling {} in 3 seconds, you can cancel at this point if you can't compile.", pkg_name);
         sleep(3);*/
 
-        log_println(LOG_DEBUG, "running {} -f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", makepkg_bin);
         makepkg_exec("-f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", false);
     }
     else
@@ -298,7 +290,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
             }
 
             log_println(LOG_DEBUG, "Installing dependency {} of dependency {}.", subDepend.name, depend.name);
-            if (!taur_exec({config.sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
+            if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
                 log_println(LOG_ERROR, "Failed to install dependency {} of dependency {}.", subDepend.name, depend.name);
                 continue;
             }
@@ -326,7 +318,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
         }
 
         log_println(LOG_DEBUG, "Installing dependency of {} ({}).", pkg.name, depend.name);
-        if (!taur_exec({config.sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
+        if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
             log_println(LOG_ERROR, "Failed to install dependency of {} ({}).", pkg.name, depend.name);
             return false;
         }
@@ -398,9 +390,7 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
         if (hasEnding(pkgs[pkgIndex].name, "-git")) {
             alrprepared = true;
             fs::current_path(pkgFolder);
-            log_println(LOG_DEBUG, "running {} --verifysource -fA", config.makepkgBin);
             makepkg_exec("--verifysource -fA");
-            log_println(LOG_DEBUG, "running {} --nobuild -dfA", config.makepkgBin);
             makepkg_exec("--nobuild -dfA");
         }
 
@@ -452,16 +442,10 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
 
     // remove the last ' ' so we can pass it to pacman
     pkgs_to_install.erase(pkgs_to_install.end()-1);
-    vector<string> _pkgs = split(pkgs_to_install, ' ');
-    cmd = {config.sudo.c_str(), "pacman", "-U", "--config", config.pmConfig.c_str()};
-    if (config.noconfirm)
-        cmd.push_back("--noconfirm");
-    cmd.push_back("--");
-    for(auto& str : _pkgs)
-        cmd.push_back(str.data());
-
-    log_println(LOG_DEBUG, "{}", fmt::join(cmd, " "));
-    taur_exec(cmd);
+    if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
+        log_println(LOG_ERROR, "Failed to install/upgrade packages");
+        return false;
+    }
 
     log_println(LOG_INFO, "Upgraded {}/{} packages.", updatedPkgs, attemptedDownloads);
 
