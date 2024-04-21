@@ -241,7 +241,7 @@ int installPkg(alpm_list_t *pkgNames) {
         if(op.op_s_upgrade)
             op_s += "u";
 
-        pacman_exec(op_s, pacmanPkgs, true, false);
+        pacman_exec(op_s, pacmanPkgs);
     }
 
     if (op.op_s_upgrade) {
