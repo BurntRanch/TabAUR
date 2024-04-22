@@ -3,10 +3,7 @@
 #include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
-#include <alpm.h>
-#include <alpm_list.h>
-#include <cstddef>
-#include <fmt/ranges.h>
+#include <filesystem>
 
 namespace fs = std::filesystem;
 
@@ -14,12 +11,10 @@ TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string url, string out_path) {
     if (fs::exists(path(out_path) / ".git")) {
-        log_printf(LOG_DEBUG, "running {} -C {} pull --rebase --autostash --ff-only\n", config.git, out_path);
         return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
     } else {
         if (fs::exists(path(out_path)))
                 fs::remove_all(out_path);
-        log_printf(LOG_DEBUG, "running {} clone {} {}\n", config.git, url, out_path);
         return taur_exec({config.git.c_str(), "clone", url.c_str(), out_path.c_str()});
     }
 }
@@ -42,7 +37,6 @@ bool TaurBackend::download_tar(string url, string out_path) {
     if (isNested)
         fs::current_path(out_path.substr(0, out_path.rfind("/")));
 
-    log_printf(LOG_DEBUG, "running tar -xf {}\n", out_path);
     return taur_exec({"tar", "-xf", out_path.c_str()});
 }
 
@@ -81,7 +75,9 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                        getUrl(pkgJson, returnGit),  // url
                        pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "", // description
                        pkgJson["Popularity"].GetFloat(),    // popularity
-                       depends};    // depends
+                       depends,    // depends
+                       alpm_db_get_pkg(alpm_get_localdb(config->handle), pkgJson["Name"].GetString()) != nullptr,
+                       };
 
     return out;
 }
@@ -130,164 +126,105 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     return out;
 }
 
-bool TaurBackend::remove_pkg(string pkgName, bool aurOnly) {
-    alpm_list_smart_pointer list(alpm_list_add(nullptr, (void *)((".*" + pkgName + ".*").c_str())), alpm_list_free);
-    alpm_list_t *temp_ret = nullptr;
-
-    alpm_pkg_t *potential_pkg = alpm_db_get_pkg(alpm_get_localdb(config.handle), pkgName.c_str());
-
-    if (potential_pkg)
-        temp_ret = alpm_list_add(temp_ret, potential_pkg);
-    else if (alpm_db_search(alpm_get_localdb(config.handle), list.get(), &temp_ret) != 0)
+/** Removes a single packages using libalpm.
+  @param pkgs an alpm package to remove.
+  @param ownTransaction a bool that dictates whether this function owns the transaction, this is used for remove_pkgs, if not, it will not initialize it and not release it.
+  @return success.
+*/
+bool TaurBackend::remove_pkg(alpm_pkg_t *pkg, bool ownTransaction) {
+    if (!pkg)
         return false;
 
-    alpm_list_smart_pointer ret(temp_ret, alpm_list_free);
+    if (ownTransaction && alpm_trans_init(this->config.handle, 0)) {
+        log_println(LOG_ERROR, "Failed to initialize transaction ({})", alpm_strerror(alpm_errno(this->config.handle)));
+        return false;
+    }
 
-    size_t ret_length = alpm_list_count(ret.get());
+    log_println(LOG_INFO, "Removing package {}.", string(alpm_pkg_get_name(pkg)));
+
+    if (alpm_remove_pkg(this->config.handle, pkg) != 0) {
+        log_println(LOG_ERROR, "Failed to remove package ({})", alpm_strerror(alpm_errno(this->config.handle)));
+        if (ownTransaction) alpm_trans_release(this->config.handle);
+        return false;
+    }
+
+    if (ownTransaction)
+        return commitTransactionAndRelease();
+
+    return true;
+}
+
+/** Removes a list of packages using libalpm.
+  * Will automatically call remove_pkg instead, if the size of pkgs is equal to 1.
+  @param pkgs alpm list of alpm_pkg_t pointers to remove.
+  @return success.
+*/
+bool TaurBackend::remove_pkgs(alpm_list_smart_pointer &pkgs) {
+    if (!pkgs)
+        return false;
 
     if (alpm_trans_init(this->config.handle, 0)) {
-        log_printf(LOG_ERROR, "Failed to initialize transaction ({})\n", alpm_strerror(alpm_errno(this->config.handle)));
+        log_println(LOG_ERROR, "Failed to initialize transaction ({})", alpm_strerror(alpm_errno(this->config.handle)));
         return false;
     }
 
-    if (ret_length == 0) {
-        log_printf(LOG_ERROR, "Couldn't find any packages!\n");
+    size_t pkgs_length = alpm_list_count(pkgs.get());
+
+    if (pkgs_length == 0) {
+        log_println(LOG_ERROR, "Couldn't find any packages!");
+        alpm_trans_release(this->config.handle);
         return false;
-    } else if (ret_length == 1) {
-        log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(ret->data)));
-        if (alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(ret->data))) {
-            log_printf(LOG_ERROR, "Failed to remove package ({})\n", alpm_strerror(alpm_errno(this->config.handle)));
+    } else if (pkgs_length == 1) {
+        return this->remove_pkg((alpm_pkg_t *)(pkgs->data), false) && commitTransactionAndRelease();
+    }
+
+    for (alpm_list_t *pkgsGet = pkgs.get(); pkgsGet; pkgsGet = pkgsGet->next) {
+        bool success = this->remove_pkg((alpm_pkg_t *)(pkgsGet->data), false);
+        if (!success) {
             alpm_trans_release(this->config.handle);
             return false;
-        }
-
-        return commitTransactionAndRelease();
-    }
-
-    fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
-    for (size_t i = 0; i < ret_length; i++) {
-        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
-    }
-
-    string included;
-    std::getline(std::cin, included);
-
-    if (included == "*") {
-        for (size_t i = 0; i < ret_length; i++) {
-            log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
-            int code = alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data));
-            if (code != 0) {
-                log_printf(LOG_ERROR, "Failed to remove package, Exiting!\n");
-                alpm_trans_release(this->config.handle);
-                return false;
-            }
-        }
-
-        if (!commitTransactionAndRelease()) {
-            log_printf(LOG_ERROR, "Failed to prepare, commit, or release alpm transaction.\n");
-            return false;
-        }
-
-        return true;
-    }
-
-    vector<string> includedIndexes  = split(included, ' ');
-    string         finalPackageList = "";
-
-    for (size_t i = 0; i < includedIndexes.size(); i++) {
-        try {
-            size_t includedIndex = (size_t)stoi(includedIndexes[i]);
-
-            if (includedIndex >= ret_length)
-                continue;
-
-            log_printf(LOG_INFO, "Removing package {}.\n", alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), includedIndex)->data)));
-            int code = alpm_remove_pkg(this->config.handle, (alpm_pkg_t *)(alpm_list_nth(ret.get(), includedIndex)->data));
-            if (code != 0) {
-                log_printf(LOG_ERROR, "Failed to remove package, Exiting!\n");
-                alpm_trans_release(this->config.handle);
-                return false;
-            }
-        } catch (std::invalid_argument const&) {
-            log_printf(LOG_WARN, "Invalid argument! Assuming all.\n");
         }
     }
 
     if (!commitTransactionAndRelease()) {
-        log_printf(LOG_ERROR, "Failed to prepare, commit, or release alpm transaction.\n");
+        log_println(LOG_ERROR, "Failed to prepare, commit, or release alpm transaction.");
         return false;
     }
 
     return true;
 }
 
-// faster than makepkg --packagelist
-string makepkg_list(string pkg_name, string path) {
-    string ret;
-
-    string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
-    string pkgrel = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
-    string epoch = shell_exec("grep 'epoch=' " + path + "/PKGBUILD | cut -d= -f2");
-    
-    if (!pkgrel.empty() && pkgrel[0] != '\0')
-        versionInfo += '-' + pkgrel;
-
-    if (!epoch.empty() && epoch[0] != '\0')
-        versionInfo = epoch + ':' + versionInfo;
-    
-    string arch = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
-    string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
-    
-    if (arch_field == "any")
-        arch = "any";
-    
-    string pkgext = shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
-    
-    ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
-    return ret;
-}
-
-bool TaurBackend::install_pkg(string pkg_name, string extracted_path, bool onlydownload) {
+bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool alreadyprepared) {
     // never forget to sanitize
     sanitizeStr(extracted_path);
     fs::current_path(extracted_path);
 
-    const char* makepkg_bin = config.makepkgBin.c_str();
-    
-    if (onlydownload) {
-        log_printf(LOG_DEBUG, "running {} --verifysource -fA\n", makepkg_bin);
-        taur_exec({makepkg_bin, "--verifysource", "-fA"});
-        log_printf(LOG_DEBUG, "running {} --nobuild -fA\n", makepkg_bin);
-        return taur_exec({makepkg_bin, "--nobuild", "-fA"});
+    if (!alreadyprepared) {
+        log_println(LOG_INFO, "Verifying package sources..");
+        makepkg_exec("--verifysource --skippgpcheck -f -Cc");
+
+        log_println(LOG_INFO, "Preparing for compilation..");
+        makepkg_exec("--nobuild --skippgpcheck -fs -C --ignorearch");
     }
-
-    log_printf(LOG_DEBUG, "running {} --verifysource --skippgpcheck -f -Cc\n", makepkg_bin);
-    log_printf(LOG_INFO, "Verifying package sources..\n");
-    taur_exec({makepkg_bin, "--verifysource", "--skippgpcheck", "-f", "-Cc"});
-
-    log_printf(LOG_DEBUG, "running {} --nobuild --skippgpcheck -fd -C --ignorearch\n", makepkg_bin);
-    log_printf(LOG_INFO, "Preparing for compilation..\n");
-    taur_exec({makepkg_bin, "--nobuild", "--skippgpcheck", "-fd", "-C", "--ignorearch"});
 
     built_pkg = makepkg_list(pkg_name, extracted_path);
-    log_printf(LOG_DEBUG, "built_pkg = {}\n", built_pkg);
+    log_println(LOG_DEBUG, "built_pkg = {}", built_pkg);
     
     if (!fs::exists(built_pkg)) {
-        /*log_printf(LOG_INFO, "Compiling {} in 3 seconds, you can cancel at this point if you can't compile.\n", pkg_name);
+        /*log_println(LOG_INFO, "Compiling {} in 3 seconds, you can cancel at this point if you can't compile.", pkg_name);
         sleep(3);*/
 
-        log_printf(LOG_DEBUG, "running {} -f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c\n", makepkg_bin);
-        taur_exec({makepkg_bin, "-f", "--noconfirm", "--noextract", "--noprepare", "--nocheck", "--holdver", "--ignorearch", "-c", "-s"});
+        makepkg_exec("-f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", false);
     }
     else
-        log_printf(LOG_INFO, "{} exists already, no need to build\n", built_pkg);
+        log_println(LOG_INFO, "{} exists already, no need to build", built_pkg);
     
     return true;
 }
 
 bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit){
-    log_printf(LOG_DEBUG, "pkg.name = {}\n", pkg.name);
-    log_printf(LOG_DEBUG, "pkg.depends = {}\n", pkg.depends);
+    log_println(LOG_DEBUG, "pkg.name = {}", pkg.name);
+    log_println(LOG_DEBUG, "pkg.depends = {}", pkg.depends);
     
     for (size_t i = 0; i < pkg.depends.size(); i++) {
         
@@ -298,7 +235,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
 
         TaurPkg_t depend = oDepend.value();
 
-        log_printf(LOG_DEBUG, "depend = {} -- depend.depends = {}\n", depend.name, depend.depends);
+        log_println(LOG_DEBUG, "depend = {} -- depend.depends = {}", depend.name, depend.depends);
             
         bool alreadyExists = false;
         for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
@@ -306,7 +243,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
                 alreadyExists = true;
 
         if (alreadyExists) {
-            log_printf(LOG_DEBUG, "dependency {} already exists, skipping!\n", depend.name);
+            log_println(LOG_DEBUG, "dependency {} already exists, skipping!", depend.name);
             continue;
         }
 
@@ -323,7 +260,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
                     alreadyExists = true;
             
             if (alreadyExists) {
-                log_printf(LOG_DEBUG, "dependency of {} ({}) already exists, skipping!\n", depend.name, subDepend.name);
+                log_println(LOG_DEBUG, "dependency of {} ({}) already exists, skipping!", depend.name, subDepend.name);
                 continue;
             }
 
@@ -332,35 +269,35 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
             if (useGit)
                 filename = filename.substr(0, filename.rfind(".git"));
 
-            log_printf(LOG_DEBUG, "Downloading dependency {} of dependency {}.\n", subDepend.name, depend.name);
+            log_println(LOG_DEBUG, "Downloading dependency {} of dependency {}.", subDepend.name, depend.name);
             if (!this->download_pkg(subDepend.url, filename)) {
-                log_printf(LOG_ERROR, "Failed to download dependency {} of dependency {}.\n", subDepend.name, depend.name);
+                log_println(LOG_ERROR, "Failed to download dependency {} of dependency {}.", subDepend.name, depend.name);
                 continue;
             }
 
-            log_printf(LOG_DEBUG, "Handling dependencies for dependency {} of dependency {}.\n", subDepend.name, depend.name);
+            log_println(LOG_DEBUG, "Handling dependencies for dependency {} of dependency {}.", subDepend.name, depend.name);
             if (!depend.depends.empty() && !handle_aur_depends(subDepend, out_path, localPkgs, useGit)) {
-                log_printf(LOG_ERROR, "Failed to handle dependencies for dependency {} of dependency {}.\n", subDepend.name, depend.name);
+                log_println(LOG_ERROR, "Failed to handle dependencies for dependency {} of dependency {}.", subDepend.name, depend.name);
                 continue;
             }
 
             if (!useGit)
                 filename = filename.substr(0, filename.rfind(".tar.gz"));
 
-            log_printf(LOG_DEBUG, "Installing dependency {} of dependency {}.\n", subDepend.name, depend.name);
-            if (!this->install_pkg(subDepend.name, filename, false)) {
-                log_printf(LOG_ERROR, "Failed to compile dependency {} of dependency {}.\n", subDepend.name, depend.name);
+            log_println(LOG_DEBUG, "Installing dependency {} of dependency {}.", subDepend.name, depend.name);
+            if (!this->build_pkg(subDepend.name, filename, false)) {
+                log_println(LOG_ERROR, "Failed to compile dependency {} of dependency {}.", subDepend.name, depend.name);
                 continue;
             }
 
-            log_printf(LOG_DEBUG, "Installing dependency {} of dependency {}.\n", subDepend.name, depend.name);
-            if (!taur_exec({config.sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
-                log_printf(LOG_ERROR, "Failed to install dependency {} of dependency {}.", subDepend.name, depend.name);
+            log_println(LOG_DEBUG, "Installing dependency {} of dependency {}.", subDepend.name, depend.name);
+            if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
+                log_println(LOG_ERROR, "Failed to install dependency {} of dependency {}.", subDepend.name, depend.name);
                 continue;
             }
         }
 
-        log_printf(LOG_INFO, "Downloading dependency {}\n", depend.name);
+        log_println(LOG_INFO, "Downloading dependency {}", depend.name);
 
         string filename = out_path / depend.url.substr(depend.url.rfind("/") + 1);
 
@@ -370,20 +307,20 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
         bool downloadStatus = this->download_pkg(depend.url, filename);
 
         if (!downloadStatus) {
-            log_printf(LOG_ERROR, "Failed to download dependency of {} (Source: {})\n", pkg.name, depend.url);
+            log_println(LOG_ERROR, "Failed to download dependency of {} (Source: {})", pkg.name, depend.url);
             return false;
         }
 
-        bool   installStatus = this->install_pkg(depend.name, out_path / depend.name, false);
+        bool   installStatus = this->build_pkg(depend.name, out_path / depend.name, false);
 
         if (!installStatus) {
-            log_printf(LOG_ERROR, "Failed to install dependency of {} ({})\n", pkg.name, depend.name);
+            log_println(LOG_ERROR, "Failed to install dependency of {} ({})", pkg.name, depend.name);
             return false;
         }
 
-        log_printf(LOG_DEBUG, "Installing dependency of {} ({}).\n", pkg.name, depend.name);
-        if (!taur_exec({config.sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
-            log_printf(LOG_ERROR, "Failed to install dependency of {} ({}).\n", pkg.name, depend.name);
+        log_println(LOG_DEBUG, "Installing dependency of {} ({}).", pkg.name, depend.name);
+        if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
+            log_println(LOG_ERROR, "Failed to install dependency of {} ({}).", pkg.name, depend.name);
             return false;
         }
     }
@@ -391,11 +328,11 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
     return true;
 }
 
-bool TaurBackend::update_all_pkgs(string cacheDir, bool useGit) {
+bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
     vector<TaurPkg_t> pkgs = this->get_all_local_pkgs(true);
 
     if (pkgs.empty()) {
-        log_printf(LOG_INFO, "No AUR packages found in your system.\n");
+        log_println(LOG_INFO, "No AUR packages found in your system.");
         return true;
     }
 
@@ -409,9 +346,10 @@ bool TaurBackend::update_all_pkgs(string cacheDir, bool useGit) {
 
     int updatedPkgs = 0;
     int attemptedDownloads = 0;
+    bool alrprepared = false;
 
     if (onlinePkgs.size() != pkgs.size())
-        log_printf(LOG_WARN, "Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others.\n", pkgs.size(), onlinePkgs.size());
+        log_println(LOG_WARN, "Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others.", pkgs.size(), onlinePkgs.size());
 
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
         size_t pkgIndex;
@@ -424,88 +362,106 @@ bool TaurBackend::update_all_pkgs(string cacheDir, bool useGit) {
             }
         }
 
-        log_printf(LOG_DEBUG, "onlinePkgs.name = {}\n", onlinePkgs[i].name);
-        log_printf(LOG_DEBUG, "onlinePkgs.depends = {}\n", onlinePkgs[i].depends);
+        log_println(LOG_DEBUG, "onlinePkgs.name = {}", onlinePkgs[i].name);
+        log_println(LOG_DEBUG, "onlinePkgs.depends = {}", onlinePkgs[i].depends);
 
         if (!found) {
-            log_printf(LOG_WARN, "We couldn't find {} in the local pkg database, This shouldn't happen.\n", onlinePkgs[i].name);
+            log_println(LOG_WARN, "We couldn't find {} in the local pkg database, This shouldn't happen.", onlinePkgs[i].name);
             continue;
         }
 
         if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
-            log_printf(LOG_DEBUG, "pkg {} has no update, local: {}, online: {}, skipping!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);
+            log_println(LOG_DEBUG, "pkg {} has no update, local: {}, online: {}, skipping!", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);
             continue;
         }
 
-        log_printf(LOG_INFO, "Downloading {}.\n", pkgs[pkgIndex].name);
+        log_println(LOG_INFO, "Downloading {}.", pkgs[pkgIndex].name);
 
         string pkgFolder = cacheDir + '/' + onlinePkgs[i].name;
         sanitizeStr(pkgFolder);
 
+        if (!useGit)
+            std::filesystem::remove_all(pkgFolder);
+
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgFolder);
 
         if (!downloadSuccess) {
-            log_printf(LOG_WARN, "Failed to download package {}!\n", onlinePkgs[i].name);
+            log_println(LOG_WARN, "Failed to download package {}!", onlinePkgs[i].name);
             continue;
         }
 
-        this->install_pkg(pkgs[pkgIndex].name, pkgFolder, true);
+        // workaround for -git package because they are "special"  
+        if (hasEnding(pkgs[pkgIndex].name, "-git")) {
+            alrprepared = true;
+            fs::current_path(pkgFolder);
+            makepkg_exec("--verifysource -fA");
+            makepkg_exec("--nobuild -dfA");
+        }
 
         string versionInfo = shell_exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
         
         if (versionInfo.empty()) {
-            log_printf(LOG_WARN, "Failed to parse version information from {}'s PKGBUILD, You might be able to ignore this safely.\n", pkgs[pkgIndex].name);
+            log_println(LOG_WARN, "Failed to parse version information from {}'s PKGBUILD, You might be able to ignore this safely.", pkgs[pkgIndex].name);
             continue;
         }
         
         string pkgrel = shell_exec("grep 'pkgrel=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
-        
+        string epoch = shell_exec("grep 'epoch=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+    
         if (!pkgrel.empty() && pkgrel[0] != '\0')
-            versionInfo += "-" + pkgrel;
+            versionInfo += '-' + pkgrel;
 
-        log_printf(LOG_DEBUG, "pkg {} versions: local {} vs online {}\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
+        if (!epoch.empty() && epoch[0] != '\0')
+            versionInfo = epoch + ':' + versionInfo;
+
+        log_println(LOG_DEBUG, "pkg {} versions: local {} vs online {}", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
                    onlinePkgs[i].version);
 
         if ((alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str())) == 0) {
-            log_printf(LOG_DEBUG, "pkg {} has a the same version on the AUR than in its PKGBUILD, local: {}, online: {}, PKGBUILD: {}, skipping!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version, versionInfo);
+            log_println(LOG_DEBUG, "pkg {} has a the same version on the AUR than in its PKGBUILD, local: {}, online: {}, PKGBUILD: {}, skipping!", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version, versionInfo);
             continue;
         }
 
-        log_printf(LOG_INFO, "Upgrading package {} from version {} to version {}!\n", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
+        log_println(LOG_INFO, "Upgrading package {} from version {} to version {}!", pkgs[pkgIndex].name, pkgs[pkgIndex].version,
                    onlinePkgs[i].version);
         attemptedDownloads++;
         
         this->handle_aur_depends(onlinePkgs[i], pkgFolder, this->get_all_local_pkgs(true), useGit);
-        bool installSuccess = this->install_pkg(pkgs[pkgIndex].name, pkgFolder, false);
+        bool installSuccess = this->build_pkg(pkgs[pkgIndex].name, pkgFolder, alrprepared);
 
         pkgs_to_install += built_pkg + ' ';
-        log_printf(LOG_WARN, "pkgs_to_install = {}\n", pkgs_to_install);
+        log_println(LOG_DEBUG, "pkgs_to_install = {}", pkgs_to_install);
 
         if (!installSuccess)
             continue;
 
         updatedPkgs++;
+        alrprepared = false;
     }
     
-    // remove the last ' ' so we can pass it to pacman
-    pkgs_to_install.erase(pkgs_to_install.end()-1, pkgs_to_install.end());
-    vector<string> _pkgs = split(pkgs_to_install, ' ');
-    log_printf(LOG_DEBUG, "running {} pacman -U --needed -- {}\n", config.sudo, pkgs_to_install);
-    cmd = {config.sudo.c_str(), "pacman", "-U", "--needed", "--"};
-    for(auto& str : _pkgs)
-        cmd.push_back(str.data());
-    taur_exec(cmd);
+    if (pkgs_to_install.size() <= 0) {
+        log_println(LOG_ERROR, "No packages to be upgraded.");
+        return true;
+    }
 
-    log_printf(LOG_INFO, "Upgraded {}/{} packages.\n", updatedPkgs, attemptedDownloads);
+    // remove the last ' ' so we can pass it to pacman
+    pkgs_to_install.erase(pkgs_to_install.end()-1);
+    if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
+        log_println(LOG_ERROR, "Failed to install/upgrade packages");
+        return false;
+    }
+
+    log_println(LOG_INFO, "Upgraded {}/{} packages.", updatedPkgs, attemptedDownloads);
 
     if (attemptedDownloads > updatedPkgs)
-        log_printf(LOG_WARN,
-                   "Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.\n");
+        log_println(LOG_WARN,
+                   "Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.");
 
     return true;
 }
 
 // all AUR local packages
+// returns a barebones TaurPkg_t structure, with no description/depends list
 vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     vector<alpm_pkg_t *> pkgs;
 
@@ -522,7 +478,14 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     vector<TaurPkg_t> out;
     for (size_t i = 0; i < pkgs.size(); i++) {
         alpm_pkg_t *pkg = pkgs[i];
-        out.push_back({alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg), "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git"});
+        out.push_back({
+                    alpm_pkg_get_name(pkg), 
+                    alpm_pkg_get_version(pkg), 
+                    "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git", 
+                    "", 
+                    1, 
+                    {}, 
+                    true});
     }
 
     return out;
@@ -573,6 +536,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
                                 string(alpm_pkg_get_desc(pkg)), // desc
                                 100,  // system packages are very trustable
                                 vector<string>(),   // depends
+                                alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
                                 string(alpm_db_get_name(alpm_pkg_get_db(pkg))), // db_name
                              };
 

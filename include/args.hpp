@@ -28,6 +28,7 @@ enum {
     OP_CONFIG,
     OP_THEME,
     OP_SEARCH,
+    OP_NOCONFIRM,
     OP_QUIET,
     OP_TEST_COLORS,
 };

@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     tags: "*"
+    paths:
+      # trigger release workflow only if this file changed
+      - .github/workflows/release.yml
 
 jobs:
   get-version:
@@ -51,26 +54,28 @@ jobs:
     name: Create GitHub Release
     needs: [build, get-version]
     runs-on: ubuntu-latest
-    permissions: write-all
+    permissions: 
+      contents: write
     outputs:
       release-url: ${{ steps.create-release.outputs.upload_url }}
     steps:
     - name: Create Release
       id: create-release
-      uses: actions/create-release@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: ncipollo/release-action@v1.14.0
       with:
-        tag_name: ${{ needs.get-version.outputs.version }}
-        release_name: TabAUR v${{ needs.get-version.outputs.version }}
+        tag: ${{ needs.get-version.outputs.version }}
+        name: TabAUR ${{ needs.get-version.outputs.version }}
         draft: false
+        allowUpdates: true
         prerelease: false
+        token: ${{ secrets.GITHUB_TOKEN }}
 
   upload-binaries:
     name: Upload binaries to Githib relase
     runs-on: ubuntu-latest
     needs: [release, get-version]
-    permissions: write-all
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v3
         with:

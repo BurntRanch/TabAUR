@@ -30,6 +30,7 @@ public:
     alpm_list_t *repos = nullptr;
     string makepkgBin;
     string cacheDir;
+    string pmConfig;
     string sudo;
     string git;
     string makepkgConf;
@@ -39,6 +40,7 @@ public:
     bool secretRecipe;
     bool debug;
     bool quiet;
+    bool noconfirm;
 
     std::map<string, strOrBool> overrides;
 
@@ -131,6 +133,21 @@ blue = "#00aaff"
 cyan = "#00ffff"
 yellow = "#ffff00"
 magenta = "#ff11cc"
+gray = "#5a5a5a"
+
+# custom DB colors such as extra, aur, etc.
+# If you would like to let TabAUR use one of the colors above instead, you can just leave it empty.
+#aur = "#00aaff"
+#extra = "#00ff00"
+#core = "#ffff00"
+#multilib = "#00ffff"
+# Other DBs such as extra-testing, core-testing, custom ones in custom repos, etc.
+#others = "#ff11cc"
+
+#version = "#00ff00"
+#popularity = "#00ffff"
+#installed = "#5a5a5a"
+#index = "#ff11cc"
 )#";
 
 inline string red = "#ff2000";
@@ -139,6 +156,7 @@ inline string blue = "#00aaff";
 inline string cyan = "#00ffff";
 inline string yellow = "#ffff00";
 inline string magenta = "#ff11cc";
+inline string gray = "#5a5a5a";
 
 inline string configfile;
 inline string themefile;

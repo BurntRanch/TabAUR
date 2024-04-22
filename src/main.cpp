@@ -1,4 +1,5 @@
-#include <memory>
+#include <alpm_list.h>
+#include <iostream>
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include "util.hpp"
@@ -6,7 +7,7 @@
 #include "taur.hpp"
 
 #define BRANCH "libalpm-test"
-#define VERSION "0.6.0"
+#define VERSION "0.6.2"
 
 std::unique_ptr<Config> config;
 std::unique_ptr<TaurBackend> backend;
@@ -58,7 +59,7 @@ void usage(int op) {
     fmt::println("TabAUR will assume -Syu if you pass no arguments to it.");
 
     if (config->secretRecipe) {
-        log_printf(LOG_INFO, "Loading secret recipe...\n");
+        log_println(LOG_INFO, "Loading secret recipe...");
         for (auto const& i : secret) {
             fmt::println("{}", i);
             usleep(650000); // 0.65 seconds
@@ -67,22 +68,49 @@ void usage(int op) {
 }
 
 void test_colors() {
+    TaurPkg_t pkg = { 
+                        "TabAUR", // name
+                        VERSION,  // version
+                        "https://github.com/BurntRanch/TabAUR", // url
+                        "A customizable and lightweight AUR helper, designed to be simple but powerful.", // desc
+                        10,  // Popularity
+                        vector<string>(),   // depends
+                        true,
+                        "aur", // db_name
+                    };
+
     if(fmt::disable_colors)
         fmt::println("Colors are disabled");
-    log_printf(LOG_DEBUG, "Debug color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
-    log_printf(LOG_INFO, "Info color: {}\n",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
-    log_printf(LOG_WARN, "Warning color: {}\n", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
-    log_printf(LOG_ERROR, "Error color: {}\n",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
-    fmt::println("red: {}",    fmt::format(fg(config->getThemeValue("red", red)), config->getThemeHexValue("red", red)));
-    fmt::println("blue: {}",   fmt::format(fg(config->getThemeValue("blue", blue)), config->getThemeHexValue("blue", blue)));
-    fmt::println("yellow: {}", fmt::format(fg(config->getThemeValue("yellow", yellow)), config->getThemeHexValue("yellow", yellow)));
-    fmt::println("green: {}",  fmt::format(fg(config->getThemeValue("green", green)), config->getThemeHexValue("green", green)));
-    fmt::println("cyan: {}",   fmt::format(fg(config->getThemeValue("cyan", cyan)), config->getThemeHexValue("cyan", cyan)));
-    fmt::println("magenta: {}",fmt::format(fg(config->getThemeValue("magenta", magenta)), config->getThemeHexValue("magenta", magenta)));
+    log_println(LOG_DEBUG, "Debug color: {}",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
+    log_println(LOG_INFO, "Info color: {}",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
+    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
+    log_println(LOG_ERROR, "Error color: {}",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
+    fmt::println(fg(config->getThemeValue("red", red)), "red");
+    fmt::println(fg(config->getThemeValue("blue", blue)), "blue");
+    fmt::println(fg(config->getThemeValue("yellow", yellow)), "yellow");
+    fmt::println(fg(config->getThemeValue("green", green)), "green");
+    fmt::println(fg(config->getThemeValue("cyan", cyan)), "cyan");
+    fmt::println(fg(config->getThemeValue("magenta", magenta)), "magenta");
+    fmt::println(fg(config->getThemeValue("gray", gray)), "gray");
+
+    fmt::println("\ndb colors:");
+    fmt::println(getColorFromDBName("aur"), "(bold) aur");
+    fmt::println(getColorFromDBName("extra"), "(bold) extra");
+    fmt::println(getColorFromDBName("core"), "(bold) core");
+    fmt::println(getColorFromDBName("multilib"), "(bold) multilib");
+    fmt::println(getColorFromDBName("others"), "(bold) others");
+
+    fmt::println(BOLD_TEXT(config->getThemeValue("version", config->getThemeHexValue("green", green))), "\n(bold) version " VERSION);
+    fmt::println(fg(config->getThemeValue("popularity", config->getThemeHexValue("cyan", cyan))), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::println(fg(config->getThemeValue("index", config->getThemeHexValue("magenta", magenta))), "index [1]");
+    fmt::println(fg(config->getThemeValue("installed", config->getThemeHexValue("gray", gray))), "indicator [Installed]");
+
+    fmt::println("\nexamples package search preview:");
+    printPkgInfo(pkg, pkg.db_name, 1);
 }
 
 bool execPacman(int argc, char* argv[]) {
-    log_printf(LOG_DEBUG, "Passing command to pacman! (argc: {:d})\n", argc);
+    log_println(LOG_DEBUG, "Passing command to pacman! (argc: {:d})", argc);
     
     if (0 > argc || argc > 512)
         throw std::invalid_argument("argc is invalid! (512 > argc > 0)");
@@ -92,7 +120,7 @@ bool execPacman(int argc, char* argv[]) {
     args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
     for (int i = 0; i < argc; ++i) {
-        log_printf(LOG_DEBUG, "args[{}] = argv[{}] ({})\n", i + 2, i, argv[i]);
+        log_println(LOG_DEBUG, "args[{}] = argv[{}] ({})", i + 2, i, argv[i]);
         args[i+2] = argv[i];
     }
 
@@ -105,117 +133,206 @@ bool execPacman(int argc, char* argv[]) {
     return false;
 }
 
-int installPkg(string pkgName) { 
+int installPkg(alpm_list_t *pkgNames) {
     bool            useGit   = config->useGit;
     string          cacheDir = config->cacheDir;
 
-    vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
+    bool returnStatus = true;
 
-    if (pkgs.empty() && !op.op_s_upgrade) {
-        log_printf(LOG_WARN, "No results found, Exiting!\n");
-        return false;
-    } else if (pkgs.empty()) {
-        if (!config->aurOnly) {
-            vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
-            if(op.op_s_sync)
-                cmd.push_back("-y");
-            if(op.op_s_upgrade)
-                cmd.push_back("-u");
-            
-            if (!taur_exec(cmd))
-                return false;
+    vector<string> pacmanPkgs;  // list of pacman packages to install, to avoid spamming pacman.
+
+    for (; pkgNames; pkgNames = pkgNames->next) {
+        string pkgName = string((char *)(pkgNames->data));
+        vector<TaurPkg_t>  pkgs = backend->search(pkgName, useGit);
+
+        if (pkgs.empty()) {
+            log_println(LOG_WARN, "No results found!");
+            returnStatus = false;
+            continue;
         }
-        return backend->update_all_pkgs(cacheDir, useGit);
-    }
 
-    // ./taur -Ss -- list only, don't install.
-    if (op.op_s_search) {
-        for (size_t i = 0; i < pkgs.size(); i++)
-            printPkgInfo(pkgs[i]);
-        return true;
-    }
+        // ./taur -Ss -- list only, don't install.
+        if (op.op_s_search) {
+            for (size_t i = 0; i < pkgs.size(); i++)
+                printPkgInfo(pkgs[i], pkgs[i].db_name);
+            returnStatus = false;
+            continue;
+        }
 
-    optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
+        optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
-    if (!oSelectedPkgs)
-        return false;
+        if (!oSelectedPkgs) {
+            returnStatus = false;
+            continue;
+        }
 
-    vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
+        vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
 
-    for (size_t i = 0; i < selectedPkgs.size(); i++) {
-        TaurPkg_t pkg = selectedPkgs[i];
+        for (size_t i = 0; i < selectedPkgs.size(); i++) {
+            TaurPkg_t pkg = selectedPkgs[i];
 
-        string url = pkg.url;
+            string url = pkg.url;
 
-        if (url == "") {
-            vector<const char *> cmd = {"sudo", "pacman", "-S"};
-            if(op.op_s_sync)
-                cmd.push_back("-y");
-            if(op.op_s_upgrade)
-                cmd.push_back("-u");
-
-            cmd.push_back(pkg.name.c_str());
-
-            cmd.push_back(NULL);
-
-            if (taur_exec(cmd))
+            if (url == "") {
+                log_printf(LOG_DEBUG, "Scheduled system package {} for installation!\n", pkg.name);
+                pacmanPkgs.push_back(pkg.name);
                 continue;
-            else
-                return false;
+                // vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
+                // if(op.op_s_sync)
+                //     cmd.push_back("-y");
+                // if(op.op_s_upgrade)
+                //     cmd.push_back("-u");
+
+                // cmd.push_back(pkg.name.c_str());
+
+                // if (taur_exec(cmd, false))
+                //     continue;
+                // else {
+                //     returnStatus = false;
+                //     continue;
+                // }
+            }
+
+            string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
+
+            if (useGit)
+                filename = filename.substr(0, filename.rfind(".git"));
+
+            bool stat = backend->download_pkg(url, filename);
+
+            if (!stat) {
+                log_println(LOG_ERROR, "An error has occurred and we could not download your package.");
+                returnStatus = false;
+                continue;
+            }
+
+            if (!useGit){
+                stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+                stat = backend->build_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
+            }
+            else {
+                stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+                stat = backend->build_pkg(pkg.name, filename, false);
+            }
+
+            if (!stat) {
+                log_println(LOG_ERROR, "Building your package has failed.");
+                returnStatus = false;
+                continue;
+            }
+
+            log_println(LOG_DEBUG, "Installing {}.", pkg.name);
+            if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
+                log_println(LOG_ERROR, "Failed to install {}.", pkg.name);
+                returnStatus = false;
+                continue;
+            }
+
         }
 
-        string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
+    }
 
-        if (useGit)
-            filename = filename.substr(0, filename.rfind(".git"));
+    if (!config->aurOnly && (op.op_s_upgrade || !pacmanPkgs.empty())) {
+        log_printf(LOG_DEBUG, "{} system packages!\n", (op.op_s_upgrade ? "Upgrading" : "Installing"));
+        string op_s = "-S";
 
-        bool stat = backend->download_pkg(url, filename);
+        if(op.op_s_sync)
+            op_s += "y";
+        if(op.op_s_upgrade)
+            op_s += "u";
 
-        if (!stat) {
-            log_printf(LOG_ERROR, "An error has occurred and we could not download your package.\n");
-            return false;
-        }
-
-        if (!useGit){
-            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-            stat = backend->install_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
-        }
-        else {
-            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-            stat = backend->install_pkg(pkg.name, filename, false);
-        }
-
-        if (!stat) {
-            log_printf(LOG_ERROR, "Building your package has failed.\n");
-            return false;
-        }
-
-        log_printf(LOG_DEBUG, "Installing {}.\n", pkg.name);
-        if (!taur_exec({config->sudo.c_str(), "pacman", "-U", built_pkg.c_str()})) {
-            log_printf(LOG_ERROR, "Failed to install {}.\n", pkg.name);
-            return false;
-        }
-
+        pacman_exec(op_s, pacmanPkgs);
     }
 
     if (op.op_s_upgrade) {
-        log_printf(LOG_INFO, "-u flag specified, upgrading AUR packages.\n");
-        return backend->update_all_pkgs(cacheDir, useGit);
+        log_println(LOG_INFO, "-u flag specified, upgrading AUR packages.");
+        return backend->update_all_aur_pkgs(cacheDir, useGit) && returnStatus;
     }
 
-    return true;
+    return returnStatus;
 }
 
-bool removePkg(string pkgName) {
-    return backend->remove_pkg(pkgName, config->aurOnly);
+bool removePkg(alpm_list_t *pkgNames) {
+    if (!pkgNames)
+        return false;
+
+    alpm_list_t *temp_ret = nullptr;
+
+    alpm_list_t *regexQuery = nullptr;
+
+    for (; pkgNames; pkgNames = pkgNames->next)
+        regexQuery = alpm_list_add(regexQuery, (void *)((".*" + string((const char *)(pkgNames->data)) + ".*").c_str()));
+
+    alpm_list_free(regexQuery);
+
+    if (alpm_db_search(alpm_get_localdb(config->handle), regexQuery, &temp_ret) != 0)
+        return false;
+
+    alpm_list_smart_pointer ret(temp_ret, alpm_list_free);
+
+    size_t ret_length = alpm_list_count(ret.get());
+
+    if (ret_length == 0) {
+        log_println(LOG_ERROR, "No packages found!");
+        return false;
+    }
+
+    if (ret_length == 1)
+        return backend->remove_pkg((alpm_pkg_t *)ret->data);
+
+    fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
+
+    for (size_t i = 0; i < ret_length; i++) {
+        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
+    }
+
+    string included;
+    std::getline(std::cin, included);
+
+    vector<string> includedIndexes  = split(included, ' ');
+
+    alpm_list_t *finalPackageList = nullptr;
+    alpm_list_t *finalPackageListStart = nullptr;
+
+    if (included == "*")
+        return backend->remove_pkgs(ret);
+    
+    for (size_t i = 0; i < includedIndexes.size(); i++) {
+        try {
+            size_t includedIndex = (size_t)stoi(includedIndexes[i]);
+
+            if (includedIndex >= ret_length)
+                continue;
+
+            finalPackageList = alpm_list_add(finalPackageList, alpm_list_nth(ret.get(), includedIndex)->data);
+
+            if (finalPackageList != nullptr && finalPackageListStart == nullptr)
+                finalPackageListStart = finalPackageList;
+
+        } catch (std::invalid_argument const&) {
+            log_println(LOG_WARN, "Invalid argument! Assuming all.");
+
+            if (finalPackageListStart != nullptr)
+                alpm_list_free(finalPackageListStart);
+            else if (finalPackageList != nullptr)
+                alpm_list_free(finalPackageList);
+
+            return backend->remove_pkgs(ret);
+        }
+    }
+
+    // take control of the list and pass it to the smart pointer
+    alpm_list_smart_pointer finalList = make_list_smart_pointer(finalPackageListStart);
+
+    return backend->remove_pkgs(finalList);
 }
 
 bool updateAll() {
-    return backend->update_all_pkgs(config->cacheDir, config->useGit);
+    return backend->update_all_aur_pkgs(config->cacheDir, config->useGit);
 }
 
 bool queryPkgs() {
-    log_printf(LOG_DEBUG, "AUR Only: {}\n", config->aurOnly);
+    log_println(LOG_DEBUG, "AUR Only: {}", config->aurOnly);
     alpm_list_t *pkg;
 
     vector<const char *> pkgs, pkgs_ver;
@@ -228,7 +345,7 @@ bool queryPkgs() {
         alpm_list_t *syncdbs = alpm_get_syncdbs(config->handle);
 
         if (!syncdbs) {
-            log_printf(LOG_ERROR, "Failed to get syncdbs!\n");
+            log_println(LOG_ERROR, "Failed to get syncdbs!");
             return false;
         }
 
@@ -245,7 +362,7 @@ bool queryPkgs() {
             fmt::println("{}", pkgs[i]);
         }
     } else {
-        fmt::rgb _green = config->getThemeValue("green", green);
+        fmt::rgb _green = config->getThemeValue("version", green);
         for(size_t i = 0; i < pkgs.size(); i++) {
             if (!pkgs[i])
                 continue;
@@ -290,6 +407,7 @@ int parseargs(int argc, char* argv[]) {
         {"use-git",    required_argument, 0, OP_USEGIT},
         {"quiet",      no_argument,       0, OP_QUIET},
         {"debug",      no_argument,       0, OP_DEBUG},
+        {"noconfirm",  no_argument,       0, OP_NOCONFIRM},
         {0,0,0,0}
     };
 
@@ -304,7 +422,7 @@ int parseargs(int argc, char* argv[]) {
     }
 
     if(op.op == 0) {
-		log_printf(LOG_ERROR, "only one operation may be used at a time\n");
+		log_println(LOG_ERROR, "only one operation may be used at a time");
 		return 1;
     }
 
@@ -351,9 +469,9 @@ int parseargs(int argc, char* argv[]) {
 		    if(result == 1) {
 		    /* global option parsing failed, abort */
 			    if(opt < 1000) {
-				    log_printf(LOG_ERROR, "invalid option '-{}'\n", opt);
+				    log_println(LOG_ERROR, "invalid option '-{}'", opt);
 			    } else {
-				    log_printf(LOG_ERROR, "invalid option '--{}'\n", opts[option_index].name);
+				    log_println(LOG_ERROR, "invalid option '--{}'", opts[option_index].name);
 			    }
 		    }
             return 1;
@@ -375,18 +493,21 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char* argv[]) {
     config = std::make_unique<Config>();
-
+    char *no_color = getenv("NO_COLOR");
+    
     configfile = (getConfigDir() + "/config.toml");
     themefile = (getConfigDir() + "/theme.toml");
 
     if (parseargs(argc, argv))
         return 1;
 
-    // this will always be false
-    // i just want to feel good about having this check
     config->init(configfile, themefile);
 
-    fmt::disable_colors = config->colors == 0;
+    if (no_color != NULL && no_color[0] != '\0'){
+        fmt::disable_colors = true;
+        config->colors = false;
+    }
+
 
     if(op.test_colors) {
         test_colors();
@@ -399,18 +520,18 @@ int main(int argc, char* argv[]) {
     backend = std::make_unique<TaurBackend>(*config);
 
     if (op.requires_root && geteuid() != 0) {
-        log_printf(LOG_ERROR, "You need to be root to do this.\n");
+        log_println(LOG_ERROR, "You need to be root to do this.");
         return 1;
     } else if (!op.requires_root && geteuid() == 0) {
-        log_printf(LOG_ERROR, "You are trying to run TabAUR as root when you don't need it.\n");
+        log_println(LOG_ERROR, "You are trying to run TabAUR as root when you don't need it.");
         return 1;
     }
 
     switch (op.op) {
     case OP_SYNC:
-        return (installPkg(taur_targets ? string((const char *)(taur_targets->data)) : "")) ? 0 : 1;
+        return installPkg(taur_targets.get()) ? 0 : 1;
     case OP_REM:
-        return (removePkg(taur_targets ? string((const char *)(taur_targets->data)) : "")) ? 0 : 1;
+        return removePkg(taur_targets.get()) ? 0 : 1;
     case OP_QUERY:
         return (queryPkgs()) ? 0 : 1;
     case OP_SYSUPGRADE:
@@ -418,7 +539,10 @@ int main(int argc, char* argv[]) {
     case OP_PACMAN:
         // we are gonna use pacman to other ops than -S,-R,-Q
         return execPacman(argc, argv);
+    default:
+        log_println(LOG_ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
+        return EXIT_SUCCESS;
     }
 
-    return 3;
+    return EXIT_SUCCESS;
 }

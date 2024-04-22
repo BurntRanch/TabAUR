@@ -11,10 +11,17 @@ If the compilation time is too slow, use `make -j$(nproc)` and it will use 100% 
 To clean, run `make clean`.
 
 ## Dependencies
-you need to install [cpr](https://github.com/libcpr/cpr)
-TabAUR offers the choice to either use the [AUR version](https://aur.archlinux.org/packages/cpr) (recommended)
+TabAUR includes its own distribution of libcpr, but if that's not good enough for you, you can install it from the [AUR](https://aur.archlinux.org/packages/cpr), it will automatically detect it!
 
-Or by compiling and installing from here with the following command:
+You can compile & install cpr this way:
 ```bash
 make cpr && make
 ```
+
+## Pull requests
+If you want to make a PR that fixes/adds functionality, feel free to do so! we aren't picky :)
+
+## TODO
+
+- Diff viewer for PKGBUILD
+- More insight for the user to decide whether they trust this package or not.

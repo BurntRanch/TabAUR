@@ -1,15 +1,14 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
-#define FMT_HEADER_ONLY 1
 
 #include <string>
 #include <vector>
-#include <iostream>
 #include <memory>
 #include <optional>
 
 #include "fmt/base.h"
 #include "fmt/color.h"
+#include "fmt/ranges.h"
 #include "config.hpp"
 
 using std::string;
@@ -40,16 +39,17 @@ bool hasEnding(string const& fullString, string const& ending);
 bool hasStart(string const& fullString, string const& start);
 string expandVar(string& str);
 bool is_number(const string& s, bool allowSpace = false);
-bool taur_read_exec(std::vector<const char*> cmd, string *output);
+bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure = true);
 void interruptHandler(int);
-bool taur_exec(std::vector<const char*> cmd, bool exitOnFailure = true);
+bool taur_exec(vector<const char*> cmd, bool exitOnFailure = true);
 void sanitizeStr(string& str);
 bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool commitTransactionAndRelease(bool soft = false);
-void printPkgInfo(TaurPkg_t &pkg, int index = -1);
+void printPkgInfo(TaurPkg_t &pkg, string db_name, int index = -1);
+string makepkg_list(string pkg_name, string path);
 void free_list_and_internals(alpm_list_t *list);
 fmt::text_style getColorFromDBName(string db_name);
-std::optional<std::vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
+std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse);
 string shell_exec(string cmd);
 vector<string> split(string text, char delim);
@@ -58,52 +58,62 @@ string getTitleForPopularity(float popularity);
 string getConfigDir();
 string getHomeCacheDir();
 string getHomeConfigDir();
+bool makepkg_exec(string cmd, bool exitOnFailure = true);
+bool pacman_exec(string op, vector<string> args, bool exitOnFailure = true, bool root = true);
 
 template <typename... Args>
-void log_printf(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
+void log_println(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            fmt::print(config && config->colors ? ts : fmt::text_style(), "ERROR: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "ERROR: "); break;
         case LOG_WARN:
-            fmt::print(config && config->colors ? ts : fmt::text_style(), "Warning: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "Warning: "); break;
         case LOG_INFO:
-            fmt::print(config && config->colors ? ts : fmt::text_style(), "Info: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(config && config->colors ? ts : fmt::text_style(), "[DEBUG]: ");
+            fmt::print(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "[DEBUG]: ");
             break;
     }
-    fmt::print(config && config->colors ? ts : fmt::text_style(), fmt, std::forward<Args>(args)...);
+    // I don't want to add a '\n' each time i'm writing a log_printf(), I just forget it all the time
+    fmt::println(ts, fmt, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_println(int log, string fmt, Args&&... args) {
+    switch(log) {
+        case LOG_ERROR:
+            fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "ERROR: "); break;
+        case LOG_WARN:
+            fmt::print(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "Warning: "); break;
+        case LOG_INFO:
+            fmt::print(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "Info: "); break;
+        case LOG_DEBUG:
+            if (!config->debug)
+                return;
+            fmt::print(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "[DEBUG]: ");
+            break;
+    }
+    fmt::println(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void log_printf(int log, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("red", red) : hexStringToColor(red)), "ERROR: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "ERROR: "); break;
         case LOG_WARN:
-            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("yellow", yellow) : hexStringToColor(yellow)), "Warning: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "Warning: "); break;
         case LOG_INFO:
-            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("cyan", cyan) : hexStringToColor(cyan)), "Info: "); break;
+            fmt::print(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            log_printf(LOG_NONE, BOLD_TEXT(config ? config->getThemeValue("magenta", magenta) : hexStringToColor(magenta)), "[DEBUG]: ");
+            fmt::print(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "[DEBUG]: ");
             break;
     }
     fmt::print(fmt, std::forward<Args>(args)...);
-}
-
-// could use fmt::join, but doesn't work with vector<const char*>
-template <typename T>
-void print_vec(std::vector<T> vec) {
-    if(!config->debug)
-        return;
-    
-    for(auto& i : vec)
-        std::cout << i << " ";
-    std::cout << std::endl;
 }
 
 template <typename T>
@@ -119,7 +129,7 @@ T sanitize(T beg, T end) {
     return dest;
 }
 
-static inline std::vector<string> secret = {
+static inline std::vector<std::string_view> secret = {
     {"Ingredients:"},
     {R"#(
     3/4 cup milk
