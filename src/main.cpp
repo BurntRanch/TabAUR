@@ -100,10 +100,10 @@ void test_colors() {
     fmt::println(getColorFromDBName("multilib"), "(bold) multilib");
     fmt::println(getColorFromDBName("others"), "(bold) others");
 
-    fmt::println(BOLD_TEXT(config->getThemeValue("version", green)), "\n(bold) version " VERSION);
-    fmt::println(fg(config->getThemeValue("popularity", cyan)), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
-    fmt::println(fg(config->getThemeValue("index", magenta)), "index [1]");
-    fmt::println(fg(config->getThemeValue("installed", gray)), "indicator [Installed]");
+    fmt::println(BOLD_TEXT(config->getThemeValue("version", config->getThemeHexValue("green", green))), "\n(bold) version " VERSION);
+    fmt::println(fg(config->getThemeValue("popularity", config->getThemeHexValue("cyan", cyan))), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::println(fg(config->getThemeValue("index", config->getThemeHexValue("magenta", magenta))), "index [1]");
+    fmt::println(fg(config->getThemeValue("installed", config->getThemeHexValue("gray", gray))), "indicator [Installed]");
 
     fmt::println("\nexamples package search preview:");
     printPkgInfo(pkg, pkg.db_name, 1);

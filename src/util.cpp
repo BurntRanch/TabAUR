@@ -356,15 +356,15 @@ void free_list_and_internals(alpm_list_t *list) {
  */
 fmt::text_style getColorFromDBName(string db_name) {
     if (db_name == "aur")
-        return BOLD_TEXT(config->getThemeValue("aur", blue));
+        return BOLD_TEXT(config->getThemeValue("aur", config->getThemeHexValue("blue", blue)));
     else if (db_name == "extra")
-        return BOLD_TEXT(config->getThemeValue("extra", green));
+        return BOLD_TEXT(config->getThemeValue("extra", config->getThemeHexValue("green", green)));
     else if (db_name == "core")
-        return BOLD_TEXT(config->getThemeValue("core", yellow));
+        return BOLD_TEXT(config->getThemeValue("core", config->getThemeHexValue("yellow", yellow)));
     else if (db_name == "multilib")
-        return BOLD_TEXT(config->getThemeValue("multilib", cyan));
+        return BOLD_TEXT(config->getThemeValue("multilib", config->getThemeHexValue("cyan", cyan)));
     else
-        return BOLD_TEXT(config->getThemeValue("others", magenta));
+        return BOLD_TEXT(config->getThemeValue("others", config->getThemeHexValue("magenta", magenta)));
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
@@ -374,10 +374,10 @@ void printPkgInfo(TaurPkg_t &pkg, string db_name, int index) {
     
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::print(BOLD_TEXT(config->getThemeValue("version", green)), "{} ", pkg.version);
-    fmt::print(fmt::fg(config->getThemeValue("popularity", cyan)), " Popularity: {} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::print(BOLD_TEXT(config->getThemeValue("version", config->getThemeHexValue("green", green))), "{} ", pkg.version);
+    fmt::print(fmt::fg(config->getThemeValue("popularity", config->getThemeHexValue("cyan", cyan))), " Popularity: {} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
     if (pkg.installed)
-        fmt::println(fmt::fg(config->getThemeValue("installed", gray)), "[Installed]");
+        fmt::println(fmt::fg(config->getThemeValue("installed", config->getThemeHexValue("gray", gray))), "[Installed]");
     else
         fmt::println("");
     fmt::println("    {}", pkg.desc);

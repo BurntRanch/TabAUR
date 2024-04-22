@@ -136,18 +136,18 @@ magenta = "#ff11cc"
 gray = "#5a5a5a"
 
 # custom DB colors such as extra, aur, etc.
-# Unfortunatly toml doesn't support things like `aur = blue`
-aur = "#00aaff"
-extra = "#00ff00"
-core = "#ffff00"
-multilib = "#00ffff"
+# If you would like to let TabAUR use one of the colors above instead, you can just leave it empty.
+#aur = "#00aaff"
+#extra = "#00ff00"
+#core = "#ffff00"
+#multilib = "#00ffff"
 # Other DBs such as extra-testing, core-testing, custom ones in custom repos, etc.
-others = "#ff11cc"
+#others = "#ff11cc"
 
-version = "#00ff00"
-popularity = "#00ffff"
-installed = "#5a5a5a"
-index = "#ff11cc"
+#version = "#00ff00"
+#popularity = "#00ffff"
+#installed = "#5a5a5a"
+#index = "#ff11cc"
 )#";
 
 inline string red = "#ff2000";
