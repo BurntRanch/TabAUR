@@ -214,7 +214,7 @@ bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool already
         /*log_println(LOG_INFO, "Compiling {} in 3 seconds, you can cancel at this point if you can't compile.", pkg_name);
         sleep(3);*/
 
-        makepkg_exec("-f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", false);
+       return makepkg_exec("-f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", false);
     }
     else
         log_println(LOG_INFO, "{} exists already, no need to build", built_pkg);
@@ -342,8 +342,6 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
 
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
 
-    vector<const char*> cmd;
-
     int updatedPkgs = 0;
     int attemptedDownloads = 0;
     bool alrprepared = false;
@@ -428,20 +426,23 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
         
         this->handle_aur_depends(onlinePkgs[i], pkgFolder, this->get_all_local_pkgs(true), useGit);
         bool installSuccess = this->build_pkg(pkgs[pkgIndex].name, pkgFolder, alrprepared);
-
-        pkgs_to_install += built_pkg + ' ';
-        log_println(LOG_DEBUG, "pkgs_to_install = {}", pkgs_to_install);
-
-        if (!installSuccess)
-            continue;
-
-        updatedPkgs++;
         alrprepared = false;
+        
+        if (installSuccess) {
+            pkgs_to_install += built_pkg + ' ';
+            log_println(LOG_DEBUG, "pkgs_to_install = {}", pkgs_to_install);
+            updatedPkgs++;
+        } else {
+            pkgs_failed_to_build += pkgs[pkgIndex].name + ' ';
+            log_println(LOG_DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
+        }
+
     }
     
     if (pkgs_to_install.size() <= 0) {
         log_println(LOG_ERROR, "No packages to be upgraded.");
-        return true;
+        // oh no, a goto oh noooo this program is ruined
+        goto text;
     }
 
     // remove the last ' ' so we can pass it to pacman
@@ -453,9 +454,13 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
 
     log_println(LOG_INFO, "Upgraded {}/{} packages.", updatedPkgs, attemptedDownloads);
 
-    if (attemptedDownloads > updatedPkgs)
+text:
+    if (attemptedDownloads > updatedPkgs) {
+        pkgs_failed_to_build.erase(pkgs_failed_to_build.end()-1);
+        log_println(LOG_WARN, "Failed to upgrade: {}", fmt::join(pkgs_failed_to_build, "; "));
         log_println(LOG_WARN,
-                   "Some packages failed to download, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.");
+                   "Some packages failed to download/upgrade, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.");
+    }
 
     return true;
 }
@@ -483,7 +488,8 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
                     .version = alpm_pkg_get_version(pkg), 
                     .url = "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git", 
                     .popularity = 1,
-                    .installed = true});
+                    .installed = true
+                    });
     }
 
     return out;
