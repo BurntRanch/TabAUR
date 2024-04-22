@@ -61,7 +61,7 @@ void Config::init(string configFile, string themeFile) {
 
     if (newUser) 
         // ye i'm sorry for if it's too wide
-        fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
+        fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, votes, and other insight TabAUR gives you to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
 
 }
 

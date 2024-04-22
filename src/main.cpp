@@ -7,7 +7,7 @@
 #include "taur.hpp"
 
 #define BRANCH "libalpm-test"
-#define VERSION "0.6.1"
+#define VERSION "0.6.2"
 
 std::unique_ptr<Config> config;
 std::unique_ptr<TaurBackend> backend;
