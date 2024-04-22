@@ -62,7 +62,7 @@ bool makepkg_exec(string cmd, bool exitOnFailure = true);
 bool pacman_exec(string op, vector<string> args, bool exitOnFailure = true, bool root = true);
 
 template <typename... Args>
-void log_println(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
+void log_println(int log, const fmt::text_style &ts, std::string_view fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: "); break;
@@ -77,11 +77,11 @@ void log_println(int log, const fmt::text_style &ts, string fmt, Args&&... args)
             break;
     }
     // I don't want to add a '\n' each time i'm writing a log_printf(), I just forget it all the time
-    fmt::println(ts, fmt, std::forward<Args>(args)...);
+    fmt::println(ts, fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_println(int log, string fmt, Args&&... args) {
+void log_println(int log, std::string_view fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: "); break;
@@ -95,11 +95,11 @@ void log_println(int log, string fmt, Args&&... args) {
             fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
             break;
     }
-    fmt::println(fmt, std::forward<Args>(args)...);
+    fmt::println(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_printf(int log, string fmt, Args&&... args) {
+void log_printf(int log, std::string_view fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: "); break;
@@ -113,7 +113,7 @@ void log_printf(int log, string fmt, Args&&... args) {
             fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
             break;
     }
-    fmt::print(fmt, std::forward<Args>(args)...);
+    fmt::print(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename T>

@@ -55,10 +55,11 @@ void usage(int op) {
     --colors    <1,0>    colorize the output
     --debug     <1,0>    show debug messages
     --sudo      <path>   choose which binary to use for privilage-escalation
+    --noconfirm          do not ask for any confirmation (passed to both makepkg and pacman)
     )#");
-    fmt::println("TabAUR will assume -Syu if you pass no arguments to it.");
 
     if (config->secretRecipe) {
+        log_println(LOG_INFO, "Secret recipe unlocked!");
         log_println(LOG_INFO, "Loading secret recipe...");
         for (auto const& i : secret) {
             fmt::println("{}", i);
@@ -69,22 +70,21 @@ void usage(int op) {
 
 void test_colors() {
     TaurPkg_t pkg = { 
-                        "TabAUR", // name
-                        VERSION,  // version
-                        "https://github.com/BurntRanch/TabAUR", // url
-                        "A customizable and lightweight AUR helper, designed to be simple but powerful.", // desc
-                        10,  // Popularity
-                        vector<string>(),   // depends
-                        true,
-                        "aur", // db_name
+                        .name = "TabAUR",
+                        .version = VERSION,
+                        .url = "https://github.com/BurntRanch/TabAUR",
+                        .desc = "A customizable and lightweight AUR helper, designed to be simple but powerful.",
+                        .popularity = 10,
+                        .installed = true,
+                        .db_name = "aur",
                     };
 
     if(fmt::disable_colors)
         fmt::println("Colors are disabled");
-    log_println(LOG_DEBUG, "Debug color: {}",  fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
-    log_println(LOG_INFO, "Info color: {}",    fmt::format(BOLD_TEXT(color.cyan), "(bold) cyan"));
-    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow), "(bold) yellow"));
-    log_println(LOG_ERROR, "Error color: {}",  fmt::format(BOLD_TEXT(color.red), "(bold) red"));
+    log_println(LOG_DEBUG, "Debug color: {}",  fmt::format(BOLD_TEXT(color.magenta),    "(bold) magenta"));
+    log_println(LOG_INFO, "Info color: {}",    fmt::format(BOLD_TEXT(color.cyan),       "(bold) cyan"));
+    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow),     "(bold) yellow"));
+    log_println(LOG_ERROR, "Error color: {}",  fmt::format(BOLD_TEXT(color.red),        "(bold) red"));
     fmt::println(fg(color.red), "red");
     fmt::println(fg(color.blue), "blue");
     fmt::println(fg(color.yellow), "yellow");

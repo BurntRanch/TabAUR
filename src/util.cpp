@@ -41,13 +41,11 @@ void interruptHandler(int) {
 
 /** Function to check if a package is from a synchronization database
  * Basically if it's in pacman repos like core, extra, multilib, etc.
- * @param pkg The package to check
+ * @param name The package name to check
  * @param syncdbs
  * @return true if the pkg exists, else false
  */ 
-bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
-    const char *name = alpm_pkg_get_name(pkg);
-
+bool is_package_from_syncdb(const char *name, alpm_list_t *syncdbs) {
     for (; syncdbs; syncdbs = alpm_list_next(syncdbs))
         if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), name))
             return true;

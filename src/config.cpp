@@ -61,7 +61,7 @@ void Config::init(string configFile, string themeFile) {
 
     if (newUser) 
         // ye i'm sorry for if it's too wide
-        fmt::println(fmt::fg(color.blue), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
+        fmt::println(fg(color.blue), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
 
 }
 
@@ -135,11 +135,11 @@ void Config::loadThemeFile(string filename) {
     this->initColors();
 }
 
-/** Get the theme color variable and return a fmt::color.type variable
+/** Get the theme color variable and return a fmt::rgb type variable
  * Which can be used for colorize the text (useful for functions like log_println())
  * @param value The value we want
  * @param fallback The default value if it doesn't exists
- * @return fmt::color.type variable 
+ * @return fmt::rgb type variable 
  */
 fmt::rgb Config::getThemeValue(string value, string fallback) {
     return hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback));

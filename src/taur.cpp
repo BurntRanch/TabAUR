@@ -76,7 +76,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
                        pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "", // description
                        pkgJson["Popularity"].GetFloat(),    // popularity
                        depends,    // depends
-                       alpm_db_get_pkg(alpm_get_localdb(config->handle), pkgJson["Name"].GetString()) != nullptr,
+                       alpm_db_get_pkg(alpm_get_localdb(config->handle), pkgJson["Name"].GetString()) != nullptr, // installed
                        };
 
     return out;
@@ -381,7 +381,7 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
         sanitizeStr(pkgFolder);
 
         if (!useGit)
-            std::filesystem::remove_all(pkgFolder);
+            fs::remove_all(pkgFolder);
 
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgFolder);
 
@@ -479,13 +479,11 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     for (size_t i = 0; i < pkgs.size(); i++) {
         alpm_pkg_t *pkg = pkgs[i];
         out.push_back({
-                    alpm_pkg_get_name(pkg), 
-                    alpm_pkg_get_version(pkg), 
-                    "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git", 
-                    "", 
-                    1, 
-                    {}, 
-                    true});
+                    .name = alpm_pkg_get_name(pkg), 
+                    .version = alpm_pkg_get_version(pkg), 
+                    .url = "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git", 
+                    .popularity = 1,
+                    .installed = true});
     }
 
     return out;
@@ -530,14 +528,12 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
         alpm_pkg_t *pkg = (alpm_pkg_t *)(packages_get->data);
 
         TaurPkg_t taur_pkg = { 
-                                string(alpm_pkg_get_name(pkg)), // name
-                                string(alpm_pkg_get_version(pkg)),  // version
-                                "", // url
-                                string(alpm_pkg_get_desc(pkg)), // desc
-                                100,  // system packages are very trustable
-                                vector<string>(),   // depends
-                                alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
-                                string(alpm_db_get_name(alpm_pkg_get_db(pkg))), // db_name
+                                .name = string(alpm_pkg_get_name(pkg)),
+                                .version = string(alpm_pkg_get_version(pkg)),
+                                .desc = string(alpm_pkg_get_desc(pkg)),
+                                .popularity = 100,
+                                .installed = alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
+                                .db_name = string(alpm_db_get_name(alpm_pkg_get_db(pkg)))
                              };
 
         out.push_back(taur_pkg);
