@@ -61,7 +61,7 @@ void Config::init(string configFile, string themeFile) {
 
     if (newUser) 
         // ye i'm sorry for if it's too wide
-        fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, votes, and other insight TabAUR gives you to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
+        fmt::println(fmt::fg(color.blue), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
 
 }
 
@@ -74,7 +74,7 @@ bool Config::isInitialized() {
 * initialize all the "config.toml" variables
 * and sanitize them (never trust user's input)
 */
-void Config::initializeVars() {
+void Config::initVars() {
     this->cacheDir     = this->getConfigValue<string>("general.cacheDir", getHomeCacheDir() + "/TabAUR");
     this->pmConfig     = this->getConfigValue<string>("pacman.ConfigFile", "/etc/pacman.conf");
     this->makepkgConf  = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
@@ -109,7 +109,7 @@ void Config::loadConfigFile(string filename) {
         std::cerr << err << std::endl;
         exit(-1);
     }
-    this->initializeVars();
+    this->initVars();
 
     alpm_errno_t err;
     this->handle    = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
@@ -131,13 +131,15 @@ void Config::loadThemeFile(string filename) {
         std::cerr << err << std::endl;
         exit(-1);
     }
+
+    this->initColors();
 }
 
-/** Get the theme color variable and return a fmt::rgb type variable
+/** Get the theme color variable and return a fmt::color.type variable
  * Which can be used for colorize the text (useful for functions like log_println())
  * @param value The value we want
  * @param fallback The default value if it doesn't exists
- * @return fmt::rgb type variable 
+ * @return fmt::color.type variable 
  */
 fmt::rgb Config::getThemeValue(string value, string fallback) {
     return hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback));
@@ -150,6 +152,25 @@ fmt::rgb Config::getThemeValue(string value, string fallback) {
  */
 string Config::getThemeHexValue(string value, string fallback) {
     return this->theme_tbl["theme"][value].value<string>().value_or(fallback);
+}
+
+void Config::initColors() {
+    color.red           = this->getThemeValue("red",        "#ff2000");
+    color.green         = this->getThemeValue("green",      "#00ff00");
+    color.blue          = this->getThemeValue("blue",       "#00aaff");
+    color.cyan          = this->getThemeValue("cyan",       "#00ffff");
+    color.yellow        = this->getThemeValue("yellow",     "#ffff00");
+    color.magenta       = this->getThemeValue("magenta",    "#ff11cc");
+    color.gray          = this->getThemeValue("gray",       "#5a5a5a");
+    color.aur           = this->getThemeValue("aur",        "#00aaff");
+    color.extra         = this->getThemeValue("extra",      "#00ff00");
+    color.core          = this->getThemeValue("core",       "#ffff00");
+    color.multilib      = this->getThemeValue("multilib",   "#00ffff");
+    color.others        = this->getThemeValue("others",     "#ff11cc");
+    color.version       = this->getThemeValue("version",    "#00ff00");
+    color.popularity    = this->getThemeValue("popularity", "#00ffff");
+    color.installed     = this->getThemeValue("installed",  "#5a5a5a");
+    color.index         = this->getThemeValue("index",      "#ff11cc");
 }
 
 bool addServers(alpm_db_t *db, string includeFilename, string repoName) {

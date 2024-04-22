@@ -65,15 +65,15 @@ template <typename... Args>
 void log_println(int log, const fmt::text_style &ts, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "ERROR: "); break;
+            fmt::print(BOLD_TEXT(color.red), "ERROR: "); break;
         case LOG_WARN:
-            fmt::print(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "Warning: "); break;
+            fmt::print(BOLD_TEXT(color.yellow), "Warning: "); break;
         case LOG_INFO:
-            fmt::print(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "Info: "); break;
+            fmt::print(BOLD_TEXT(color.cyan), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "[DEBUG]: ");
+            fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
             break;
     }
     // I don't want to add a '\n' each time i'm writing a log_printf(), I just forget it all the time
@@ -84,15 +84,15 @@ template <typename... Args>
 void log_println(int log, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "ERROR: "); break;
+            fmt::print(BOLD_TEXT(color.red), "ERROR: "); break;
         case LOG_WARN:
-            fmt::print(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "Warning: "); break;
+            fmt::print(BOLD_TEXT(color.yellow), "Warning: "); break;
         case LOG_INFO:
-            fmt::print(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "Info: "); break;
+            fmt::print(BOLD_TEXT(color.cyan), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "[DEBUG]: ");
+            fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
             break;
     }
     fmt::println(fmt, std::forward<Args>(args)...);
@@ -102,15 +102,15 @@ template <typename... Args>
 void log_printf(int log, string fmt, Args&&... args) {
     switch(log) {
         case LOG_ERROR:
-            fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "ERROR: "); break;
+            fmt::print(BOLD_TEXT(color.red), "ERROR: "); break;
         case LOG_WARN:
-            fmt::print(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "Warning: "); break;
+            fmt::print(BOLD_TEXT(color.yellow), "Warning: "); break;
         case LOG_INFO:
-            fmt::print(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "Info: "); break;
+            fmt::print(BOLD_TEXT(color.cyan), "Info: "); break;
         case LOG_DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "[DEBUG]: ");
+            fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
             break;
     }
     fmt::print(fmt, std::forward<Args>(args)...);

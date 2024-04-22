@@ -9,6 +9,7 @@
 #include "fmt/color.h"
 
 using std::string;
+using rgb = fmt::rgb;
 
 // so we don't need to include util.hpp for getConfigValue()
 string  expandVar(string& str);
@@ -22,6 +23,25 @@ struct strOrBool {
     types valueType;
     string stringValue = "";
     bool boolValue = false;
+};
+
+struct _color_t {
+    rgb red;
+    rgb green;
+    rgb blue;
+    rgb cyan;
+    rgb yellow;
+    rgb magenta;
+    rgb gray;
+    rgb aur;
+    rgb extra;
+    rgb core;
+    rgb multilib;
+    rgb others;
+    rgb version;
+    rgb popularity;
+    rgb installed;
+    rgb index;
 };
 
 class Config {
@@ -48,7 +68,8 @@ public:
     ~Config();
 
     void   init(string configFile, string themeFile);
-    void   initializeVars();
+    void   initVars();
+    void   initColors();
 
     bool   isInitialized();
 
@@ -87,6 +108,7 @@ private:
 };
 
 extern std::unique_ptr<Config> config;
+inline struct _color_t color;
 
 // we comment the default config values, just like /etc/pacman.conf
 inline const string defConfig = R"#([general]
@@ -149,14 +171,6 @@ gray = "#5a5a5a"
 #installed = "#5a5a5a"
 #index = "#ff11cc"
 )#";
-
-inline string red = "#ff2000";
-inline string green = "#00ff00";
-inline string blue = "#00aaff";
-inline string cyan = "#00ffff";
-inline string yellow = "#ffff00";
-inline string magenta = "#ff11cc";
-inline string gray = "#5a5a5a";
 
 inline string configfile;
 inline string themefile;

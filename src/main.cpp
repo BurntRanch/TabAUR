@@ -81,17 +81,17 @@ void test_colors() {
 
     if(fmt::disable_colors)
         fmt::println("Colors are disabled");
-    log_println(LOG_DEBUG, "Debug color: {}",  fmt::format(BOLD_TEXT(config->getThemeValue("magenta", magenta)), "(bold) magenta"));
-    log_println(LOG_INFO, "Info color: {}",    fmt::format(BOLD_TEXT(config->getThemeValue("cyan", cyan)), "(bold) cyan"));
-    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(config->getThemeValue("yellow", yellow)), "(bold) yellow"));
-    log_println(LOG_ERROR, "Error color: {}",  fmt::format(BOLD_TEXT(config->getThemeValue("red", red)), "(bold) red"));
-    fmt::println(fg(config->getThemeValue("red", red)), "red");
-    fmt::println(fg(config->getThemeValue("blue", blue)), "blue");
-    fmt::println(fg(config->getThemeValue("yellow", yellow)), "yellow");
-    fmt::println(fg(config->getThemeValue("green", green)), "green");
-    fmt::println(fg(config->getThemeValue("cyan", cyan)), "cyan");
-    fmt::println(fg(config->getThemeValue("magenta", magenta)), "magenta");
-    fmt::println(fg(config->getThemeValue("gray", gray)), "gray");
+    log_println(LOG_DEBUG, "Debug color: {}",  fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
+    log_println(LOG_INFO, "Info color: {}",    fmt::format(BOLD_TEXT(color.cyan), "(bold) cyan"));
+    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow), "(bold) yellow"));
+    log_println(LOG_ERROR, "Error color: {}",  fmt::format(BOLD_TEXT(color.red), "(bold) red"));
+    fmt::println(fg(color.red), "red");
+    fmt::println(fg(color.blue), "blue");
+    fmt::println(fg(color.yellow), "yellow");
+    fmt::println(fg(color.green), "green");
+    fmt::println(fg(color.cyan), "cyan");
+    fmt::println(fg(color.magenta), "magenta");
+    fmt::println(fg(color.gray), "gray");
 
     fmt::println("\ndb colors:");
     fmt::println(getColorFromDBName("aur"), "(bold) aur");
@@ -100,10 +100,10 @@ void test_colors() {
     fmt::println(getColorFromDBName("multilib"), "(bold) multilib");
     fmt::println(getColorFromDBName("others"), "(bold) others");
 
-    fmt::println(BOLD_TEXT(config->getThemeValue("version", config->getThemeHexValue("green", green))), "\n(bold) version " VERSION);
-    fmt::println(fg(config->getThemeValue("popularity", config->getThemeHexValue("cyan", cyan))), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
-    fmt::println(fg(config->getThemeValue("index", config->getThemeHexValue("magenta", magenta))), "index [1]");
-    fmt::println(fg(config->getThemeValue("installed", config->getThemeHexValue("gray", gray))), "indicator [Installed]");
+    fmt::println(BOLD_TEXT(color.version), "\n(bold) version " VERSION);
+    fmt::println(fg(color.popularity), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::println(fg(color.index), "index [1]");
+    fmt::println(fg(color.installed), "indicator [Installed]");
 
     fmt::println("\nexamples package search preview:");
     printPkgInfo(pkg, pkg.db_name, 1);
@@ -362,12 +362,11 @@ bool queryPkgs() {
             fmt::println("{}", pkgs[i]);
         }
     } else {
-        fmt::rgb _green = config->getThemeValue("version", green);
         for(size_t i = 0; i < pkgs.size(); i++) {
             if (!pkgs[i])
                 continue;
             fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
-            fmt::println(BOLD_TEXT(_green), "{}", pkgs_ver[i]);
+            fmt::println(BOLD_TEXT(color.green), "{}", pkgs_ver[i]);
         }
     }
 

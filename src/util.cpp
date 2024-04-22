@@ -67,13 +67,13 @@ bool commitTransactionAndRelease(bool soft) {
 
     log_println(LOG_INFO, "Changes to be made:");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
-        fmt::print(BOLD_TEXT(config->getThemeValue("green", green)), "    ++ ");
+        fmt::print(BOLD_TEXT(color.green), "    ++ ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
         
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
-        fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "    -- ");
+        fmt::print(BOLD_TEXT(color.red), "    -- ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
@@ -356,30 +356,30 @@ void free_list_and_internals(alpm_list_t *list) {
  */
 fmt::text_style getColorFromDBName(string db_name) {
     if (db_name == "aur")
-        return BOLD_TEXT(config->getThemeValue("aur", config->getThemeHexValue("blue", blue)));
+        return BOLD_TEXT(color.aur);
     else if (db_name == "extra")
-        return BOLD_TEXT(config->getThemeValue("extra", config->getThemeHexValue("green", green)));
+        return BOLD_TEXT(color.extra);
     else if (db_name == "core")
-        return BOLD_TEXT(config->getThemeValue("core", config->getThemeHexValue("yellow", yellow)));
+        return BOLD_TEXT(color.core);
     else if (db_name == "multilib")
-        return BOLD_TEXT(config->getThemeValue("multilib", config->getThemeHexValue("cyan", cyan)));
+        return BOLD_TEXT(color.multilib);
     else
-        return BOLD_TEXT(config->getThemeValue("others", config->getThemeHexValue("magenta", magenta)));
+        return BOLD_TEXT(color.others);
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
 void printPkgInfo(TaurPkg_t &pkg, string db_name, int index) {
     if (index > -1)
-        fmt::print(fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
+        fmt::print(fmt::fg(color.index), "[{}] ", index);
     
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::print(BOLD_TEXT(config->getThemeValue("version", config->getThemeHexValue("green", green))), "{} ", pkg.version);
-    fmt::print(fmt::fg(config->getThemeValue("popularity", config->getThemeHexValue("cyan", cyan))), " Popularity: {} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::print(BOLD_TEXT(color.version), "{} ", pkg.version);
+    fmt::print(fmt::fg(color.popularity), " Popularity: {} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
     if (pkg.installed)
-        fmt::println(fmt::fg(config->getThemeValue("installed", config->getThemeHexValue("gray", gray))), "[Installed]");
+        fmt::println(fmt::fg(color.installed), "[Installed]");
     else
-        fmt::println("");
+        fmt::print("\n");
     fmt::println("    {}", pkg.desc);
 }
 
