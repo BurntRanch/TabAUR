@@ -1,6 +1,7 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
+#include <iostream>
 #include <string>
 #include <vector>
 #include <memory>
@@ -26,6 +27,10 @@ class TaurBackend;
 
 #define alpm_list_smart_deleter          unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>
 #define make_list_smart_deleter(pointer) (unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>(pointer, free_list_and_internals))
+
+enum prompt_yn {
+    PROMPT_YN_DIFF,
+};
 
 enum log_level {
     LOG_ERROR,
@@ -105,6 +110,32 @@ void log_printf(int log, std::string_view fmt, Args&&... args) {
             break;
     }
     fmt::print(fmt::runtime(fmt), std::forward<Args>(args)...);
+}
+
+/** Ask the user a yes or no question.
+ * @param def the default result
+ * @param pr  the prompt enum
+ * @param args arguments, required with some prompts, like package names etc.
+ * @returns the result, y = true, f = false, only returns def if the result is def
+*/
+template <typename... Args>
+bool                askUserYorN(bool def, prompt_yn pr, Args&&... args) {
+    string inputs_str = "[" + (string)(def ? "Y" : "y") + "/" + (string)(!def ? "N" : "n") + "] ";
+    switch (pr) {
+        case PROMPT_YN_DIFF:
+            log_printf(LOG_INFO, "Would you like to view the diffs for {}? " + inputs_str, std::forward<Args>(args)...);
+    }
+    string result;
+    
+    // while the getline function works, and the result is not 1 character long, keep reminding the user.
+    while (std::getline(std::cin, result) && (result.length() != 1)) {
+        log_println(LOG_WARN, "Please provide a valid response (" + inputs_str + ")");
+    }
+
+    if (def ? tolower(result[0]) != 'n' : tolower(result[0]) != 'y')
+        return def;
+
+    return !def;
 }
 
 template <typename T>

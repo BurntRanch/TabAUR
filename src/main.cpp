@@ -1,4 +1,5 @@
 #include <alpm_list.h>
+#include <filesystem>
 #include <iostream>
 #pragma GCC diagnostic ignored "-Wvla"
 
@@ -184,8 +185,19 @@ int installPkg(alpm_list_t *pkgNames) {
 
             string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
 
-            if (useGit)
+            if (useGit) {
                 filename = filename.substr(0, filename.rfind(".git"));
+
+                if (std::filesystem::exists(filename)) {
+                    std::filesystem::current_path(filename);
+                    if (askUserYorN(true, PROMPT_YN_DIFF, pkg.name)) {
+                        if (taur_exec({config->git.c_str(), "fetch", "origin"}))
+                            throw std::runtime_error("Failed to run git fetch!");
+                        if (taur_exec({"git", "diff", "origin", "PKGBUILD"}))
+                            throw std::runtime_error("Failed to run git diff!");
+                    }
+                }
+            }
 
             bool stat = backend->download_pkg(url, filename);
 

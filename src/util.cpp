@@ -1,3 +1,6 @@
+#include <cctype>
+#include <string>
+#include <utility>
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
 #include "util.hpp"

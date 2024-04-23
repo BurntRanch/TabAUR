@@ -40,6 +40,11 @@ bool TaurBackend::download_tar(string url, string out_path) {
     return taur_exec({"tar", "-xf", out_path.c_str()});
 }
 
+/** Downloads a package from the AUR repository.
+ * @param url a link to the download page, it will detect the extension and call the cooresponding download_x function.
+ * @param out_path the path to extract the folder, for git folders, this will be where the repo is cloned.
+ * @returns bool, true = success, false = failure.
+*/
 bool TaurBackend::download_pkg(string url, string out_path) {
     if (hasEnding(url, ".git"))
         return this->download_git(url, out_path);
