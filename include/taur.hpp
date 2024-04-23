@@ -28,7 +28,7 @@ struct TaurPkg_t {
     float          popularity = 1; // normal
     vector<string> depends;
     bool           installed = false;
-    string         db_name = "aur";
+    string         db_name   = "aur";
 };
 
 class TaurBackend {
@@ -44,8 +44,8 @@ class TaurBackend {
     bool                download_pkg(string url, string out_path);
     optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
     vector<TaurPkg_t>   fetch_pkgs(vector<string> pkgs, bool returnGit);
-    bool                remove_pkg(alpm_pkg_t *pkgs, bool ownTransaction = true);
-    bool                remove_pkgs(alpm_list_smart_pointer &pkgs);
+    bool                remove_pkg(alpm_pkg_t* pkgs, bool ownTransaction = true);
+    bool                remove_pkgs(alpm_list_smart_pointer& pkgs);
     bool                handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit);
     bool                build_pkg(string pkg_name, string extracted_path, bool alreadyprepared);
     bool                update_all_aur_pkgs(string cacheDir, bool useGit);

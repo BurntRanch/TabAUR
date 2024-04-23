@@ -8,9 +8,9 @@
 #include <getopt.h>
 
 enum {
-    OP_MAIN  = 1,
-    OP_SYNC, // when you run taur -S[args]
-    OP_REM,       // when you run taur -R[args]
+    OP_MAIN = 1,
+    OP_SYNC,
+    OP_REM,
     OP_QUERY,
     OP_PACMAN, // when it's different from -S,R,Q we gonna use pacman
 };
@@ -30,30 +30,30 @@ enum {
     OP_SEARCH,
     OP_NOCONFIRM,
     OP_QUIET,
+    OP_RECIPE,
     OP_TEST_COLORS,
 };
 
 struct Operation_t {
-    u_short op;
-    u_short op_s_sync;
-    u_short op_s_upgrade;
-    u_short op_s_search;
-    u_short op_s_pacman;
+    u_short                  op;
+    u_short                  op_s_sync;
+    u_short                  op_s_upgrade;
+    u_short                  op_s_search;
+    u_short                  op_s_pacman;
 
-    bool    requires_root = false;
-    u_short help;
-    u_short version;
-    u_short test_colors;
+    bool                     requires_root = false;
+    u_short                  help;
+    u_short                  version;
+    u_short                  test_colors;
 
-    std::vector<std::string> args;
 };
 
-extern struct Operation_t op;
+inline struct Operation_t      op;
 extern alpm_list_smart_deleter taur_targets;
 
-int parsearg_op(int opt, int dryrun);
+int  parsearg_op(int opt, int dryrun);
 void invalid_opt();
-int parsearg_global(int opt);
-int parsearg_query(int opt);
-int parsearg_sync(int opt);
+int  parsearg_global(int opt);
+int  parsearg_query(int opt);
+int  parsearg_sync(int opt);
 #endif

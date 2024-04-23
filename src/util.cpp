@@ -26,7 +26,7 @@ bool isInvalid(char c) {
     return !isprint(c);
 }
 
-void sanitizeStr(string& str){
+void sanitizeStr(string& str) {
     str.erase(std::remove_if(str.begin(), str.end(), isInvalid), str.end());
 }
 
@@ -47,9 +47,9 @@ void interruptHandler(int) {
  */ 
 bool is_package_from_syncdb(const char *name, alpm_list_t *syncdbs) {
     for (; syncdbs; syncdbs = alpm_list_next(syncdbs))
-        if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), name))
+        if (alpm_db_get_pkg((alpm_db_t*)(syncdbs->data), name))
             return true;
-            
+
     return false;
 }
 
@@ -68,7 +68,6 @@ bool commitTransactionAndRelease(bool soft) {
         fmt::print(BOLD_TEXT(color.green), "    ++ ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
-        
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
         fmt::print(BOLD_TEXT(color.red), "    -- ");
@@ -76,17 +75,17 @@ bool commitTransactionAndRelease(bool soft) {
     }
 
     fmt::print("Would you like to proceed with this transaction? [Y/n] ");
-    
+
     string response;
     std::cin >> response;
 
-    if(!std::cin) // CTRL-D
+    if (!std::cin) // CTRL-D
         return false;
 
-    for (char &c : response) { 
-        c = tolower(c); 
+    for (char& c : response) {
+        c = tolower(c);
     }
-    
+
     if (!response.empty() && response != "y") {
         bool releaseStatus = alpm_trans_release(handle) == 0;
         if (!releaseStatus)
@@ -108,7 +107,6 @@ bool commitTransactionAndRelease(bool soft) {
     if (!releaseStatus)
         log_println(LOG_ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
-
     if (prepareStatus && commitStatus && releaseStatus) {
         log_println(LOG_INFO, "Successfully finished transaction.");
         return true;
@@ -120,7 +118,7 @@ bool commitTransactionAndRelease(bool soft) {
 /** Replace special symbols such as ~ and $ in std::strings
  * @param str The string
  * @return The modified string
- */ 
+ */
 string expandVar(string& str) {
     const char* env;
     if (str[0] == '~') {
@@ -152,10 +150,10 @@ fmt::rgb hexStringToColor(string hexstr) {
     int intValue;
     ss >> intValue;
 
-    int red = (intValue >> 16) & 0xFF;
+    int red   = (intValue >> 16) & 0xFF;
     int green = (intValue >> 8) & 0xFF;
-    int blue = intValue & 0xFF;
-    
+    int blue  = intValue & 0xFF;
+
     return fmt::rgb(red, green, blue);
 }
 
@@ -164,14 +162,14 @@ string shell_exec(string cmd) {
     std::array<char, 128> buffer;
     string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
+    if (!pipe)
         throw std::runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+    
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
         result += buffer.data();
-    }
+    
     // why there is a '\n' at the end??
-    result.erase(result.end()-1, result.end());
+    result.erase(result.end() - 1, result.end());
     return result;
 }
 
@@ -183,7 +181,7 @@ bool is_number(const string& s, bool allowSpace) {
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c)); }) == s.end();
 }
 
-bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure) {
+bool taur_read_exec(vector<const char*> cmd, string* output, bool exitOnFailure) {
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
@@ -192,7 +190,7 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
     }
 
     int pid = fork();
-    
+
     if (pid > 0) { // we wait for the command to finish then start executing the rest
         close(pipeout[1]);
 
@@ -211,8 +209,7 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
             close(pipeout[0]);
 
             return true;
-        }
-        else {
+        } else {
             log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
@@ -220,7 +217,7 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
     } else if (pid == 0) {
         if (dup2(pipeout[1], STDOUT_FILENO) == -1)
             exit(127);
-        
+
         close(pipeout[0]);
         close(pipeout[1]);
         log_println(LOG_DEBUG, "reading {}", fmt::join(cmd, " "));
@@ -248,7 +245,7 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
  * @param cmd The command to execute 
  * @param exitOnFailure Whether to call exit(-1) on command failure.
  * @return true if the command successed, else false 
- */ 
+ */
 bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
 
     int pid = fork();
@@ -262,6 +259,7 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
         log_println(LOG_DEBUG, "running {}", fmt::join(cmd, " "));
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char* const*>(cmd.data()));
+        
         // execvp() returns instead of exiting when failed
         log_println(LOG_ERROR, "An error as occured: {}", strerror(errno));
         exit(-1);
@@ -285,21 +283,21 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
  * @param cmd The command to execute 
  * @param exitOnFailure Whether to call exit(-1) on command failure.
  * @return true if the command successed, else false 
- */ 
+ */
 bool makepkg_exec(string cmd, bool exitOnFailure) {
-    vector<const char *> ccmd = {config->makepkgBin.c_str()};
-    
+    vector<const char*> ccmd = {config->makepkgBin.c_str()};
+
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
     if (!config->colors)
         ccmd.push_back("--nocolor");
 
-    ccmd.push_back("--config"); 
+    ccmd.push_back("--config");
     ccmd.push_back(config->makepkgConf.c_str());
 
     for (auto& str : split(cmd, ' '))
         ccmd.push_back(str.c_str());
-    
+
     return taur_exec(ccmd, exitOnFailure);
 }
 
@@ -310,30 +308,30 @@ bool makepkg_exec(string cmd, bool exitOnFailure) {
  * @param exitOnFailure Whether to call exit(-1) on command failure. (Default true)
  * @param root If pacman should be executed as root (Default true)
  * @return true if the command successed, else false 
- */ 
+ */
 bool pacman_exec(string op, vector<string> args, bool exitOnFailure, bool root) {
-    vector<const char *> ccmd;
+    vector<const char*> ccmd;
 
     if (root)
         ccmd = {config->sudo.c_str(), "pacman", op.c_str()};
     else
         ccmd = {"pacman", op.c_str()};
-    
+
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
-    
+
     if (config->colors)
         ccmd.push_back("--color=auto");
     else
         ccmd.push_back("--color=never");
 
-    ccmd.push_back("--config"); 
+    ccmd.push_back("--config");
     ccmd.push_back(config->pmConfig.c_str());
     ccmd.push_back("--");
 
     for (auto& str : args)
         ccmd.push_back(str.c_str());
-    
+
     return taur_exec(ccmd, exitOnFailure);
 }
 
@@ -341,8 +339,8 @@ bool pacman_exec(string op, vector<string> args, bool exitOnFailure, bool root) 
  * This will attempt to free everything, should be used for strings that contain C strings only.
  * @param list the list to free
 */
-void free_list_and_internals(alpm_list_t *list) {
-    for (alpm_list_t *listClone = list; listClone; listClone = listClone->next)
+void free_list_and_internals(alpm_list_t* list) {
+    for (alpm_list_t* listClone = list; listClone; listClone = listClone->next)
         free(listClone->data);
 
     alpm_list_free(list);
@@ -366,10 +364,10 @@ fmt::text_style getColorFromDBName(string db_name) {
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t &pkg, string db_name, int index) {
+void printPkgInfo(TaurPkg_t& pkg, string db_name, int index) {
     if (index > -1)
         fmt::print(fmt::fg(color.index), "[{}] ", index);
-    
+
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
     fmt::print(BOLD_TEXT(color.version), "{} ", pkg.version);
@@ -386,23 +384,23 @@ string makepkg_list(string pkg_name, string path) {
     string ret;
 
     string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
-    string pkgrel = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
-    string epoch = shell_exec("grep 'epoch=' " + path + "/PKGBUILD | cut -d= -f2");
-    
+    string pkgrel      = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
+    string epoch       = shell_exec("grep 'epoch=' " + path + "/PKGBUILD | cut -d= -f2");
+
     if (!pkgrel.empty() && pkgrel[0] != '\0')
         versionInfo += '-' + pkgrel;
 
     if (!epoch.empty() && epoch[0] != '\0')
         versionInfo = epoch + ':' + versionInfo;
-    
-    string arch = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+
+    string arch       = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
     string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
-    
+
     if (arch_field == "any")
         arch = "any";
-    
+
     string pkgext = shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
-    
+
     ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
     return ret;
 }
@@ -415,7 +413,7 @@ string makepkg_list(string pkg_name, string path) {
 */
 optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
-        return pkgs[0].url.empty() ? pkgs : vector<TaurPkg_t>({ backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]) });
+        return pkgs[0].url.empty() ? pkgs : vector<TaurPkg_t>({backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0])});
     } else if (pkgs.size() > 1) {
         log_println(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
         string input;
@@ -436,7 +434,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
             std::getline(std::cin, input);
         } while (!is_number(input, true));
 
-        vector<string> indices = split(input, ' ');
+        vector<string>    indices = split(input, ' ');
 
         vector<TaurPkg_t> output;
 
@@ -448,7 +446,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
 
             output.push_back(pkgs[selected].url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]));
         }
-        
+
         return output;
     }
 
@@ -467,7 +465,7 @@ vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncd
     for (; syncdbs; syncdbs = syncdbs->next) {
         for (size_t i = 0; i < pkgs.size(); i++) {
             bool existsInSync = alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), alpm_pkg_get_name(pkgs[i])) != nullptr;
-            
+
             if ((existsInSync && inverse) || (!existsInSync && !inverse))
                 pkgs[i] = nullptr;
         }
@@ -505,7 +503,7 @@ string getHomeCacheDir() {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     } else {
-        char *home = getenv("HOME");
+        char* home = getenv("HOME");
         if (home == nullptr)
             throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
         return string(home) + "/.cache";
@@ -523,7 +521,7 @@ string getHomeConfigDir() {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     } else {
-        char *home = getenv("HOME");
+        char* home = getenv("HOME");
         if (home == nullptr)
             throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
         return string(home) + "/.config";

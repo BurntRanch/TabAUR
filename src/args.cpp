@@ -4,8 +4,6 @@
 #include "util.hpp"
 #include "config.hpp"
 
-Operation_t op;
-
 alpm_list_smart_deleter taur_targets(nullptr, free_list_and_internals);
 
 void invalid_opt(int used, string opt1, string opt2) {
@@ -94,6 +92,10 @@ int parsearg_global(int opt) {
                 break;
         case OP_THEME:
                 themefile = strndup(optarg, PATH_MAX);
+                break;
+        case OP_RECIPE:
+        case 'r':
+                config->secretRecipe = true;
                 break;
         default:
                 return 1;
