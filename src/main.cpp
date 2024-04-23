@@ -263,10 +263,10 @@ bool removePkg(alpm_list_t *pkgNames) {
     for (; pkgNames; pkgNames = pkgNames->next)
         regexQuery = alpm_list_add(regexQuery, (void *)((".*" + string((const char *)(pkgNames->data)) + ".*").c_str()));
 
-    alpm_list_free(regexQuery);
-
     if (alpm_db_search(alpm_get_localdb(config->handle), regexQuery, &temp_ret) != 0)
         return false;
+
+    alpm_list_free(regexQuery);
 
     alpm_list_smart_pointer ret(temp_ret, alpm_list_free);
 
