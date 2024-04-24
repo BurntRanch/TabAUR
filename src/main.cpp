@@ -1,3 +1,4 @@
+#include <alpm.h>
 #include <alpm_list.h>
 #include <filesystem>
 #include <iostream>
@@ -133,7 +134,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     for (; pkgNames; pkgNames = pkgNames->next) {
         string            pkgName = string((char*)(pkgNames->data));
-        vector<TaurPkg_t> pkgs    = backend->search(pkgName, useGit);
+        vector<TaurPkg_t> pkgs    = backend->search(pkgName, useGit, !op.op_s_search);
 
         if (pkgs.empty()) {
             log_println(LOG_WARN, "No results found!");
@@ -188,13 +189,20 @@ int installPkg(alpm_list_t *pkgNames) {
             if (useGit) {
                 filename = filename.substr(0, filename.rfind(".git"));
 
-                if (std::filesystem::exists(filename)) {
+                if (std::filesystem::exists(filename) && std::filesystem::exists(path(filename) / ".git")) {
                     std::filesystem::current_path(filename);
                     if (askUserYorN(true, PROMPT_YN_DIFF, pkg.name)) {
-                        if (taur_exec({config->git.c_str(), "fetch", "origin"}))
-                            throw std::runtime_error("Failed to run git fetch!");
-                        if (taur_exec({"git", "diff", "origin", "PKGBUILD"}))
-                            throw std::runtime_error("Failed to run git diff!");
+                        if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false)) {
+                            log_println(LOG_ERROR, "Failed to run `{} fetch`!", config->git);
+                            return false;
+                        }
+                        if (!taur_exec({config->git.c_str(), "diff", "origin", "PKGBUILD"}, false)) {
+                            log_println(LOG_ERROR, "Failed to run `{} diff`!", config->git);
+                            return false;
+                        }
+
+                        // make sure the user 100% can read the diff.
+                        sleep(3);
                     }
                 }
             }
@@ -254,18 +262,28 @@ bool removePkg(alpm_list_t *pkgNames) {
     if (!pkgNames)
         return false;
 
-    alpm_list_t *temp_ret = nullptr;
-    alpm_list_t *regexQuery = nullptr;
+    alpm_list_t *exactMatches = nullptr;
+    alpm_list_t *searchResults = nullptr;
+    alpm_list_t *filteredPkgNames = nullptr;
+    alpm_db_t *localdb = alpm_get_localdb(config->handle);
 
-    for (; pkgNames; pkgNames = pkgNames->next)
-        regexQuery = alpm_list_add(regexQuery, (void *)((".*" + string((const char *)(pkgNames->data)) + ".*").c_str()));
+    for (alpm_list_t *i = pkgNames; i; i = i->next) {
+        alpm_pkg_t *result = alpm_db_get_pkg(localdb, (const char *)i->data);
+        if (result != NULL)
+            exactMatches = alpm_list_add(exactMatches, result);
+        else
+            filteredPkgNames = alpm_list_add(filteredPkgNames, i->data);
+    }
 
-    if (alpm_db_search(alpm_get_localdb(config->handle), regexQuery, &temp_ret) != 0)
+    if (filteredPkgNames && alpm_db_search(localdb, filteredPkgNames, &searchResults) != 0) {
+        if (exactMatches)
+            alpm_list_free(exactMatches);
+        alpm_list_free(filteredPkgNames);
+        log_println(LOG_ERROR, "Searching failed, Bailing out!");
         return false;
+    }
 
-    alpm_list_free(regexQuery);
-
-    alpm_list_smart_pointer ret(temp_ret, alpm_list_free);
+    alpm_list_smart_pointer ret(alpm_list_join(exactMatches, searchResults), alpm_list_free);
 
     size_t ret_length = alpm_list_count(ret.get());
 

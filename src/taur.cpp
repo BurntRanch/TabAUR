@@ -379,10 +379,27 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
             continue;
         }
 
-        log_println(LOG_INFO, "Downloading {}.", pkgs[pkgIndex].name);
-
         string pkgFolder = cacheDir + '/' + onlinePkgs[i].name;
         sanitizeStr(pkgFolder);
+
+        if (useGit && std::filesystem::exists(pkgFolder) && std::filesystem::exists(path(pkgFolder) / ".git")) {
+            std::filesystem::current_path(pkgFolder);
+            if (askUserYorN(true, PROMPT_YN_DIFF, onlinePkgs[i].name)) {
+                if (!taur_exec({config.git.c_str(), "fetch", "origin"}, false)) {
+                    log_println(LOG_ERROR, "Failed to run `{} fetch`!", config.git);
+                    return false;
+                }
+                if (!taur_exec({config.git.c_str(), "diff", "origin", "PKGBUILD"}, false)) {
+                    log_println(LOG_ERROR, "Failed to run `{} diff`!", config.git);
+                    return false;
+                }
+
+                // make sure the user 100% can read the diff.
+                sleep(3);
+            }
+        }
+
+        log_println(LOG_INFO, "Downloading {}.", pkgs[pkgIndex].name);
 
         if (!useGit)
             fs::remove_all(pkgFolder);
@@ -517,7 +534,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
     syncdbs = config.repos;
 
     alpm_list_smart_pointer packages(nullptr, alpm_list_free);
-    alpm_list_smart_pointer query_regex(alpm_list_add(nullptr, (void *)((".*" + query + ".*").c_str())), alpm_list_free);
+    alpm_list_smart_pointer query_regex(alpm_list_add(nullptr, (void *)query.c_str()), alpm_list_free);
 
     for (; syncdbs; syncdbs = alpm_list_next(syncdbs)) {
         alpm_list_t *ret = nullptr;
@@ -550,7 +567,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
 
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-vector<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
+vector<TaurPkg_t> TaurBackend::search(string query, bool useGit, bool checkExactMatch) {
     if (query.empty())
         return vector<TaurPkg_t>();
     // link to AUR API
@@ -578,6 +595,13 @@ vector<TaurPkg_t> TaurBackend::search(string query, bool useGit) {
         combined.insert(combined.end(), aurPkgs.begin(), aurPkgs.end());
     if (!pacPkgs.empty())
         combined.insert(combined.end(), pacPkgs.begin(), pacPkgs.end());
+
+    if (!checkExactMatch)   // caller doesn't want us to check for an exact match.
+        return combined;
+
+    for (size_t i = 0; i < combined.size(); i++)
+        if (combined[i].name == query)
+            return { combined[i] }; // return the exact match only.
 
     return combined;
 }
