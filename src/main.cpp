@@ -415,33 +415,33 @@ int parseargs(int argc, char* argv[]) {
         else if (opt == '?')
             return 1;
         parsearg_op(opt, 0);
-    }
 
-    if (op.op == 0) {
-        log_println(LOG_ERROR, "only one operation may be used at a time");
-        return 1;
-    }
+        if (op.op == 0) {
+            log_println(LOG_ERROR, "only one operation may be used at a time");
+            return 1;
+        }
 
-    if (op.version) {
-        fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
-        exit(0);
-    }
-    if (op.help) {
-        usage(op.op);
-        exit(1);
-    }
+        if (op.version) {
+            fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
+            exit(0);
+        }
+        if (op.help) {
+            usage(op.op);
+            exit(1);
+        }
 
-    /* parse all other options */
-    switch(op.op) {
-        case OP_SYNC:
-            result = parsearg_sync(opt);
+        /* parse all other options */
+        switch(op.op) {
+            case OP_SYNC:
+                result = parsearg_sync(opt);
+                break;
+            case OP_QUERY:
+                result = parsearg_query(opt);
+                break;
+            default:
+            result = 1;
             break;
-        case OP_QUERY:
-            result = parsearg_query(opt);
-            break;
-        default:
-	    result = 1;
-	    break;
+        }
     }
 
     optind = 1;
