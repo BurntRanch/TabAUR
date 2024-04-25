@@ -1,16 +1,15 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
+#define TOML_HEADER_ONLY 0
 
 #include <alpm.h>
 #include <map>
 #include <string>
 #include <type_traits>
-#define TOML_HEADER_ONLY 0
-#include "toml++/toml.hpp"
 #include "fmt/color.h"
+#include "toml++/toml.hpp"
 
 using std::string;
-using rgb = fmt::rgb;
 
 // so we don't need to include util.hpp for getConfigValue()
 string expandVar(string& str);
@@ -27,22 +26,22 @@ struct strOrBool {
 };
 
 struct _color_t {
-    rgb red;
-    rgb green;
-    rgb blue;
-    rgb cyan;
-    rgb yellow;
-    rgb magenta;
-    rgb gray;
-    rgb aur;
-    rgb extra;
-    rgb core;
-    rgb multilib;
-    rgb others;
-    rgb version;
-    rgb popularity;
-    rgb installed;
-    rgb index;
+    fmt::rgb red;
+    fmt::rgb green;
+    fmt::rgb blue;
+    fmt::rgb cyan;
+    fmt::rgb yellow;
+    fmt::rgb magenta;
+    fmt::rgb gray;
+    fmt::rgb aur;
+    fmt::rgb extra;
+    fmt::rgb core;
+    fmt::rgb multilib;
+    fmt::rgb others;
+    fmt::rgb version;
+    fmt::rgb popularity;
+    fmt::rgb installed;
+    fmt::rgb index;
 };
 
 class Config {

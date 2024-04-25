@@ -1,12 +1,8 @@
-#include <alpm.h>
-#include <alpm_list.h>
-#include <filesystem>
-#include <iostream>
 #pragma GCC diagnostic ignored "-Wvla"
 
-#include "util.hpp"
 #include "args.hpp"
 #include "taur.hpp"
+#include "util.hpp"
 
 #define BRANCH  "libalpm-test"
 #define VERSION "0.6.2"
@@ -57,7 +53,6 @@ void usage(int op) {
     --sudo      <path>   choose which binary to use for privilage-escalation
     --noconfirm          do not ask for any confirmation (passed to both makepkg and pacman)
     )#");
-
 }
 
 void test_colors() {
@@ -72,10 +67,10 @@ void test_colors() {
 
     if (fmt::disable_colors)
         fmt::println("Colors are disabled");
-    log_println(LOG_DEBUG, "Debug color: {}",  fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
-    log_println(LOG_INFO, "Info color: {}",    fmt::format(BOLD_TEXT(color.cyan),    "(bold) cyan"));
-    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow),  "(bold) yellow"));
-    log_println(LOG_ERROR, "Error color: {}",  fmt::format(BOLD_TEXT(color.red),     "(bold) red"));
+    log_println(LOG_DEBUG, "Debug color: {}", fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
+    log_println(LOG_INFO, "Info color: {}", fmt::format(BOLD_TEXT(color.cyan), "(bold) cyan"));
+    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow), "(bold) yellow"));
+    log_println(LOG_ERROR, "Error color: {}", fmt::format(BOLD_TEXT(color.red), "(bold) red"));
     fmt::println(fg(color.red), "red");
     fmt::println(fg(color.blue), "blue");
     fmt::println(fg(color.yellow), "yellow");
@@ -100,13 +95,13 @@ void test_colors() {
     printPkgInfo(pkg, pkg.db_name, 1);
 }
 
-bool execPacman(int argc, char* argv[]) {
+bool execPacman(int argc, char *argv[]) {
     log_println(LOG_DEBUG, "Passing command to pacman! (argc: {:d})", argc);
 
     if (0 > argc || argc > 512)
         throw std::invalid_argument("argc is invalid! (512 > argc > 0)");
 
-    char* args[argc + 3]; // sudo + pacman + null terminator
+    char *args[argc + 3]; // sudo + pacman + null terminator
 
     args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
@@ -125,15 +120,15 @@ bool execPacman(int argc, char* argv[]) {
 }
 
 int installPkg(alpm_list_t *pkgNames) {
-    bool useGit   = config->useGit;
-    string cacheDir = config->cacheDir;
+    bool           useGit   = config->useGit;
+    string         cacheDir = config->cacheDir;
 
-    bool returnStatus = true;
+    bool           returnStatus = true;
 
     vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
 
     for (; pkgNames; pkgNames = pkgNames->next) {
-        string            pkgName = string((char*)(pkgNames->data));
+        string            pkgName = string((char *)(pkgNames->data));
         vector<TaurPkg_t> pkgs    = backend->search(pkgName, useGit, !op.op_s_search);
 
         if (pkgs.empty()) {
@@ -168,20 +163,6 @@ int installPkg(alpm_list_t *pkgNames) {
                 log_printf(LOG_DEBUG, "Scheduled system package {} for installation!\n", pkg.name);
                 pacmanPkgs.push_back(pkg.name);
                 continue;
-                // vector<const char *> cmd = {config->sudo.c_str(), "pacman", "-S"};
-                // if(op.op_s_sync)
-                //     cmd.push_back("-y");
-                // if(op.op_s_upgrade)
-                //     cmd.push_back("-u");
-
-                // cmd.push_back(pkg.name.c_str());
-
-                // if (taur_exec(cmd, false))
-                //     continue;
-                // else {
-                //     returnStatus = false;
-                //     continue;
-                // }
             }
 
             path pkgDir = path(cacheDir) / pkg.name;
@@ -192,12 +173,11 @@ int installPkg(alpm_list_t *pkgNames) {
                 if (askUserYorN(true, PROMPT_YN_DIFF, pkg.name)) {
                     std::filesystem::current_path(pkgDir);
 
-                    if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false)) {
+                    if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false))
                         continue;
-                    }
-                    if (!taur_exec({config->git.c_str(), "diff", "origin", "PKGBUILD"}, false)) {
+
+                    if (!taur_exec({config->git.c_str(), "diff", "origin", "PKGBUILD"}, false))
                         continue;
-                    }
 
                     // make sure the user 100% can read the diff.
                     sleep(3);
@@ -274,10 +254,10 @@ bool removePkg(alpm_list_t *pkgNames) {
     if (!pkgNames)
         return false;
 
-    alpm_list_t *exactMatches = nullptr;
-    alpm_list_t *searchResults = nullptr;
+    alpm_list_t *exactMatches     = nullptr;
+    alpm_list_t *searchResults    = nullptr;
     alpm_list_t *filteredPkgNames = nullptr;
-    alpm_db_t *localdb = alpm_get_localdb(config->handle);
+    alpm_db_t   *localdb          = alpm_get_localdb(config->handle);
 
     for (alpm_list_t *i = pkgNames; i; i = i->next) {
         alpm_pkg_t *result = alpm_db_get_pkg(localdb, (const char *)i->data);
@@ -318,8 +298,8 @@ bool removePkg(alpm_list_t *pkgNames) {
 
     vector<string> includedIndexes = split(included, ' ');
 
-    alpm_list_t *finalPackageList      = nullptr;
-    alpm_list_t *finalPackageListStart = nullptr;
+    alpm_list_t   *finalPackageList      = nullptr;
+    alpm_list_t   *finalPackageListStart = nullptr;
 
     if (included == "*")
         return backend->remove_pkgs(ret);
@@ -360,9 +340,9 @@ bool updateAll() {
 
 bool queryPkgs() {
     log_println(LOG_DEBUG, "AUR Only: {}", config->aurOnly);
-    alpm_list_t *pkg;
+    alpm_list_t         *pkg;
 
-    vector<const char*> pkgs, pkgs_ver;
+    vector<const char *> pkgs, pkgs_ver;
     for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)) {
         pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
         pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
@@ -378,7 +358,7 @@ bool queryPkgs() {
 
         for (; syncdbs; syncdbs = syncdbs->next)
             for (size_t i = 0; i < pkgs.size(); i++)
-                if (alpm_db_get_pkg((alpm_db_t*)(syncdbs->data), pkgs[i]))
+                if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i]))
                     pkgs[i] = NULL; // wont be printed
     }
 
@@ -461,7 +441,7 @@ int parseargs(int argc, char* argv[]) {
         }
 
         /* parse all other options */
-        switch(op.op) {
+        switch (op.op) {
             case OP_SYNC:
                 result = parsearg_sync(opt);
                 break;
@@ -478,11 +458,9 @@ int parseargs(int argc, char* argv[]) {
     while ((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
         if (opt == 0)
             continue;
-        
         /* this should have failed during first pass already */
         else if (opt == '?')
             return 1;
-        
         /* opt is an operation */
         else if (parsearg_op(opt, 1) == 0)
             continue;
@@ -518,9 +496,9 @@ int parseargs(int argc, char* argv[]) {
 }
 
 // main
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     config         = std::make_unique<Config>();
-    char* no_color = getenv("NO_COLOR");
+    char *no_color = getenv("NO_COLOR");
 
     configfile = (getConfigDir() + "/config.toml");
     themefile  = (getConfigDir() + "/theme.toml");
@@ -534,13 +512,13 @@ int main(int argc, char* argv[]) {
         fmt::disable_colors = true;
         config->colors      = false;
     }
-    
+
     if (op.test_colors) {
         test_colors();
         return 0;
     }
 
-    if (op.show_recipe)
+    if (op.show_recipe) {
         if (config->secretRecipe) {
             log_println(LOG_INFO, "Secret recipe unlocked!");
             log_println(LOG_INFO, "Loading secret recipe...");
@@ -550,7 +528,7 @@ int main(int argc, char* argv[]) {
             }
             return 0;
         }
-
+    }
 
     signal(SIGINT, &interruptHandler);
 
@@ -566,20 +544,20 @@ int main(int argc, char* argv[]) {
     }
 
     switch (op.op) {
-    case OP_SYNC:
-        return installPkg(taur_targets.get()) ? 0 : 1;
-    case OP_REM:
-        return removePkg(taur_targets.get()) ? 0 : 1;
-    case OP_QUERY:
-        return (queryPkgs()) ? 0 : 1;
-    case OP_SYSUPGRADE:
-        return (updateAll()) ? 0 : 1;
-    case OP_PACMAN:
-        // we are gonna use pacman to other ops than -S,-R,-Q
-        return execPacman(argc, argv);
-    default:
-        log_println(LOG_ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
-        return EXIT_SUCCESS;
+        case OP_SYNC:
+            return installPkg(taur_targets.get()) ? 0 : 1;
+        case OP_REM:
+            return removePkg(taur_targets.get()) ? 0 : 1;
+        case OP_QUERY:
+            return (queryPkgs()) ? 0 : 1;
+        case OP_SYSUPGRADE:
+            return (updateAll()) ? 0 : 1;
+        case OP_PACMAN:
+            // we are gonna use pacman to other ops than -S,-R,-Q
+            return execPacman(argc, argv);
+        default:
+            log_println(LOG_ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
+            return EXIT_SUCCESS;
     }
 
     return EXIT_SUCCESS;

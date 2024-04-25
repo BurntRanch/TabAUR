@@ -1,17 +1,17 @@
 #ifndef GIT_HPP
 #define GIT_HPP
 
+#include "cpr/cpr.h"
+#include "util.hpp"
 #include <alpm.h>
 #include <alpm_list.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <optional>
 #include <rapidjson/document.h>
-#include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
-#include "cpr/cpr.h"
+#include <rapidjson/writer.h>
 #include <sys/wait.h>
-#include "util.hpp"
+#include <unistd.h>
 
 class Config;
 
@@ -44,8 +44,8 @@ class TaurBackend {
     bool                download_pkg(string url, string out_path);
     optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
     vector<TaurPkg_t>   fetch_pkgs(vector<string> pkgs, bool returnGit);
-    bool                remove_pkg(alpm_pkg_t* pkgs, bool ownTransaction = true);
     bool                remove_pkgs(alpm_list_smart_pointer& pkgs);
+    bool                remove_pkg(alpm_pkg_t *pkgs, bool ownTransaction = true);
     bool                handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit);
     bool                build_pkg(string pkg_name, string extracted_path, bool alreadyprepared);
     bool                update_all_aur_pkgs(path cacheDir, bool useGit);

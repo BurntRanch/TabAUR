@@ -13,7 +13,6 @@ AllowAllArgumentsOnNextLine: true
 AllowAllConstructorInitializersOnNextLine: true
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: true
-AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortLambdasOnASingleLine: All
@@ -35,6 +34,7 @@ IndentCaseLabels: true
 IndentWidth: 4
 PointerAlignment: Right
 ReflowComments: false
+ReferenceAlignment: Left
 SortIncludes: true
 SortUsingDeclarations: false
 SpaceAfterCStyleCast: false

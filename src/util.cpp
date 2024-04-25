@@ -1,16 +1,10 @@
-#include <cctype>
-#include <string>
-#include <utility>
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
-#include "util.hpp"
 #include "config.hpp"
 #include "taur.hpp"
-#include <iostream>
+#include "util.hpp"
 #include <filesystem>
-#include <fmt/ranges.h>
-
-namespace fs = std::filesystem;
+#include <iostream>
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string const& fullString, string const& ending) {
@@ -47,10 +41,10 @@ void interruptHandler(int) {
  * @param name The package name to check
  * @param syncdbs
  * @return true if the pkg exists, else false
- */ 
+ */
 bool is_package_from_syncdb(const char *name, alpm_list_t *syncdbs) {
     for (; syncdbs; syncdbs = alpm_list_next(syncdbs))
-        if (alpm_db_get_pkg((alpm_db_t*)(syncdbs->data), name))
+        if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), name))
             return true;
 
     return false;
@@ -60,9 +54,9 @@ bool is_package_from_syncdb(const char *name, alpm_list_t *syncdbs) {
 bool commitTransactionAndRelease(bool soft) {
     alpm_handle_t *handle = config->handle;
 
-    alpm_list_t *addPkgs    = alpm_trans_get_add(handle);
-    alpm_list_t *removePkgs = alpm_trans_get_remove(handle);
-    alpm_list_t *combined   = alpm_list_join(addPkgs, removePkgs);
+    alpm_list_t   *addPkgs    = alpm_trans_get_add(handle);
+    alpm_list_t   *removePkgs = alpm_trans_get_remove(handle);
+    alpm_list_t   *combined   = alpm_list_join(addPkgs, removePkgs);
     if (soft && !combined)
         return true;
 
@@ -123,7 +117,7 @@ bool commitTransactionAndRelease(bool soft) {
  * @return The modified string
  */
 string expandVar(string& str) {
-    const char* env;
+    const char *env;
     if (str[0] == '~') {
         env = getenv("HOME");
         if (env == nullptr) {
@@ -165,12 +159,13 @@ string shell_exec(string cmd) {
     std::array<char, 128> buffer;
     string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+
     if (!pipe)
         throw std::runtime_error("popen() failed!");
-    
+
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
         result += buffer.data();
-    
+
     // why there is a '\n' at the end??
     result.erase(result.end() - 1, result.end());
     return result;
@@ -184,7 +179,7 @@ bool is_number(const string& s, bool allowSpace) {
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c)); }) == s.end();
 }
 
-bool taur_read_exec(vector<const char*> cmd, string* output, bool exitOnFailure) {
+bool taur_read_exec(vector<const char *> cmd, string *output, bool exitOnFailure) {
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
@@ -225,7 +220,7 @@ bool taur_read_exec(vector<const char*> cmd, string* output, bool exitOnFailure)
         close(pipeout[1]);
         log_println(LOG_DEBUG, "reading {}", fmt::join(cmd, " "));
         cmd.push_back(nullptr);
-        execvp(cmd[0], const_cast<char* const*>(cmd.data()));
+        execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
         log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
         exit(127);
@@ -249,7 +244,7 @@ bool taur_read_exec(vector<const char*> cmd, string* output, bool exitOnFailure)
  * @param exitOnFailure Whether to call exit(-1) on command failure.
  * @return true if the command successed, else false 
  */
-bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
+bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
 
     int pid = fork();
 
@@ -261,8 +256,8 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
     if (pid == 0) {
         log_println(LOG_DEBUG, "running {}", fmt::join(cmd, " "));
         cmd.push_back(nullptr);
-        execvp(cmd[0], const_cast<char* const*>(cmd.data()));
-        
+        execvp(cmd[0], const_cast<char *const *>(cmd.data()));
+
         // execvp() returns instead of exiting when failed
         log_println(LOG_ERROR, "An error as occured: {}", strerror(errno));
         exit(-1);
@@ -288,7 +283,7 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
  * @return true if the command successed, else false 
  */
 bool makepkg_exec(string cmd, bool exitOnFailure) {
-    vector<const char*> ccmd = {config->makepkgBin.c_str()};
+    vector<const char *> ccmd = {config->makepkgBin.c_str()};
 
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
@@ -313,7 +308,7 @@ bool makepkg_exec(string cmd, bool exitOnFailure) {
  * @return true if the command successed, else false 
  */
 bool pacman_exec(string op, vector<string> args, bool exitOnFailure, bool root) {
-    vector<const char*> ccmd;
+    vector<const char *> ccmd;
 
     if (root)
         ccmd = {config->sudo.c_str(), "pacman", op.c_str()};
@@ -342,8 +337,8 @@ bool pacman_exec(string op, vector<string> args, bool exitOnFailure, bool root) 
  * This will attempt to free everything, should be used for strings that contain C strings only.
  * @param list the list to free
 */
-void free_list_and_internals(alpm_list_t* list) {
-    for (alpm_list_t* listClone = list; listClone; listClone = listClone->next)
+void free_list_and_internals(alpm_list_t *list) {
+    for (alpm_list_t *listClone = list; listClone; listClone = listClone->next)
         free(listClone->data);
 
     alpm_list_free(list);
@@ -501,12 +496,12 @@ string getTitleForPopularity(float popularity) {
 * @return user's cache directory  
 */
 string getHomeCacheDir() {
-    char* dir = getenv("XDG_CACHE_HOME");
-    if (dir != NULL && fs::exists(string(dir))) {
+    char *dir = getenv("XDG_CACHE_HOME");
+    if (dir != NULL && std::filesystem::exists(string(dir))) {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     } else {
-        char* home = getenv("HOME");
+        char *home = getenv("HOME");
         if (home == nullptr)
             throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
         return string(home) + "/.cache";
@@ -519,12 +514,12 @@ string getHomeCacheDir() {
 * @return user's config directory  
 */
 string getHomeConfigDir() {
-    char* dir = getenv("XDG_CONFIG_HOME");
-    if (dir != NULL && fs::exists(string(dir))) {
+    char *dir = getenv("XDG_CONFIG_HOME");
+    if (dir != NULL && std::filesystem::exists(string(dir))) {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     } else {
-        char* home = getenv("HOME");
+        char *home = getenv("HOME");
         if (home == nullptr)
             throw std::invalid_argument("Failed to find $HOME, set it to your home directory!"); // nevermind..
         return string(home) + "/.config";

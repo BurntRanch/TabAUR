@@ -1,14 +1,12 @@
 #define TOML_IMPLEMENTATION
 #include "config.hpp"
-#include "util.hpp"
 #include "ini.h"
+#include "util.hpp"
 #include <filesystem>
 #include <iostream>
 
 using std::ofstream;
 using std::ifstream;
-
-namespace fs = std::filesystem;
 
 Config::Config() {}
 
@@ -27,22 +25,22 @@ void Config::init(string configFile, string themeFile) {
     if (this->initialized)
         return;
     string configDir = getConfigDir();
-    bool newUser = false;
+    bool   newUser   = false;
 
-    if (!fs::exists(configDir)) {
+    if (!std::filesystem::exists(configDir)) {
         log_println(LOG_NONE, "Warning: TabAUR config folder was not found, Creating folders at {}!", configDir);
-        fs::create_directories(configDir);
+        std::filesystem::create_directories(configDir);
 
         newUser = true;
     }
-    if (!fs::exists(configFile)) {
+    if (!std::filesystem::exists(configFile)) {
         log_println(LOG_NONE, "Warning: {} not found, generating new one", configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         ofstream f(configFile, std::ios::trunc);
         f << AUTOCONFIG;
         f.close();
     }
-    if (!fs::exists(themeFile)) {
+    if (!std::filesystem::exists(themeFile)) {
         log_println(LOG_NONE, "Warning: {} not found, generating new one", themeFile);
         ofstream f(themeFile, std::ios::trunc);
         f << AUTOTHEME;
@@ -53,9 +51,9 @@ void Config::init(string configFile, string themeFile) {
     this->loadThemeFile(themeFile);
 
     this->initialized = true;
-    if (!fs::exists(config->cacheDir)) {
+    if (!std::filesystem::exists(config->cacheDir)) {
         log_println(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!", config->cacheDir);
-        fs::create_directories(config->cacheDir);
+        std::filesystem::create_directories(config->cacheDir);
     }
 
     if (newUser)
@@ -64,7 +62,6 @@ void Config::init(string configFile, string themeFile) {
                      "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should "
                      "always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done "
                      "to your system as a result of AUR packages.\nThank you!\n");
-
 }
 
 // get initialized variable
@@ -115,7 +112,7 @@ void Config::loadConfigFile(string filename) {
     this->initVars();
 
     alpm_errno_t err;
-    this->handle    = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
+    this->handle = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
 
     if (!(this->handle))
         throw std::invalid_argument("Failed to get an alpm handle! Error: " + string(alpm_strerror(err)));
@@ -204,13 +201,12 @@ bool addServers(alpm_db_t *db, string includeFilename, string repoName) {
 }
 
 void Config::loadPacmanConfigFile(string filename) {
-    mINI::INIFile file(filename);
+    mINI::INIFile      file(filename);
     mINI::INIStructure ini;
 
     file.read(ini);
 
-    for (auto const& it : ini)
-    {
+    for (auto const& it : ini) {
         string section = it.first;
         if (section == "options")
             continue;

@@ -1,20 +1,18 @@
 // Functions for TabAUR, These include printing stuff and others.
 // main.cpp simply pieces each function together to make the program work.
-#include "util.hpp"
 #include "taur.hpp"
 #include "config.hpp"
+#include "util.hpp"
 #include <filesystem>
-
-namespace fs = std::filesystem;
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string url, string out_path) {
-    if (fs::exists(path(out_path) / ".git")) {
+    if (std::filesystem::exists(path(out_path) / ".git")) {
         return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
     } else {
-        if (fs::exists(path(out_path)))
-                fs::remove_all(out_path);
+        if (std::filesystem::exists(path(out_path)))
+            std::filesystem::remove_all(out_path);
         return taur_exec({config.git.c_str(), "clone", url.c_str(), out_path.c_str()});
     }
 }
@@ -32,7 +30,7 @@ bool TaurBackend::download_tar(string url, path out_path) {
 
     // if this is in a directory, it will change to that directory first.
     if (out_path.has_parent_path())
-        fs::current_path(out_path.parent_path());
+        std::filesystem::current_path(out_path.parent_path());
 
     return taur_exec({"tar", "-xf", out_path.c_str()});
 }
@@ -134,7 +132,7 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
   @param ownTransaction a bool that dictates whether this function owns the transaction, this is used for remove_pkgs, if not, it will not initialize it and not release it.
   @return success.
 */
-bool TaurBackend::remove_pkg(alpm_pkg_t* pkg, bool ownTransaction) {
+bool TaurBackend::remove_pkg(alpm_pkg_t *pkg, bool ownTransaction) {
     if (!pkg)
         return false;
 
@@ -179,11 +177,11 @@ bool TaurBackend::remove_pkgs(alpm_list_smart_pointer& pkgs) {
         alpm_trans_release(this->config.handle);
         return false;
     } else if (pkgs_length == 1) {
-        return this->remove_pkg((alpm_pkg_t*)(pkgs->data), false) && commitTransactionAndRelease();
+        return this->remove_pkg((alpm_pkg_t *)(pkgs->data), false) && commitTransactionAndRelease();
     }
 
-    for (alpm_list_t* pkgsGet = pkgs.get(); pkgsGet; pkgsGet = pkgsGet->next) {
-        bool success = this->remove_pkg((alpm_pkg_t*)(pkgsGet->data), false);
+    for (alpm_list_t *pkgsGet = pkgs.get(); pkgsGet; pkgsGet = pkgsGet->next) {
+        bool success = this->remove_pkg((alpm_pkg_t *)(pkgsGet->data), false);
         if (!success) {
             alpm_trans_release(this->config.handle);
             return false;
@@ -201,7 +199,7 @@ bool TaurBackend::remove_pkgs(alpm_list_smart_pointer& pkgs) {
 bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool alreadyprepared) {
     // never forget to sanitize
     sanitizeStr(extracted_path);
-    fs::current_path(extracted_path);
+    std::filesystem::current_path(extracted_path);
 
     if (!alreadyprepared) {
         log_println(LOG_INFO, "Verifying package sources..");
@@ -214,7 +212,7 @@ bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool already
     built_pkg = makepkg_list(pkg_name, extracted_path);
     log_println(LOG_DEBUG, "built_pkg = {}", built_pkg);
 
-    if (!fs::exists(built_pkg)) {
+    if (!std::filesystem::exists(built_pkg)) {
         /*log_println(LOG_INFO, "Compiling {} in 3 seconds, you can cancel at this point if you can't compile.", pkg_name);
         sleep(3);*/
 
@@ -402,7 +400,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         log_println(LOG_INFO, "Downloading {}.", onlinePkgs[i].name);
 
         if (!useGit)
-            fs::remove_all(pkgDir);
+            std::filesystem::remove_all(pkgDir);
 
         bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgDir);
 
@@ -414,7 +412,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         // workaround for -git package because they are "special"
         if (hasEnding(pkgs[pkgIndex].name, "-git")) {
             alrprepared = true;
-            fs::current_path(pkgDir);
+            std::filesystem::current_path(pkgDir);
             makepkg_exec("--verifysource -fA");
             makepkg_exec("--nobuild -dfA");
         }
@@ -491,7 +489,7 @@ text:
 vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
     vector<alpm_pkg_t *> pkgs;
 
-    alpm_list_t *pkg, *syncdbs;
+    alpm_list_t         *pkg, *syncdbs;
 
     syncdbs = config.repos;
 
@@ -503,7 +501,7 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
 
     vector<TaurPkg_t> out;
     for (size_t i = 0; i < pkgs.size(); i++) {
-        alpm_pkg_t* pkg = pkgs[i];
+        alpm_pkg_t *pkg = pkgs[i];
         out.push_back({.name       = alpm_pkg_get_name(pkg),
                        .version    = alpm_pkg_get_version(pkg),
                        .url        = "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git",
@@ -596,12 +594,12 @@ vector<TaurPkg_t> TaurBackend::search(string query, bool useGit, bool checkExact
     if (!pacPkgs.empty())
         combined.insert(combined.end(), pacPkgs.begin(), pacPkgs.end());
 
-    if (!checkExactMatch)   // caller doesn't want us to check for an exact match.
+    if (!checkExactMatch) // caller doesn't want us to check for an exact match.
         return combined;
 
     for (size_t i = 0; i < combined.size(); i++)
         if (combined[i].name == query)
-            return { combined[i] }; // return the exact match only.
+            return {combined[i]}; // return the exact match only.
 
     return combined;
 }
