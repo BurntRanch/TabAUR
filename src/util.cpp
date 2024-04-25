@@ -76,8 +76,7 @@ bool commitTransactionAndRelease(bool soft) {
     string response;
     std::cin >> response;
 
-    if (!std::cin) // CTRL-D
-        return false;
+    ctrl_d_handler();
 
     for (char& c : response) {
         c = tolower(c);
@@ -167,7 +166,8 @@ string shell_exec(string cmd) {
         result += buffer.data();
 
     // why there is a '\n' at the end??
-    result.erase(result.end() - 1, result.end());
+    if (!result.empty() && result[result.length()-1] == '\n')
+        result.erase(result.length()-1);
     return result;
 }
 
@@ -383,7 +383,7 @@ string makepkg_list(string pkg_name, string path) {
 
     string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
     string pkgrel      = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
-    string epoch       = shell_exec("grep 'epoch=' " + path + "/PKGBUILD | cut -d= -f2");
+    string epoch       = shell_exec("grep 'epoch=' "  + path + "/PKGBUILD | cut -d= -f2");
 
     if (!pkgrel.empty() && pkgrel[0] != '\0')
         versionInfo += '-' + pkgrel;
@@ -417,10 +417,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
         string input;
         do {
             // CTRL-D
-            if (!std::cin) {
-                log_println(LOG_WARN, "Exiting due to CTRL-D!");
-                return {};
-            }
+            ctrl_d_handler();
 
             if (!input.empty())
                 log_println(LOG_WARN, "Invalid input!");
@@ -449,6 +446,13 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
     }
 
     return {};
+}
+
+void ctrl_d_handler() {
+    if (std::cin.eof()) {
+        log_println(LOG_WARN, "Exiting due to CTRL-D");
+        exit(-1);
+    }
 }
 
 /** Filters out/only AUR packages.

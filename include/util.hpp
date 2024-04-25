@@ -60,6 +60,7 @@ vector<alpm_pkg_t *>             filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_l
 string                           shell_exec(string cmd);
 vector<string>                   split(string text, char delim);
 fmt::rgb                         hexStringToColor(string hexstr);
+void                             ctrl_d_handler();
 string                           getTitleForPopularity(float popularity);
 string                           getConfigDir();
 string                           getHomeCacheDir();
@@ -132,6 +133,27 @@ void log_printf(int log, std::string_view fmt, Args&&... args) {
     fmt::print(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
+template <typename... Args>
+void log_printf(int log, const fmt::text_style& ts, std::string_view fmt, Args&&... args) {
+    switch (log) {
+        case LOG_ERROR:
+            fmt::print(BOLD_TEXT(color.red), "ERROR: ");
+            break;
+        case LOG_WARN:
+            fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
+            break;
+        case LOG_INFO:
+            fmt::print(BOLD_TEXT(color.cyan), "Info: ");
+            break;
+        case LOG_DEBUG:
+            if (!config->debug)
+                return;
+            fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
+            break;
+    }
+    fmt::print(ts, fmt::runtime(fmt), std::forward<Args>(args)...);
+}
+
 /** Ask the user a yes or no question.
  * @param def the default result
  * @param pr  the prompt enum
@@ -143,15 +165,15 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
     string inputs_str = "[" + (string)(def ? "Y" : "y") + "/" + (string)(!def ? "N" : "n") + "] ";
     switch (pr) {
         case PROMPT_YN_DIFF:
-            log_printf(LOG_INFO, "Would you like to view the diffs for {}? " + inputs_str, std::forward<Args>(args)...);
+            log_printf(LOG_INFO, fmt::emphasis::bold, "Would you like to view the diffs for {}? {}", std::forward<Args>(args)..., inputs_str);
             break;
         case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
-            log_printf(LOG_WARN,
-                       "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), would you like to continue with the compilation? " +
+            log_printf(LOG_WARN, fmt::emphasis::bold,
+                       "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), would you like to continue with the compilation? {}",
                            inputs_str);
             break;
         case PROMPT_YN_SEE_PKGBUILD:
-            log_printf(LOG_INFO, "Would you like to see the PKGBUILD for this package? " + inputs_str);
+            log_printf(LOG_INFO, fmt::emphasis::bold, "Would you like to see the PKGBUILD for this package? {}", inputs_str);
             break;
         default:
             return def;
@@ -160,8 +182,10 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
 
     // while the getline function works, and the result is not 1 character long, keep reminding the user.
     while (std::getline(std::cin, result) && (result.length() > 1))
-        log_println(LOG_WARN, "Please provide a valid response " + inputs_str);
+        log_printf(LOG_WARN, "Please provide a valid response {}", inputs_str);
 
+    ctrl_d_handler();
+    
     if (result.empty())
         return def;
 

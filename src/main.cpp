@@ -176,8 +176,10 @@ int installPkg(alpm_list_t *pkgNames) {
                     if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false))
                         continue;
 
-                    if (!taur_exec({config->git.c_str(), "diff", "origin", "PKGBUILD"}, false))
-                        continue;
+                    string output = shell_exec(config->git + " diff origin PKGBUILD");
+
+                    if (output.empty())
+                        log_println(LOG_INFO, "No changes were been made");
 
                     // make sure the user 100% can read the diff.
                     sleep(3);
@@ -295,6 +297,7 @@ bool removePkg(alpm_list_t *pkgNames) {
 
     string included;
     std::getline(std::cin, included);
+    ctrl_d_handler();
 
     vector<string> includedIndexes = split(included, ' ');
 
