@@ -65,15 +65,6 @@ void Config::init(string configFile, string themeFile) {
                      "always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done "
                      "to your system as a result of AUR packages.\nThank you!\n");
 
-    if (this->secretRecipe) {
-        log_println(LOG_INFO, "Secret recipe unlocked!");
-        log_println(LOG_INFO, "Loading secret recipe...");
-        for (auto const& i : secret) {
-            fmt::println("{}", i);
-            usleep(650000); // 0.65 seconds
-        }
-        exit(0);
-    }
 }
 
 // get initialized variable
@@ -92,6 +83,7 @@ void Config::initVars() {
     this->makepkgBin    = this->getConfigValue<string>("bins.makepkg", "makepkg");
     this->git           = this->getConfigValue<string>("bins.git", "git");
     this->sudo          = this->getConfigValue<string>("general.sudo", "sudo");
+    this->editorBin     = this->getConfigValue<string>("general.editor", "nano");
     this->useGit        = this->getConfigValue<bool>("general.useGit", true);
     this->aurOnly       = this->getConfigValue<bool>("general.aurOnly", false);
     this->debug         = this->getConfigValue<bool>("general.debug", true);
@@ -100,6 +92,7 @@ void Config::initVars() {
     fmt::disable_colors = this->colors == 0;
 
     sanitizeStr(this->sudo);
+    sanitizeStr(this->editorBin);
     sanitizeStr(this->makepkgBin);
     sanitizeStr(this->makepkgConf);
     sanitizeStr(this->cacheDir);

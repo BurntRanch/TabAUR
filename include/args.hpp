@@ -30,7 +30,6 @@ enum {
     OP_SEARCH,
     OP_NOCONFIRM,
     OP_QUIET,
-    OP_RECIPE,
     OP_TEST_COLORS,
 };
 
@@ -45,6 +44,7 @@ struct Operation_t {
     u_short                  help;
     u_short                  version;
     u_short                  test_colors;
+    u_short                  show_recipe;
 
 };
 

@@ -122,14 +122,17 @@ inline const string AUTOCONFIG = R"#([general]
 # Else if false, then it'll use tarballs (.tar.gz) of the aur repo.
 #useGit = true
 
-# If you use sudo or doas.
+# Which privilege elevation program we gonna use.
 #sudo = "sudo"
+
+# Default editor for opening PKGBUILDs
+#editor = "nano"
 
 # Optional pretty prints, because some terminals don't suport them.
 #colors = true
 
 # If false (default), it'll allow you to operate on system packages as well as AUR.
-# This option can be overrided by the --aur-only long option or running "-Ra" instead of "-R".
+# This option can be overrided with "-a" or "--aur-only".
 #aurOnly = false
 
 # Useful for knowing more about TabAUR operations.

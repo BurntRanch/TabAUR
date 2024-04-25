@@ -51,6 +51,9 @@ int parsearg_op(int opt, int dryrun) {
         case 't':
                 if(dryrun) break;
                 op.test_colors = 1; break;
+        case 'r':
+                if(dryrun) break;
+                op.show_recipe = 1; break;
         default:
                 return 1;
     }
@@ -92,10 +95,6 @@ int parsearg_global(int opt) {
                 break;
         case OP_THEME:
                 themefile = strndup(optarg, PATH_MAX);
-                break;
-        case OP_RECIPE:
-        case 'r':
-                config->secretRecipe = true;
                 break;
         default:
                 return 1;

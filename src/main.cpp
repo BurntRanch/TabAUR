@@ -193,11 +193,9 @@ int installPkg(alpm_list_t *pkgNames) {
                     std::filesystem::current_path(pkgDir);
 
                     if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false)) {
-                        log_println(LOG_ERROR, "Failed to run `{} fetch`!", config->git);
                         continue;
                     }
                     if (!taur_exec({config->git.c_str(), "diff", "origin", "PKGBUILD"}, false)) {
-                        log_println(LOG_ERROR, "Failed to run `{} diff`!", config->git);
                         continue;
                     }
 
@@ -423,6 +421,7 @@ int parseargs(int argc, char* argv[]) {
         {"aur-only",   no_argument,       0, 'a'},
         {"help",       no_argument,       0, 'h'},
         {"test-colors",no_argument,       0, 't'},
+        {"recipe",     no_argument,       0, 'r'},
 
         {"refresh",    no_argument,       0, OP_REFRESH},
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
@@ -435,7 +434,6 @@ int parseargs(int argc, char* argv[]) {
         {"use-git",    required_argument, 0, OP_USEGIT},
         {"quiet",      no_argument,       0, OP_QUIET},
         {"debug",      no_argument,       0, OP_DEBUG},
-        {"recipe",     no_argument,       0, OP_RECIPE},
         {"noconfirm",  no_argument,       0, OP_NOCONFIRM},
         {0,0,0,0}
     };
@@ -471,8 +469,8 @@ int parseargs(int argc, char* argv[]) {
                 result = parsearg_query(opt);
                 break;
             default:
-            result = 1;
-            break;
+                result = 1;
+                break;
         }
     }
 
@@ -536,11 +534,23 @@ int main(int argc, char* argv[]) {
         fmt::disable_colors = true;
         config->colors      = false;
     }
-
+    
     if (op.test_colors) {
         test_colors();
         return 0;
     }
+
+    if (op.show_recipe)
+        if (config->secretRecipe) {
+            log_println(LOG_INFO, "Secret recipe unlocked!");
+            log_println(LOG_INFO, "Loading secret recipe...");
+            for (auto const& i : secret) {
+                fmt::println("{}", i);
+                usleep(650000); // 0.65 seconds
+            }
+            return 0;
+        }
+
 
     signal(SIGINT, &interruptHandler);
 
