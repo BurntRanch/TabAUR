@@ -46,7 +46,7 @@ bool                             hasEnding(string const& fullString, string cons
 bool                             hasStart(string const& fullString, string const& start);
 string                           expandVar(string& str);
 bool                             is_number(const string& s, bool allowSpace = false);
-bool                             taur_read_exec(vector<const char *> cmd, string *output, bool exitOnFailure = true);
+bool                             taur_read_exec(vector<const char *> cmd, string &output, bool exitOnFailure = true);
 void                             interruptHandler(int);
 bool                             taur_exec(vector<const char *> cmd, bool exitOnFailure = true);
 void                             sanitizeStr(string& str);

@@ -179,7 +179,7 @@ bool is_number(const string& s, bool allowSpace) {
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c)); }) == s.end();
 }
 
-bool taur_read_exec(vector<const char *> cmd, string *output, bool exitOnFailure) {
+bool taur_read_exec(vector<const char *> cmd, string &output, bool exitOnFailure) {
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
@@ -197,11 +197,9 @@ bool taur_read_exec(vector<const char *> cmd, string *output, bool exitOnFailure
 
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
             // read stdout
-            if (output) {
-                char c;
-                while (read(pipeout[0], &c, 1) == 1) {
-                    (*output) += c;
-                }
+            char c;
+            while (read(pipeout[0], &c, 1) == 1) {
+                output += c;
             }
 
             close(pipeout[0]);
@@ -259,7 +257,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
         // execvp() returns instead of exiting when failed
-        log_println(LOG_ERROR, "An error as occured: {}", strerror(errno));
+        log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
         exit(-1);
     } else if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
