@@ -126,15 +126,25 @@ bool                askUserYorN(bool def, prompt_yn pr, Args&&... args) {
     switch (pr) {
         case PROMPT_YN_DIFF:
             log_printf(LOG_INFO, "Would you like to view the diffs for {}? " + inputs_str, std::forward<Args>(args)...);
+            break;
         case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
             log_printf(LOG_WARN, "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), would you like to continue with the compilation? " + inputs_str);
+            break;
+        case PROMPT_YN_SEE_PKGBUILD:
+            log_printf(LOG_INFO, "Would you like to see the PKGBUILD for this package? " + inputs_str);
+            break;
+        default:
+            return def;
     }
     string result;
     
     // while the getline function works, and the result is not 1 character long, keep reminding the user.
-    while (std::getline(std::cin, result) && (result.length() != 1)) {
-        log_println(LOG_WARN, "Please provide a valid response (" + inputs_str + ")");
+    while (std::getline(std::cin, result) && (result.length() > 1)) {
+        log_println(LOG_WARN, "Please provide a valid response " + inputs_str);
     }
+
+    if (result.empty())
+        return def;
 
     if (def ? tolower(result[0]) != 'n' : tolower(result[0]) != 'y')
         return def;

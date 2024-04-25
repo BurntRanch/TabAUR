@@ -204,7 +204,7 @@ int installPkg(alpm_list_t *pkgNames) {
                     // make sure the user 100% can read the diff.
                     sleep(3);
                 }
-            } else if (!useGit || (pkgDirExists && !std::filesystem::exists(pkgDir / ".git"))) {
+            } else if ((!useGit || !std::filesystem::exists(pkgDir / ".git")) && pkgDirExists) {
                 // inform the user they disabled git repo support, thus diffs are not supported.
                 if (!askUserYorN(false, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
                     continue;

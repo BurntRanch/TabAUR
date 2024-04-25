@@ -378,9 +378,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
         path pkgDir = cacheDir / onlinePkgs[i].name;
 
-        bool pkgDirExists = std::filesystem::exists(pkgDir);
-
-        if (useGit && pkgDirExists && std::filesystem::exists(path(pkgDir) / ".git")) {
+        if (useGit && std::filesystem::exists(path(pkgDir) / ".git")) {
             if (askUserYorN(true, PROMPT_YN_DIFF, onlinePkgs[i].name)) {
                 std::filesystem::current_path(pkgDir);
                 if (!taur_exec({config.git.c_str(), "fetch", "origin"}, false)) {
@@ -395,7 +393,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
                 // make sure the user 100% can read the diff.
                 sleep(3);
             }
-        } else if (!useGit || (pkgDirExists && !std::filesystem::exists(pkgDir / ".git"))) {
+        } else {
             // inform the user they disabled git repo support, thus diffs are not supported.
             if (!askUserYorN(false, PROMPT_YN_CONTINUE_WITHOUT_DIFF, onlinePkgs[i].name))
                 continue;
