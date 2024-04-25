@@ -184,30 +184,44 @@ int installPkg(alpm_list_t *pkgNames) {
                 // }
             }
 
-            string filename = path(cacheDir) / url.substr(url.rfind("/") + 1);
+            path filedir = path(cacheDir) / pkg.name;
 
-            if (useGit) {
-                filename = filename.substr(0, filename.rfind(".git"));
+            bool filedirExists = std::filesystem::exists(filedir);
 
-                if (std::filesystem::exists(filename) && std::filesystem::exists(path(filename) / ".git")) {
-                    std::filesystem::current_path(filename);
-                    if (askUserYorN(true, PROMPT_YN_DIFF, pkg.name)) {
-                        if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false)) {
-                            log_println(LOG_ERROR, "Failed to run `{} fetch`!", config->git);
-                            return false;
-                        }
-                        if (!taur_exec({config->git.c_str(), "diff", "origin", "PKGBUILD"}, false)) {
-                            log_println(LOG_ERROR, "Failed to run `{} diff`!", config->git);
-                            return false;
-                        }
+            if (useGit && filedirExists && std::filesystem::exists(filedir / ".git")) {
+                if (askUserYorN(true, PROMPT_YN_DIFF, pkg.name)) {
+                    std::filesystem::current_path(filedir);
 
-                        // make sure the user 100% can read the diff.
-                        sleep(3);
+                    if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false)) {
+                        log_println(LOG_ERROR, "Failed to run `{} fetch`!", config->git);
+                        continue;
+                    }
+                    if (!taur_exec({config->git.c_str(), "diff", "origin", "PKGBUILD"}, false)) {
+                        log_println(LOG_ERROR, "Failed to run `{} diff`!", config->git);
+                        continue;
+                    }
+
+                    // make sure the user 100% can read the diff.
+                    sleep(3);
+                }
+            } else if (!useGit || (filedirExists && !std::filesystem::exists(filedir / ".git"))) {
+                // inform the user they disabled git repo support, thus diffs are not supported.
+                if (!askUserYorN(false, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
+                    continue;
+            }
+
+            bool stat = backend->download_pkg(url, filedir);
+
+            // it wasn't there, now it is, show the user the PKGBUILD
+            if (!filedirExists) {
+                if (askUserYorN(true, PROMPT_YN_SEE_PKGBUILD, pkg.name)) {
+                    std::filesystem::current_path(filedir);
+                    if (!taur_exec({config->editorBin.c_str(), "PKGBUILD"}, false)) {
+                        log_println(LOG_ERROR, "Failed to run {} on {}!", config->editorBin, (filedir / "PKGBUILD").string());
+                        continue;
                     }
                 }
             }
-
-            bool stat = backend->download_pkg(url, filename);
 
             if (!stat) {
                 log_println(LOG_ERROR, "An error has occurred and we could not download your package.");
@@ -217,10 +231,10 @@ int installPkg(alpm_list_t *pkgNames) {
 
             if (!useGit) {
                 stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->build_pkg(pkg.name, filename.substr(0, filename.rfind(".tar.gz")), false);
+                stat = backend->build_pkg(pkg.name, filedir, false);
             } else {
                 stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->build_pkg(pkg.name, filename, false);
+                stat = backend->build_pkg(pkg.name, filedir, false);
             }
 
             if (!stat) {

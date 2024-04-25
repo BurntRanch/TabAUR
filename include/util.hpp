@@ -30,6 +30,8 @@ class TaurBackend;
 
 enum prompt_yn {
     PROMPT_YN_DIFF,
+    PROMPT_YN_CONTINUE_WITHOUT_DIFF,
+    PROMPT_YN_SEE_PKGBUILD,
 };
 
 enum log_level {
@@ -124,6 +126,8 @@ bool                askUserYorN(bool def, prompt_yn pr, Args&&... args) {
     switch (pr) {
         case PROMPT_YN_DIFF:
             log_printf(LOG_INFO, "Would you like to view the diffs for {}? " + inputs_str, std::forward<Args>(args)...);
+        case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
+            log_printf(LOG_WARN, "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), would you like to continue with the compilation? " + inputs_str);
     }
     string result;
     

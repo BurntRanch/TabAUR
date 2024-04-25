@@ -19,8 +19,8 @@ bool TaurBackend::download_git(string url, string out_path) {
     }
 }
 
-bool TaurBackend::download_tar(string url, string out_path) {
-    std::ofstream out(out_path);
+bool TaurBackend::download_tar(string url, path out_path) {
+    std::ofstream out(out_path.replace_extension(".tar.gz"));
     if (!out.is_open())
         return false;
 
@@ -31,11 +31,8 @@ bool TaurBackend::download_tar(string url, string out_path) {
     out.close();
 
     // if this is in a directory, it will change to that directory first.
-    bool isNested = out_path.find("/") != (size_t)-1;
-    sanitizeStr(out_path);
-
-    if (isNested)
-        fs::current_path(out_path.substr(0, out_path.rfind("/")));
+    if (out_path.has_parent_path())
+        fs::current_path(out_path.parent_path());
 
     return taur_exec({"tar", "-xf", out_path.c_str()});
 }
@@ -379,27 +376,32 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
             continue;
         }
 
-        string pkgFolder = cacheDir + '/' + onlinePkgs[i].name;
-        sanitizeStr(pkgFolder);
+        path pkgFolder = cacheDir + '/' + onlinePkgs[i].name;
 
-        if (useGit && std::filesystem::exists(pkgFolder) && std::filesystem::exists(path(pkgFolder) / ".git")) {
-            std::filesystem::current_path(pkgFolder);
+        bool pkgFolderExists = std::filesystem::exists(pkgFolder);
+
+        if (useGit && pkgFolderExists && std::filesystem::exists(path(pkgFolder) / ".git")) {
             if (askUserYorN(true, PROMPT_YN_DIFF, onlinePkgs[i].name)) {
+            std::filesystem::current_path(pkgFolder);
                 if (!taur_exec({config.git.c_str(), "fetch", "origin"}, false)) {
                     log_println(LOG_ERROR, "Failed to run `{} fetch`!", config.git);
-                    return false;
+                    continue;
                 }
                 if (!taur_exec({config.git.c_str(), "diff", "origin", "PKGBUILD"}, false)) {
                     log_println(LOG_ERROR, "Failed to run `{} diff`!", config.git);
-                    return false;
+                    continue;
                 }
 
                 // make sure the user 100% can read the diff.
                 sleep(3);
             }
+        } else if (!useGit || (pkgFolderExists && !std::filesystem::exists(pkgFolder / ".git"))) {
+            // inform the user they disabled git repo support, thus diffs are not supported.
+            if (!askUserYorN(false, PROMPT_YN_CONTINUE_WITHOUT_DIFF, onlinePkgs[i].name))
+                continue;
         }
 
-        log_println(LOG_INFO, "Downloading {}.", pkgs[pkgIndex].name);
+        log_println(LOG_INFO, "Downloading {}.", onlinePkgs[i].name);
 
         if (!useGit)
             fs::remove_all(pkgFolder);
@@ -419,15 +421,15 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
             makepkg_exec("--nobuild -dfA");
         }
 
-        string versionInfo = shell_exec("grep 'pkgver=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+        string versionInfo = shell_exec("grep 'pkgver=' " + pkgFolder.string() + "/PKGBUILD | cut -d= -f2");
 
         if (versionInfo.empty()) {
             log_println(LOG_WARN, "Failed to parse version information from {}'s PKGBUILD, You might be able to ignore this safely.", pkgs[pkgIndex].name);
             continue;
         }
 
-        string pkgrel = shell_exec("grep 'pkgrel=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
-        string epoch  = shell_exec("grep 'epoch=' " + pkgFolder + "/PKGBUILD | cut -d= -f2");
+        string pkgrel = shell_exec("grep 'pkgrel=' " + pkgFolder.string() + "/PKGBUILD | cut -d= -f2");
+        string epoch  = shell_exec("grep 'epoch=' " + pkgFolder.string() + "/PKGBUILD | cut -d= -f2");
 
         if (!pkgrel.empty() && pkgrel[0] != '\0')
             versionInfo += '-' + pkgrel;

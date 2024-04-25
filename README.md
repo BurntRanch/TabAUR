@@ -25,3 +25,4 @@ If you want to make a PR that fixes/adds functionality, feel free to do so! we a
 
 - Diff viewer for PKGBUILD
 - More insight for the user to decide whether they trust this package or not.
+- Work on putting the whole "diff viewing" code in a function instead of repeating myself

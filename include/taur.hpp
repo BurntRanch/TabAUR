@@ -39,7 +39,7 @@ class TaurBackend {
     vector<TaurPkg_t>   getPkgFromJson(rapidjson::Document& doc, bool useGit);
     vector<TaurPkg_t>   search_pac(string query);
     vector<TaurPkg_t>   search(string query, bool useGit, bool checkExactMatch = true);
-    bool                download_tar(string url, string out_path);
+    bool                download_tar(string url, path out_path);
     bool                download_git(string url, string out_path);
     bool                download_pkg(string url, string out_path);
     optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);

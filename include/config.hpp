@@ -3,6 +3,7 @@
 
 #include <alpm.h>
 #include <map>
+#include <string>
 #include <type_traits>
 #define TOML_HEADER_ONLY 0
 #include "toml++/toml.hpp"
@@ -49,6 +50,7 @@ class Config {
     alpm_handle_t *handle = nullptr;
     alpm_list_t   *repos  = nullptr;
     string         makepkgBin;
+    string         editorBin;
     string         cacheDir;
     string         pmConfig;
     string         sudo;
