@@ -20,7 +20,7 @@ bool TaurBackend::download_git(string url, string out_path) {
 }
 
 bool TaurBackend::download_tar(string url, path out_path) {
-    std::ofstream out(out_path.replace_extension(".tar.gz"));
+    std::ofstream out(out_path.replace_extension("tar.gz"));
     if (!out.is_open())
         return false;
 
@@ -331,7 +331,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
     return true;
 }
 
-bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
+bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
     vector<TaurPkg_t> pkgs = this->get_all_local_pkgs(true);
 
     if (pkgs.empty()) {
@@ -376,13 +376,13 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
             continue;
         }
 
-        path pkgFolder = cacheDir + '/' + onlinePkgs[i].name;
+        path pkgDir = cacheDir / onlinePkgs[i].name;
 
-        bool pkgFolderExists = std::filesystem::exists(pkgFolder);
+        bool pkgDirExists = std::filesystem::exists(pkgDir);
 
-        if (useGit && pkgFolderExists && std::filesystem::exists(path(pkgFolder) / ".git")) {
+        if (useGit && pkgDirExists && std::filesystem::exists(path(pkgDir) / ".git")) {
             if (askUserYorN(true, PROMPT_YN_DIFF, onlinePkgs[i].name)) {
-            std::filesystem::current_path(pkgFolder);
+                std::filesystem::current_path(pkgDir);
                 if (!taur_exec({config.git.c_str(), "fetch", "origin"}, false)) {
                     log_println(LOG_ERROR, "Failed to run `{} fetch`!", config.git);
                     continue;
@@ -395,7 +395,7 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
                 // make sure the user 100% can read the diff.
                 sleep(3);
             }
-        } else if (!useGit || (pkgFolderExists && !std::filesystem::exists(pkgFolder / ".git"))) {
+        } else if (!useGit || (pkgDirExists && !std::filesystem::exists(pkgDir / ".git"))) {
             // inform the user they disabled git repo support, thus diffs are not supported.
             if (!askUserYorN(false, PROMPT_YN_CONTINUE_WITHOUT_DIFF, onlinePkgs[i].name))
                 continue;
@@ -404,9 +404,9 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
         log_println(LOG_INFO, "Downloading {}.", onlinePkgs[i].name);
 
         if (!useGit)
-            fs::remove_all(pkgFolder);
+            fs::remove_all(pkgDir);
 
-        bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgFolder);
+        bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgDir);
 
         if (!downloadSuccess) {
             log_println(LOG_WARN, "Failed to download package {}!", onlinePkgs[i].name);
@@ -416,20 +416,20 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
         // workaround for -git package because they are "special"
         if (hasEnding(pkgs[pkgIndex].name, "-git")) {
             alrprepared = true;
-            fs::current_path(pkgFolder);
+            fs::current_path(pkgDir);
             makepkg_exec("--verifysource -fA");
             makepkg_exec("--nobuild -dfA");
         }
 
-        string versionInfo = shell_exec("grep 'pkgver=' " + pkgFolder.string() + "/PKGBUILD | cut -d= -f2");
+        string versionInfo = shell_exec("grep 'pkgver=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
 
         if (versionInfo.empty()) {
             log_println(LOG_WARN, "Failed to parse version information from {}'s PKGBUILD, You might be able to ignore this safely.", pkgs[pkgIndex].name);
             continue;
         }
 
-        string pkgrel = shell_exec("grep 'pkgrel=' " + pkgFolder.string() + "/PKGBUILD | cut -d= -f2");
-        string epoch  = shell_exec("grep 'epoch=' " + pkgFolder.string() + "/PKGBUILD | cut -d= -f2");
+        string pkgrel = shell_exec("grep 'pkgrel=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
+        string epoch  = shell_exec("grep 'epoch=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
 
         if (!pkgrel.empty() && pkgrel[0] != '\0')
             versionInfo += '-' + pkgrel;
@@ -448,8 +448,8 @@ bool TaurBackend::update_all_aur_pkgs(string cacheDir, bool useGit) {
         log_println(LOG_INFO, "Upgrading package {} from version {} to version {}!", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);
         attemptedDownloads++;
 
-        this->handle_aur_depends(onlinePkgs[i], pkgFolder, this->get_all_local_pkgs(true), useGit);
-        bool installSuccess = this->build_pkg(pkgs[pkgIndex].name, pkgFolder, alrprepared);
+        this->handle_aur_depends(onlinePkgs[i], pkgDir, this->get_all_local_pkgs(true), useGit);
+        bool installSuccess = this->build_pkg(pkgs[pkgIndex].name, pkgDir, alrprepared);
         alrprepared         = false;
 
         if (installSuccess) {

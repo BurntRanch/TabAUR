@@ -48,7 +48,7 @@ class TaurBackend {
     bool                remove_pkgs(alpm_list_smart_pointer& pkgs);
     bool                handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit);
     bool                build_pkg(string pkg_name, string extracted_path, bool alreadyprepared);
-    bool                update_all_aur_pkgs(string cacheDir, bool useGit);
+    bool                update_all_aur_pkgs(path cacheDir, bool useGit);
     vector<TaurPkg_t>   get_all_local_pkgs(bool aurOnly);
 };
 

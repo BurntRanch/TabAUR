@@ -184,13 +184,13 @@ int installPkg(alpm_list_t *pkgNames) {
                 // }
             }
 
-            path filedir = path(cacheDir) / pkg.name;
+            path pkgDir = path(cacheDir) / pkg.name;
 
-            bool filedirExists = std::filesystem::exists(filedir);
+            bool pkgDirExists = std::filesystem::exists(pkgDir);
 
-            if (useGit && filedirExists && std::filesystem::exists(filedir / ".git")) {
+            if (useGit && pkgDirExists && std::filesystem::exists(pkgDir / ".git")) {
                 if (askUserYorN(true, PROMPT_YN_DIFF, pkg.name)) {
-                    std::filesystem::current_path(filedir);
+                    std::filesystem::current_path(pkgDir);
 
                     if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false)) {
                         log_println(LOG_ERROR, "Failed to run `{} fetch`!", config->git);
@@ -204,20 +204,20 @@ int installPkg(alpm_list_t *pkgNames) {
                     // make sure the user 100% can read the diff.
                     sleep(3);
                 }
-            } else if (!useGit || (filedirExists && !std::filesystem::exists(filedir / ".git"))) {
+            } else if (!useGit || (pkgDirExists && !std::filesystem::exists(pkgDir / ".git"))) {
                 // inform the user they disabled git repo support, thus diffs are not supported.
                 if (!askUserYorN(false, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
                     continue;
             }
 
-            bool stat = backend->download_pkg(url, filedir);
+            bool stat = backend->download_pkg(url, pkgDir);
 
             // it wasn't there, now it is, show the user the PKGBUILD
-            if (!filedirExists) {
+            if (!pkgDirExists) {
                 if (askUserYorN(true, PROMPT_YN_SEE_PKGBUILD, pkg.name)) {
-                    std::filesystem::current_path(filedir);
+                    std::filesystem::current_path(pkgDir);
                     if (!taur_exec({config->editorBin.c_str(), "PKGBUILD"}, false)) {
-                        log_println(LOG_ERROR, "Failed to run {} on {}!", config->editorBin, (filedir / "PKGBUILD").string());
+                        log_println(LOG_ERROR, "Failed to run {} on {}!", config->editorBin, (pkgDir / "PKGBUILD").string());
                         continue;
                     }
                 }
@@ -231,10 +231,10 @@ int installPkg(alpm_list_t *pkgNames) {
 
             if (!useGit) {
                 stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->build_pkg(pkg.name, filedir, false);
+                stat = backend->build_pkg(pkg.name, pkgDir, false);
             } else {
                 stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->build_pkg(pkg.name, filedir, false);
+                stat = backend->build_pkg(pkg.name, pkgDir, false);
             }
 
             if (!stat) {
