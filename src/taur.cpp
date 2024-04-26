@@ -85,7 +85,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
 }
 
 optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
-    std::string   urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg);
+    string   urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg);
 
     cpr::Url      url  = cpr::Url(urlStr);
     cpr::Response resp = cpr::Get(url);
@@ -106,11 +106,10 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
     if (pkgs.empty())
         return vector<TaurPkg_t>();
 
-    std::string varName = cpr::util::urlEncode("arg[]");
-    std::string urlStr  = "https://aur.archlinux.org/rpc/v5/info?" + varName + "=" + pkgs[0];
+    string urlStr  = "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=" + pkgs[0];
 
     for (size_t i = 1; i < pkgs.size(); i++)
-        urlStr += ("&" + varName + "=" + pkgs[i]);
+        urlStr += ("&arg%5B%5D=" + pkgs[i]);
 
     cpr::Url      url  = cpr::Url(urlStr);
     cpr::Response resp = cpr::Get(url);
@@ -569,7 +568,8 @@ vector<TaurPkg_t> TaurBackend::search(string query, bool useGit, bool checkExact
     if (query.empty())
         return vector<TaurPkg_t>();
     // link to AUR API
-    cpr::Url            url(("https://aur.archlinux.org/rpc/v5/search/" + cpr::util::urlEncode(query) + "?by=name"));
+    cpr::Url            url(("https://aur.archlinux.org/rpc?arg%5B%5D=" + cpr::util::urlEncode(query) + "&by=" + config.getConfigValue("searchBy", "name-desc") + "&type=search&v=5"));
+    log_println(LOG_DEBUG, "url search = {}", url.str());
     cpr::Response       r = cpr::Get(url);
 
     string              raw_text_response = r.text;

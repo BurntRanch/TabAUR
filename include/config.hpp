@@ -139,6 +139,9 @@ inline const string AUTOCONFIG = R"#([general]
 # Please activate this before reporting bugs on our Github repo, thank you :)
 #debug = true
 
+# Search AUR packages based on what (e.g "name-desc", "makedepends")
+#searchBy = "name-desc"
+
 # Where we are gonna download the AUR packages (default $XDG_CACHE_HOME/TabAUR, else ~/.cache/TabAUR)
 #cacheDir = "$XDG_CACHE_HOME/TabAUR"
 
