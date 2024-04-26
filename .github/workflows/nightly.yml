@@ -22,6 +22,14 @@ jobs:
       - id: version
         run: |
           echo "version=${{ env.sha_short }}-${{ env.branch }}" >> $GITHUB_OUTPUT
+          
+  delete-drafts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete drafts
+        uses: hugo19941994/delete-draft-releases@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
     runs-on: ubuntu-latest
