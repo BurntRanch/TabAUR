@@ -567,7 +567,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
 vector<TaurPkg_t> TaurBackend::search(string query, bool useGit, bool checkExactMatch) {
     if (query.empty())
         return vector<TaurPkg_t>();
-    // link to AUR API
+    // link to AUR API. Took search pattern from yay
     cpr::Url            url(("https://aur.archlinux.org/rpc?arg%5B%5D=" + cpr::util::urlEncode(query) + "&by=" + config.getConfigValue("searchBy", "name-desc") + "&type=search&v=5"));
     log_println(LOG_DEBUG, "url search = {}", url.str());
     cpr::Response       r = cpr::Get(url);
