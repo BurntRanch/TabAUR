@@ -5,7 +5,7 @@
 #include "util.hpp"
 
 #define BRANCH  "libalpm-test"
-#define VERSION "0.6.2"
+#define VERSION "0.6.4"
 
 std::unique_ptr<Config>      config;
 std::unique_ptr<TaurBackend> backend;
