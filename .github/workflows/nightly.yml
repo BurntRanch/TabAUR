@@ -22,7 +22,7 @@ jobs:
       - id: version
         run: |
           echo "version=${{ env.sha_short }}-${{ env.branch }}" >> $GITHUB_OUTPUT
-          
+
   build:
     runs-on: ubuntu-latest
     container:
@@ -30,7 +30,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Install Packages
       run: pacman -Syu gcc git base base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
 
@@ -43,11 +43,11 @@ jobs:
       run: make clean
 
     - name: Compile
-      run: make CPPFLAGS="-mtune=generic -funroll-all-loops -march=native -isystem include -std=c++17"
+      run: make CPPFLAGS="-mtune=generic -funroll-all-loops -march=native -isystem include -std=c++20"
 
     - name: Build release
       run: tar --zstd -cf tabaur.tar.zst taur
-    
+
     - name: Upload to github artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -69,7 +69,7 @@ jobs:
         tag_name: nightly
         delete_release: true
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        
+
     - name: Create Release
       id: create-release
       uses: actions/create-release@master
@@ -91,7 +91,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: tabaur
-          
+
       - uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
