@@ -61,7 +61,7 @@ void test_colors() {
         .version    = VERSION,
         .desc       = "A customizable and lightweight AUR helper, designed to be simple but powerful.",
         .popularity = 100,
-        .votes      = 34.1,
+        .votes      = 34,
         .installed  = true,
         .db_name    = "aur",
     };
@@ -88,10 +88,10 @@ void test_colors() {
     fmt::println(getColorFromDBName("others"), "(bold) others");
 
     fmt::println(BOLD_TEXT(color.version), "\n(bold) version " VERSION);
-    fmt::println(fg(color.popularity), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
-    fmt::println(fg(color.votes), "Votes: {}", pkg.votes);
+    fmt::println(fg(color.popularity), "Popularity: {}", pkg.popularity);
+    fmt::println(fg(color.votes), "Votes: {} ({})", pkg.votes, getTitleFromVotes(pkg.votes));
     fmt::println(fg(color.index), "index [1]");
-    fmt::println(fg(color.installed), "indicator [Installed]");
+    fmt::println(BOLD_TEXT(color.installed), "(bold) indicator [Installed]");
 
     fmt::println("\nexamples package search preview:");
     printPkgInfo(pkg, pkg.db_name, 1);

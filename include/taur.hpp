@@ -26,7 +26,7 @@ struct TaurPkg_t {
     string         url;
     string         desc;
     float          popularity = 1; // normal
-    float          votes;
+    float          votes = 1;
     vector<string> depends;
     bool           installed = false;
     string         db_name   = "aur";

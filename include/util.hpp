@@ -59,7 +59,7 @@ bool                             taur_exec(vector<const char *> cmd, bool exitOn
 void                             sanitizeStr(string& str);
 bool                             is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool                             commitTransactionAndRelease(bool soft = false);
-void                             printPkgInfo(TaurPkg_t& pkg, string db_name, int index = -1);
+void                             printPkgInfo(TaurPkg_t& pkg, string& db_name, int index = -1);
 string                           makepkg_list(string pkg_name, string path);
 void                             free_list_and_internals(alpm_list_t *list);
 fmt::text_style                  getColorFromDBName(string db_name);
@@ -68,7 +68,7 @@ string                           shell_exec(string cmd);
 vector<string>                   split(string text, char delim);
 fmt::rgb                         hexStringToColor(string hexstr);
 void                             ctrl_d_handler();
-string                           getTitleForPopularity(float popularity);
+string                           getTitleFromVotes(float votes);
 string                           getConfigDir();
 string                           getHomeCacheDir();
 string                           getHomeConfigDir();

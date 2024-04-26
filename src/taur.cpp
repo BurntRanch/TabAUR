@@ -553,7 +553,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
         TaurPkg_t   taur_pkg = {.name       = string(alpm_pkg_get_name(pkg)),
                                 .version    = string(alpm_pkg_get_version(pkg)),
                                 .desc       = string(alpm_pkg_get_desc(pkg)),
-                                .popularity = 100,
+                                .votes      = -1,
                                 .installed  = alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
                                 .db_name    = string(alpm_db_get_name(alpm_pkg_get_db(pkg)))};
 

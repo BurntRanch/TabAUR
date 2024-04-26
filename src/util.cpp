@@ -359,17 +359,20 @@ fmt::text_style getColorFromDBName(string db_name) {
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t& pkg, string db_name, int index) {
+void printPkgInfo(TaurPkg_t& pkg, string& db_name, int index) {
     if (index > -1)
         fmt::print(fmt::fg(color.index), "[{}] ", index);
 
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(BOLD, "{} ", pkg.name);
     fmt::print(BOLD_TEXT(color.version), "{} ", pkg.version);
-    fmt::print(fg(color.popularity), " Popularity: {:.2f} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
-    fmt::print(fg(color.votes), "Votes: {} ", pkg.votes);
+    // Don't print popularity and votes on system packages
+    if (pkg.votes > -1) {
+        fmt::print(fg(color.popularity), " Popularity: {:.2f} ", pkg.popularity);
+        fmt::print(fg(color.votes), "Votes: {} ({}) ", pkg.votes, getTitleFromVotes(pkg.votes));
+    }
     if (pkg.installed)
-        fmt::println(fg(color.installed), "[Installed]");
+        fmt::println(BOLD_TEXT(color.installed), "[Installed]");
     else
         fmt::print("\n");
     fmt::println("    {}", pkg.desc);
@@ -478,16 +481,16 @@ vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncd
     return out;
 }
 
-string getTitleForPopularity(float popularity) {
-    if (popularity < 0.2)
+string getTitleFromVotes(float votes) {
+    if (votes < 2)
         return "Untrustable";
-    if (popularity < 0.8)
+    if (votes < 5)
         return "Caution";
-    if (popularity < 10)
+    if (votes < 10)
         return "Normal";
-    if (popularity < 20)
+    if (votes < 20)
         return "Good";
-    if (popularity >= 20)
+    if (votes >= 20)
         return "Trustable";
     return "Weird, report this bug.";
 }
