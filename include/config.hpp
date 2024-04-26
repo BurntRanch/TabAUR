@@ -40,6 +40,7 @@ struct _color_t {
     fmt::rgb others;
     fmt::rgb version;
     fmt::rgb popularity;
+    fmt::rgb votes;
     fmt::rgb installed;
     fmt::rgb index;
 };
@@ -173,6 +174,7 @@ gray = "#5a5a5a"
 
 #version = "#00ff00"
 #popularity = "#00ffff"
+#votes = "#00ffff"
 #installed = "#5a5a5a"
 #index = "#ff11cc"
 )#";

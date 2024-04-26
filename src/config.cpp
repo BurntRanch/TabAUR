@@ -169,6 +169,7 @@ void Config::initColors() {
     color.others     = this->getThemeValue("others",     "#ff11cc");
     color.version    = this->getThemeValue("version",    "#00ff00");
     color.popularity = this->getThemeValue("popularity", "#00ffff");
+    color.votes      = this->getThemeValue("votes",      "#00ffff");
     color.installed  = this->getThemeValue("installed",  "#5a5a5a");
     color.index      = this->getThemeValue("index",      "#ff11cc");
 }

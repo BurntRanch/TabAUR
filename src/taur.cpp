@@ -76,6 +76,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
         getUrl(pkgJson, returnGit),                                                                // url
         pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",               // description
         pkgJson["Popularity"].GetFloat(),                                                          // popularity
+        pkgJson["NumVotes"].GetFloat(),                                                            // votes
         depends,                                                                                   // depends
         alpm_db_get_pkg(alpm_get_localdb(config->handle), pkgJson["Name"].GetString()) != nullptr, // installed
     };

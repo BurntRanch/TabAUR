@@ -364,11 +364,12 @@ void printPkgInfo(TaurPkg_t& pkg, string db_name, int index) {
         fmt::print(fmt::fg(color.index), "[{}] ", index);
 
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
-    fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
+    fmt::print(BOLD, "{} ", pkg.name);
     fmt::print(BOLD_TEXT(color.version), "{} ", pkg.version);
-    fmt::print(fmt::fg(color.popularity), " Popularity: {} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::print(fg(color.popularity), " Popularity: {:.2f} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::print(fg(color.votes), "Votes: {} ", pkg.votes);
     if (pkg.installed)
-        fmt::println(fmt::fg(color.installed), "[Installed]");
+        fmt::println(fg(color.installed), "[Installed]");
     else
         fmt::print("\n");
     fmt::println("    {}", pkg.desc);

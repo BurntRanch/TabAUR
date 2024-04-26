@@ -61,6 +61,7 @@ void test_colors() {
         .version    = VERSION,
         .desc       = "A customizable and lightweight AUR helper, designed to be simple but powerful.",
         .popularity = 100,
+        .votes      = 34.1,
         .installed  = true,
         .db_name    = "aur",
     };
@@ -88,6 +89,7 @@ void test_colors() {
 
     fmt::println(BOLD_TEXT(color.version), "\n(bold) version " VERSION);
     fmt::println(fg(color.popularity), "Popularity: {} ({})", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::println(fg(color.votes), "Votes: {}", pkg.votes);
     fmt::println(fg(color.index), "index [1]");
     fmt::println(fg(color.installed), "indicator [Installed]");
 
