@@ -169,44 +169,32 @@ int installPkg(alpm_list_t *pkgNames) {
 
             bool pkgDirExists = std::filesystem::exists(pkgDir);
 
+            // nasty ahh nested if statments
             if (useGit && pkgDirExists && std::filesystem::exists(pkgDir / ".git")) {
-                if (askUserYorN(true, PROMPT_YN_DIFF, pkg.name)) {
-                    std::filesystem::current_path(pkgDir);
-
-                    if (!taur_exec({config->git.c_str(), "fetch", "origin"}, false))
-                        continue;
-
-                    string output = shell_exec(config->git + " diff origin PKGBUILD");
-
-                    if (output.empty())
-                        log_println(LOG_INFO, "No changes were been made");
-
-                    // make sure the user 100% can read the diff.
-                    sleep(3);
-                }
+                if (askUserYorN(YES, PROMPT_YN_DIFF, pkg.name))
+                    if (taur_exec({config->git.c_str(), "-C", pkgDir.c_str(), "diff", "HEAD..origin/HEAD", "--", ".", ":(exclude).SRCINFO"}))
+                        if(!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
+                            return false;
             } else if ((!useGit || !std::filesystem::exists(pkgDir / ".git")) && pkgDirExists) {
                 // inform the user they disabled git repo support, thus diffs are not supported.
-                if (!askUserYorN(false, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
+                if (!askUserYorN(NO, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
                     continue;
             }
 
             bool stat = backend->download_pkg(url, pkgDir);
-
-            // it wasn't there, now it is, show the user the PKGBUILD
-            if (!pkgDirExists) {
-                if (askUserYorN(true, PROMPT_YN_SEE_PKGBUILD, pkg.name)) {
-                    std::filesystem::current_path(pkgDir);
-                    if (!taur_exec({config->editorBin.c_str(), "PKGBUILD"}, false)) {
-                        log_println(LOG_ERROR, "Failed to run {} on {}!", config->editorBin, (pkgDir / "PKGBUILD").string());
-                        continue;
-                    }
-                }
-            }
-
             if (!stat) {
-                log_println(LOG_ERROR, "An error has occurred and we could not download your package.");
+                log_println(LOG_ERROR, "Failed to download {}", pkg.name);
                 returnStatus = false;
                 continue;
+            }
+
+            // it wasn't there, now it is, show the user the PKGBUILD
+            if (askUserYorN(YES, PROMPT_YN_EDIT_PKGBUILD, pkg.name)) {
+                if (!taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()}, false)) {
+                    log_println(LOG_ERROR, "Failed to run {} on {}!", config->editorBin, (pkgDir / "PKGBUILD").string());
+                    continue;
+                } else if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
+                    return false;
             }
 
             if (!useGit) {
@@ -245,7 +233,7 @@ int installPkg(alpm_list_t *pkgNames) {
     }
 
     if (op.op_s_upgrade) {
-        log_println(LOG_INFO, "-u flag specified, upgrading AUR packages.");
+        log_println(LOG_INFO, "Upgrading AUR packages");
         return backend->update_all_aur_pkgs(cacheDir, useGit) && returnStatus;
     }
 

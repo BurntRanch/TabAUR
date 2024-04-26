@@ -179,7 +179,7 @@ bool is_number(const string& s, bool allowSpace) {
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c)); }) == s.end();
 }
 
-bool taur_read_exec(vector<const char *> cmd, string &output, bool exitOnFailure) {
+bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure) {
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
@@ -216,7 +216,6 @@ bool taur_read_exec(vector<const char *> cmd, string &output, bool exitOnFailure
 
         close(pipeout[0]);
         close(pipeout[1]);
-        log_println(LOG_DEBUG, "reading {}", fmt::join(cmd, " "));
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 

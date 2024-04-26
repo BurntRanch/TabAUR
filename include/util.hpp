@@ -21,6 +21,7 @@ using std::unique_ptr;
 struct TaurPkg_t;
 class TaurBackend;
 
+#define BOLD                             fmt::emphasis::bold
 #define BOLD_TEXT(x)                     (fmt::emphasis::bold | fmt::fg(x))
 #define alpm_list_smart_pointer          unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
 #define make_list_smart_pointer(pointer) (unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
@@ -31,7 +32,13 @@ class TaurBackend;
 enum prompt_yn {
     PROMPT_YN_DIFF,
     PROMPT_YN_CONTINUE_WITHOUT_DIFF,
-    PROMPT_YN_SEE_PKGBUILD,
+    PROMPT_YN_EDIT_PKGBUILD,
+    PROMPT_YN_PROCEED_INSTALL,
+};
+
+enum {
+    YES = 1,
+    NO = 0,
 };
 
 enum log_level {
@@ -46,7 +53,7 @@ bool                             hasEnding(string const& fullString, string cons
 bool                             hasStart(string const& fullString, string const& start);
 string                           expandVar(string& str);
 bool                             is_number(const string& s, bool allowSpace = false);
-bool                             taur_read_exec(vector<const char *> cmd, string &output, bool exitOnFailure = true);
+bool                             taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure = true);
 void                             interruptHandler(int);
 bool                             taur_exec(vector<const char *> cmd, bool exitOnFailure = true);
 void                             sanitizeStr(string& str);
@@ -163,23 +170,32 @@ void log_printf(int log, const fmt::text_style& ts, std::string_view fmt, Args&&
 template <typename... Args>
 bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
     string inputs_str = "[" + (string)(def ? "Y" : "y") + "/" + (string)(!def ? "N" : "n") + "] ";
+    string result;
+   
     switch (pr) {
         case PROMPT_YN_DIFF:
-            log_printf(LOG_INFO, fmt::emphasis::bold, "Would you like to view the diffs for {}? {}", std::forward<Args>(args)..., inputs_str);
+            log_printf(LOG_INFO, BOLD, "View the diffs for {}? {}", std::forward<Args>(args)..., inputs_str);
+            if (config->noconfirm) return NO;
             break;
         case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
-            log_printf(LOG_WARN, fmt::emphasis::bold,
-                       "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), would you like to continue with the compilation? {}",
+            log_printf(LOG_WARN, BOLD,
+                       "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), continue with the installation anyway? {}",
                            inputs_str);
+            if (config->noconfirm) return YES;
             break;
-        case PROMPT_YN_SEE_PKGBUILD:
-            log_printf(LOG_INFO, fmt::emphasis::bold, "Would you like to see the PKGBUILD for this package? {}", inputs_str);
+        case PROMPT_YN_EDIT_PKGBUILD:
+            log_printf(LOG_INFO, BOLD, "Review PKGBUILD for {}? {}", std::forward<Args>(args)..., inputs_str);
+            if (config->noconfirm) return NO;
+            break;
+        case PROMPT_YN_PROCEED_INSTALL:
+            log_printf(LOG_INFO, BOLD, "Proceed with the installation? {}", inputs_str);
+            if (config->noconfirm) return YES;
             break;
         default:
             return def;
     }
-    string result;
 
+    //std::cin.sync();
     // while the getline function works, and the result is not 1 character long, keep reminding the user.
     while (std::getline(std::cin, result) && (result.length() > 1))
         log_printf(LOG_WARN, "Please provide a valid response {}", inputs_str);

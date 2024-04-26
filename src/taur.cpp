@@ -376,8 +376,8 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
         path pkgDir = cacheDir / onlinePkgs[i].name;
 
-        if (useGit && std::filesystem::exists(path(pkgDir) / ".git")) {
-            if (askUserYorN(true, PROMPT_YN_DIFF, onlinePkgs[i].name)) {
+        /*if (useGit && std::filesystem::exists(path(pkgDir) / ".git")) {
+            if (askUserYorN(YES, PROMPT_YN_DIFF, onlinePkgs[i].name)) {
                 std::filesystem::current_path(pkgDir);
                 if (!taur_exec({config.git.c_str(), "fetch", "origin"}, false)) {
                     log_println(LOG_ERROR, "Failed to run `{} fetch`!", config.git);
@@ -393,9 +393,9 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
             }
         } else {
             // inform the user they disabled git repo support, thus diffs are not supported.
-            if (!askUserYorN(false, PROMPT_YN_CONTINUE_WITHOUT_DIFF, onlinePkgs[i].name))
+            if (!askUserYorN(NO, PROMPT_YN_CONTINUE_WITHOUT_DIFF, onlinePkgs[i].name))
                 continue;
-        }
+        }*/
 
         log_println(LOG_INFO, "Downloading {}.", onlinePkgs[i].name);
 
@@ -505,7 +505,6 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
         out.push_back({.name       = alpm_pkg_get_name(pkg),
                        .version    = alpm_pkg_get_version(pkg),
                        .url        = "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git",
-                       .popularity = 1,
                        .installed  = true});
     }
 
