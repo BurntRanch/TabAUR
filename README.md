@@ -3,14 +3,14 @@
 TabAUR is an AUR Helper that actually makes releases and it's written in C++20, It supports downloading AUR Repositories with tarballs or git
 
 > [!CAUTION]
-> #### TabAUR has decided to become public in **April 27 2024** since we agreeed that is almost in a good beta shape.\
-> #### Expect bugs and some problems to happen (we believe that there won't be so so many though, it's great both installing and upgrading)\
+> #### TabAUR has decided to become public in **April 27 2024** since we agreeed that is almost in a good beta shape.
+> #### Expect bugs and some problems to happen (we believe that there won't be so so many though, it's great both installing and upgrading)
 > #### **Do not TabAUR for removing packages (taur -R)**
 
 > [!NOTE]
-> #### Be free to test and try out TabAUR.\
-> #### Open issues for bug reports or feature requests.\
-> #### Open Pull Requests for fixes and features addons.\
+> #### Be free to test and try out TabAUR.
+> #### Open issues for bug reports or feature requests.
+> #### Open Pull Requests for fixes and features addons.
 > #### Thanks for using/trying out TabAUR
 
 ## Compilation
