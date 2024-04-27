@@ -1,4 +1,4 @@
 -I./include
 -pedantic
 -Wall
--std=c++17
+-std=c++20

@@ -3,7 +3,7 @@ SRC 	 = $(sort $(wildcard src/*.cpp))
 OBJ 	 = $(SRC:.cpp=.o)
 LDFLAGS  = -L./src/fmt -L./src/cpr -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
 TARGET   = taur
-CPPFLAGS = -ggdb -O3 -pedantic -funroll-all-loops -march=native -isystem include -Wall -std=c++17
+CPPFLAGS = -ggdb -pedantic -funroll-all-loops -march=native -isystem include -Wall -std=c++20
 
 is_cpr_installed := $(shell ldconfig -p | grep libcpr > /dev/null && echo -n yes)
 
@@ -34,6 +34,6 @@ $(TARGET): cpr fmt ${OBJ}
 
 clean:
 	rm -rf taur $(OBJ) cpr/build
-	make -C src/fmt clean
+#	make -C src/fmt clean
 
 .PHONY: cpr $(TARGET) clean fmt all

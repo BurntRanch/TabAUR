@@ -4,11 +4,9 @@
 #include "util.hpp"
 #include "config.hpp"
 
-Operation_t op;
-
 alpm_list_smart_deleter taur_targets(nullptr, free_list_and_internals);
 
-void invalid_opt(int used, string opt1, string opt2) {
+void invalid_opt(int used, string_view opt1, string_view opt2) {
     if (used)
         log_println(LOG_ERROR, "invalid option: '{}' and '{}' may not be used together", opt1, opt2);
 }
@@ -53,6 +51,9 @@ int parsearg_op(int opt, int dryrun) {
         case 't':
                 if(dryrun) break;
                 op.test_colors = 1; break;
+        case 'r':
+                if(dryrun) break;
+                op.show_recipe = 1; break;
         default:
                 return 1;
     }

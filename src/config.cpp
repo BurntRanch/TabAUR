@@ -1,16 +1,14 @@
 #define TOML_IMPLEMENTATION
 #include "config.hpp"
-#include "util.hpp"
 #include "ini.h"
+#include "util.hpp"
 #include <filesystem>
 #include <iostream>
 
 using std::ofstream;
 using std::ifstream;
 
-namespace fs = std::filesystem;
-
-Config::Config() { }
+Config::Config() {}
 
 Config::~Config() {
     if (this->handle) {
@@ -26,27 +24,26 @@ Config::~Config() {
 void Config::init(string configFile, string themeFile) {
     if (this->initialized)
         return;
-    
     string configDir = getConfigDir();
-    bool newUser = false;
+    bool   newUser   = false;
 
-    if (!fs::exists(configDir)) {
+    if (!std::filesystem::exists(configDir)) {
         log_println(LOG_NONE, "Warning: TabAUR config folder was not found, Creating folders at {}!", configDir);
-        fs::create_directories(configDir);
+        std::filesystem::create_directories(configDir);
 
         newUser = true;
     }
-    if (!fs::exists(configFile)) {
+    if (!std::filesystem::exists(configFile)) {
         log_println(LOG_NONE, "Warning: {} not found, generating new one", configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         ofstream f(configFile, std::ios::trunc);
-        f << defConfig;
+        f << AUTOCONFIG;
         f.close();
     }
-    if (!fs::exists(themeFile)) {
+    if (!std::filesystem::exists(themeFile)) {
         log_println(LOG_NONE, "Warning: {} not found, generating new one", themeFile);
         ofstream f(themeFile, std::ios::trunc);
-        f << defTheme;
+        f << AUTOTHEME;
         f.close();
     }
 
@@ -54,15 +51,19 @@ void Config::init(string configFile, string themeFile) {
     this->loadThemeFile(themeFile);
 
     this->initialized = true;
-    if (!fs::exists(config->cacheDir)) {
+    if (!std::filesystem::exists(config->cacheDir)) {
         log_println(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!", config->cacheDir);
-        fs::create_directories(config->cacheDir);
+        std::filesystem::create_directories(config->cacheDir);
     }
 
-    if (newUser) 
+    if (newUser)
         // ye i'm sorry for if it's too wide
-        fmt::println(fmt::fg(getThemeValue("blue", blue)), "I see you're a new user, Welcome!\nEven though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\nYou should always read the sources, popularity, votes, and other insight TabAUR gives you to judge by yourself whether the package is trustable.\nThis project is in no way liable for any damage done to your system as a result of AUR packages.\nThank you!\n");
-
+        fmt::println(fg(color.blue),
+                     "I see you're a new user, Welcome!\n"
+                     "Even though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\n"
+                     "You should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\n"
+                     "This project is in no way liable for any damage done to your system as a result of AUR packages.\n"
+                     "Thank you!\n"sv);
 }
 
 // get initialized variable
@@ -74,26 +75,33 @@ bool Config::isInitialized() {
 * initialize all the "config.toml" variables
 * and sanitize them (never trust user's input)
 */
-void Config::initializeVars() {
-    this->cacheDir     = this->getConfigValue<string>("general.cacheDir", getHomeCacheDir() + "/TabAUR");
-    this->pmConfig     = this->getConfigValue<string>("pacman.ConfigFile", "/etc/pacman.conf");
-    this->makepkgConf  = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
-    this->makepkgBin   = this->getConfigValue<string>("bins.makepkg", "makepkg");
-    this->git          = this->getConfigValue<string>("bins.git", "git");
-    this->sudo         = this->getConfigValue<string>("general.sudo", "sudo");
-    this->useGit       = this->getConfigValue<bool>("general.useGit", true);
-    this->aurOnly      = this->getConfigValue<bool>("general.aurOnly", false);
-    this->debug        = this->getConfigValue<bool>("general.debug", true);
-    this->colors       = this->getConfigValue<bool>("general.colors", true);
-    this->secretRecipe = this->getConfigValue<bool>("secret.IwantChocolateChipMuffins", false);
+void Config::initVars() {
+    this->cacheDir      = this->getConfigValue<string>("general.cacheDir", getHomeCacheDir() + "/TabAUR");
+    this->pmConfig      = this->getConfigValue<string>("pacman.ConfigFile", "/etc/pacman.conf");
+    this->makepkgConf   = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
+    this->makepkgBin    = this->getConfigValue<string>("bins.makepkg", "makepkg");
+    this->git           = this->getConfigValue<string>("bins.git", "git");
+    this->sudo          = this->getConfigValue<string>("general.sudo", "sudo");
+    this->editorBin     = this->getConfigValue<string>("general.editor", "nano");
+    this->useGit        = this->getConfigValue<bool>("general.useGit", true);
+    this->aurOnly       = this->getConfigValue<bool>("general.aurOnly", false);
+    this->debug         = this->getConfigValue<bool>("general.debug", true);
+    this->colors        = this->getConfigValue<bool>("general.colors", true);
+    this->secretRecipe  = this->getConfigValue<bool>("secret.recipe", false);
+    fmt::disable_colors = this->colors == 0;
 
     sanitizeStr(this->sudo);
+    sanitizeStr(this->editorBin);
     sanitizeStr(this->makepkgBin);
     sanitizeStr(this->makepkgConf);
     sanitizeStr(this->cacheDir);
     sanitizeStr(this->git);
-        
-    fmt::disable_colors = this->colors == 0;
+
+    char *no_color = getenv("NO_COLOR");
+    if (no_color != NULL && no_color[0] != '\0') {
+        fmt::disable_colors = true;
+        this->colors        = false;
+    }
 }
 
 /** parse the config file (aka "config.toml")
@@ -101,7 +109,7 @@ void Config::initializeVars() {
  *  using the variables under the [pacman] table in "config.toml"
  *  @param the directory of the config file
 */
-void Config::loadConfigFile(string filename) {
+void Config::loadConfigFile(string_view filename) {
     try {
         this->tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
@@ -109,10 +117,10 @@ void Config::loadConfigFile(string filename) {
         std::cerr << err << std::endl;
         exit(-1);
     }
-    this->initializeVars();
+    this->initVars();
 
     alpm_errno_t err;
-    this->handle    = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
+    this->handle = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
 
     if (!(this->handle))
         throw std::invalid_argument("Failed to get an alpm handle! Error: " + string(alpm_strerror(err)));
@@ -123,7 +131,7 @@ void Config::loadConfigFile(string filename) {
 /** parse the theme file (aka "theme.toml")
  *  @param filename The directory of the theme file
  */
-void Config::loadThemeFile(string filename) {
+void Config::loadThemeFile(string_view filename) {
     try {
         this->theme_tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
@@ -131,6 +139,8 @@ void Config::loadThemeFile(string filename) {
         std::cerr << err << std::endl;
         exit(-1);
     }
+
+    this->initColors();
 }
 
 /** Get the theme color variable and return a fmt::rgb type variable
@@ -139,7 +149,7 @@ void Config::loadThemeFile(string filename) {
  * @param fallback The default value if it doesn't exists
  * @return fmt::rgb type variable 
  */
-fmt::rgb Config::getThemeValue(string value, string fallback) {
+fmt::rgb Config::getThemeValue(const string& value, const string& fallback) {
     return hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback));
 }
 
@@ -148,11 +158,31 @@ fmt::rgb Config::getThemeValue(string value, string fallback) {
  * @param fallback The default value if it doesn't exists
  * @return color hexcode value
  */
-string Config::getThemeHexValue(string value, string fallback) {
+string Config::getThemeHexValue(const string& value, const string& fallback) {
     return this->theme_tbl["theme"][value].value<string>().value_or(fallback);
 }
 
-bool addServers(alpm_db_t *db, string includeFilename, string repoName) {
+void Config::initColors() {
+    color.red        = this->getThemeValue("red",        "#ff2000");
+    color.green      = this->getThemeValue("green",      "#00ff00");
+    color.blue       = this->getThemeValue("blue",       "#00aaff");
+    color.cyan       = this->getThemeValue("cyan",       "#00ffff");
+    color.yellow     = this->getThemeValue("yellow",     "#ffff00");
+    color.magenta    = this->getThemeValue("magenta",    "#ff11cc");
+    color.gray       = this->getThemeValue("gray",       "#5a5a5a");
+    color.aur        = this->getThemeValue("aur",        "#00aaff");
+    color.extra      = this->getThemeValue("extra",      "#00ff00");
+    color.core       = this->getThemeValue("core",       "#ffff00");
+    color.multilib   = this->getThemeValue("multilib",   "#00ffff");
+    color.others     = this->getThemeValue("others",     "#ff11cc");
+    color.version    = this->getThemeValue("version",    "#00ff00");
+    color.popularity = this->getThemeValue("popularity", "#00ffff");
+    color.votes      = this->getThemeValue("votes",      "#00ffff");
+    color.installed  = this->getThemeValue("installed",  "#5a5a5a");
+    color.index      = this->getThemeValue("index",      "#ff11cc");
+}
+
+bool addServers(alpm_db_t *db, const string& includeFilename, string_view repoName) {
     ifstream includeFile(includeFilename);
 
     if (!includeFile.is_open())
@@ -180,24 +210,23 @@ bool addServers(alpm_db_t *db, string includeFilename, string repoName) {
 }
 
 void Config::loadPacmanConfigFile(string filename) {
-    mINI::INIFile file(filename);
+    mINI::INIFile      file(filename);
     mINI::INIStructure ini;
 
     file.read(ini);
 
-    for (auto const& it : ini)
-    {
-        string section = it.first;
+    for (auto const& it : ini) {
+        string_view section = it.first;
         if (section == "options")
             continue;
 
-        alpm_db_t *db = alpm_register_syncdb(this->handle, section.c_str(), ALPM_SIG_USE_DEFAULT);
+        alpm_db_t *db = alpm_register_syncdb(this->handle, section.data(), ALPM_SIG_USE_DEFAULT);
         if (db == NULL)
             continue;
 
-        bool serversStatus = addServers(db, ini[section]["Include"], section);
+        bool serversStatus = addServers(db, ini[section.data()]["Include"], section);
         if (!serversStatus)
-            log_println(LOG_ERROR, "Failed to open mirrors file! ({})", ini[section]["Include"]);
+            log_println(LOG_ERROR, "Failed to open mirrors file! ({})", ini[section.data()]["Include"]);
 
         alpm_db_set_usage(db, ALPM_DB_USAGE_ALL);
 

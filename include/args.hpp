@@ -3,14 +3,12 @@
 
 #include "util.hpp"
 #include <alpm.h>
-#include <sys/types.h>
-#include <vector>
 #include <getopt.h>
 
 enum {
-    OP_MAIN  = 1,
-    OP_SYNC, // when you run taur -S[args]
-    OP_REM,       // when you run taur -R[args]
+    OP_MAIN = 1,
+    OP_SYNC,
+    OP_REM,
     OP_QUERY,
     OP_PACMAN, // when it's different from -S,R,Q we gonna use pacman
 };
@@ -44,16 +42,15 @@ struct Operation_t {
     u_short help;
     u_short version;
     u_short test_colors;
-
-    std::vector<std::string> args;
+    u_short show_recipe;
 };
 
-extern struct Operation_t op;
+inline struct Operation_t      op;
 extern alpm_list_smart_deleter taur_targets;
 
-int parsearg_op(int opt, int dryrun);
+int  parsearg_op(int opt, int dryrun);
 void invalid_opt();
-int parsearg_global(int opt);
-int parsearg_query(int opt);
-int parsearg_sync(int opt);
+int  parsearg_global(int opt);
+int  parsearg_query(int opt);
+int  parsearg_sync(int opt);
 #endif

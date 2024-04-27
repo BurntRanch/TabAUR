@@ -1,22 +1,19 @@
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
-#include "util.hpp"
 #include "config.hpp"
 #include "taur.hpp"
-#include <iostream>
+#include "util.hpp"
 #include <filesystem>
-#include <fmt/ranges.h>
-
-namespace fs = std::filesystem;
+#include <iostream>
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
-bool hasEnding(string const& fullString, string const& ending) {
+bool hasEnding(string_view fullString, string_view ending) {
     if (ending.length() > fullString.length())
         return false;
     return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
 }
 
-bool hasStart(string const& fullString, string const& start) {
+bool hasStart(string_view fullString, string_view start) {
     if (start.length() > fullString.length())
         return false;
     return (0 == fullString.compare(0, start.length(), start));
@@ -26,7 +23,7 @@ bool isInvalid(char c) {
     return !isprint(c);
 }
 
-void sanitizeStr(string& str){
+void sanitizeStr(string& str) {
     str.erase(std::remove_if(str.begin(), str.end(), isInvalid), str.end());
 }
 
@@ -41,17 +38,15 @@ void interruptHandler(int) {
 
 /** Function to check if a package is from a synchronization database
  * Basically if it's in pacman repos like core, extra, multilib, etc.
- * @param pkg The package to check
+ * @param name The package name to check
  * @param syncdbs
  * @return true if the pkg exists, else false
- */ 
-bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
-    const char *name = alpm_pkg_get_name(pkg);
-
+ */
+bool is_package_from_syncdb(const char *name, alpm_list_t *syncdbs) {
     for (; syncdbs; syncdbs = alpm_list_next(syncdbs))
         if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), name))
             return true;
-            
+
     return false;
 }
 
@@ -59,36 +54,34 @@ bool is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs) {
 bool commitTransactionAndRelease(bool soft) {
     alpm_handle_t *handle = config->handle;
 
-    alpm_list_t *addPkgs    = alpm_trans_get_add(handle);
-    alpm_list_t *removePkgs = alpm_trans_get_remove(handle);
-    alpm_list_t *combined   = alpm_list_join(addPkgs, removePkgs);
+    alpm_list_t   *addPkgs    = alpm_trans_get_add(handle);
+    alpm_list_t   *removePkgs = alpm_trans_get_remove(handle);
+    alpm_list_t   *combined   = alpm_list_join(addPkgs, removePkgs);
     if (soft && !combined)
         return true;
 
     log_println(LOG_INFO, "Changes to be made:");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
-        fmt::print(BOLD_TEXT(config->getThemeValue("green", green)), "    ++ ");
+        fmt::print(BOLD_TEXT(color.green), "    ++ ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
     }
-        
 
     for (alpm_list_t *removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next) {
-        fmt::print(BOLD_TEXT(config->getThemeValue("red", red)), "    -- ");
+        fmt::print(BOLD_TEXT(color.red), "    -- ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
     fmt::print("Would you like to proceed with this transaction? [Y/n] ");
-    
+
     string response;
     std::cin >> response;
 
-    if(!std::cin) // CTRL-D
-        return false;
+    ctrl_d_handler();
 
-    for (char &c : response) { 
-        c = tolower(c); 
+    for (char& c : response) {
+        c = tolower(c);
     }
-    
+
     if (!response.empty() && response != "y") {
         bool releaseStatus = alpm_trans_release(handle) == 0;
         if (!releaseStatus)
@@ -110,7 +103,6 @@ bool commitTransactionAndRelease(bool soft) {
     if (!releaseStatus)
         log_println(LOG_ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
-
     if (prepareStatus && commitStatus && releaseStatus) {
         log_println(LOG_INFO, "Successfully finished transaction.");
         return true;
@@ -122,9 +114,9 @@ bool commitTransactionAndRelease(bool soft) {
 /** Replace special symbols such as ~ and $ in std::strings
  * @param str The string
  * @return The modified string
- */ 
+ */
 string expandVar(string& str) {
-    const char* env;
+    const char *env;
     if (str[0] == '~') {
         env = getenv("HOME");
         if (env == nullptr) {
@@ -145,7 +137,7 @@ string expandVar(string& str) {
     return str;
 }
 
-fmt::rgb hexStringToColor(string hexstr) {
+fmt::rgb hexStringToColor(string_view hexstr) {
     hexstr = hexstr.substr(1);
     // convert the hexadecimal string to individual components
     std::stringstream ss;
@@ -154,38 +146,40 @@ fmt::rgb hexStringToColor(string hexstr) {
     int intValue;
     ss >> intValue;
 
-    int red = (intValue >> 16) & 0xFF;
+    int red   = (intValue >> 16) & 0xFF;
     int green = (intValue >> 8) & 0xFF;
-    int blue = intValue & 0xFF;
-    
+    int blue  = intValue & 0xFF;
+
     return fmt::rgb(red, green, blue);
 }
 
 // http://stackoverflow.com/questions/478898/ddg#478960
-string shell_exec(string cmd) {
+string shell_exec(string_view cmd) {
     std::array<char, 128> buffer;
     string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.data(), "r"), pclose);
+
+    if (!pipe)
         throw std::runtime_error("popen() failed!");
-    }
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
         result += buffer.data();
-    }
+
     // why there is a '\n' at the end??
-    result.erase(result.end()-1, result.end());
+    if (!result.empty() && result[result.length()-1] == '\n')
+        result.erase(result.length()-1);
     return result;
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_number(const string& s, bool allowSpace) {
+bool is_number(string_view s, bool allowSpace) {
     if (allowSpace)
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
     else
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c)); }) == s.end();
 }
 
-bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure) {
+bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure) {
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
@@ -194,7 +188,7 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
     }
 
     int pid = fork();
-    
+
     if (pid > 0) { // we wait for the command to finish then start executing the rest
         close(pipeout[1]);
 
@@ -203,18 +197,15 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
 
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
             // read stdout
-            if (output) {
-                char c;
-                while (read(pipeout[0], &c, 1) == 1) {
-                    (*output) += c;
-                }
+            char c;
+            while (read(pipeout[0], &c, 1) == 1) {
+                output += c;
             }
 
             close(pipeout[0]);
 
             return true;
-        }
-        else {
+        } else {
             log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
@@ -222,12 +213,11 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
     } else if (pid == 0) {
         if (dup2(pipeout[1], STDOUT_FILENO) == -1)
             exit(127);
-        
+
         close(pipeout[0]);
         close(pipeout[1]);
-        log_println(LOG_DEBUG, "reading {}", fmt::join(cmd, " "));
         cmd.push_back(nullptr);
-        execvp(cmd[0], const_cast<char* const*>(cmd.data()));
+        execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
         log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
         exit(127);
@@ -250,8 +240,8 @@ bool taur_read_exec(vector<const char*> cmd, string *output, bool exitOnFailure)
  * @param cmd The command to execute 
  * @param exitOnFailure Whether to call exit(-1) on command failure.
  * @return true if the command successed, else false 
- */ 
-bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
+ */
+bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
 
     int pid = fork();
 
@@ -263,9 +253,10 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
     if (pid == 0) {
         log_println(LOG_DEBUG, "running {}", fmt::join(cmd, " "));
         cmd.push_back(nullptr);
-        execvp(cmd[0], const_cast<char* const*>(cmd.data()));
+        execvp(cmd[0], const_cast<char *const *>(cmd.data()));
+
         // execvp() returns instead of exiting when failed
-        log_println(LOG_ERROR, "An error as occured: {}", strerror(errno));
+        log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
         exit(-1);
     } else if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
@@ -287,21 +278,21 @@ bool taur_exec(vector<const char*> cmd, bool exitOnFailure) {
  * @param cmd The command to execute 
  * @param exitOnFailure Whether to call exit(-1) on command failure.
  * @return true if the command successed, else false 
- */ 
-bool makepkg_exec(string cmd, bool exitOnFailure) {
+ */
+bool makepkg_exec(string_view cmd, bool exitOnFailure) {
     vector<const char *> ccmd = {config->makepkgBin.c_str()};
-    
+
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
     if (!config->colors)
         ccmd.push_back("--nocolor");
 
-    ccmd.push_back("--config"); 
+    ccmd.push_back("--config");
     ccmd.push_back(config->makepkgConf.c_str());
 
     for (auto& str : split(cmd, ' '))
         ccmd.push_back(str.c_str());
-    
+
     return taur_exec(ccmd, exitOnFailure);
 }
 
@@ -312,30 +303,30 @@ bool makepkg_exec(string cmd, bool exitOnFailure) {
  * @param exitOnFailure Whether to call exit(-1) on command failure. (Default true)
  * @param root If pacman should be executed as root (Default true)
  * @return true if the command successed, else false 
- */ 
-bool pacman_exec(string op, vector<string> args, bool exitOnFailure, bool root) {
+ */
+bool pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure, bool root) {
     vector<const char *> ccmd;
 
     if (root)
-        ccmd = {config->sudo.c_str(), "pacman", op.c_str()};
+        ccmd = {config->sudo.c_str(), "pacman", op.data()};
     else
-        ccmd = {"pacman", op.c_str()};
-    
+        ccmd = {"pacman", op.data()};
+
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
-    
+
     if (config->colors)
         ccmd.push_back("--color=auto");
     else
         ccmd.push_back("--color=never");
 
-    ccmd.push_back("--config"); 
+    ccmd.push_back("--config");
     ccmd.push_back(config->pmConfig.c_str());
     ccmd.push_back("--");
 
     for (auto& str : args)
         ccmd.push_back(str.c_str());
-    
+
     return taur_exec(ccmd, exitOnFailure);
 }
 
@@ -354,57 +345,61 @@ void free_list_and_internals(alpm_list_t *list) {
  * @param db_name The database name
  * @return database's color in bold
  */
-fmt::text_style getColorFromDBName(string db_name) {
+fmt::text_style getColorFromDBName(string_view db_name) {
     if (db_name == "aur")
-        return BOLD_TEXT(config->getThemeValue("aur", config->getThemeHexValue("blue", blue)));
+        return BOLD_TEXT(color.aur);
     else if (db_name == "extra")
-        return BOLD_TEXT(config->getThemeValue("extra", config->getThemeHexValue("green", green)));
+        return BOLD_TEXT(color.extra);
     else if (db_name == "core")
-        return BOLD_TEXT(config->getThemeValue("core", config->getThemeHexValue("yellow", yellow)));
+        return BOLD_TEXT(color.core);
     else if (db_name == "multilib")
-        return BOLD_TEXT(config->getThemeValue("multilib", config->getThemeHexValue("cyan", cyan)));
+        return BOLD_TEXT(color.multilib);
     else
-        return BOLD_TEXT(config->getThemeValue("others", config->getThemeHexValue("magenta", magenta)));
+        return BOLD_TEXT(color.others);
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t &pkg, string db_name, int index) {
+void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
     if (index > -1)
-        fmt::print(fmt::fg(config->getThemeValue("magenta", magenta)), "[{}] ", index);
-    
+        fmt::print(fmt::fg(color.index), "[{}] ", index);
+
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
-    fmt::print(fmt::emphasis::bold, "{} ", pkg.name);
-    fmt::print(BOLD_TEXT(config->getThemeValue("version", config->getThemeHexValue("green", green))), "{} ", pkg.version);
-    fmt::print(fmt::fg(config->getThemeValue("popularity", config->getThemeHexValue("cyan", cyan))), " Popularity: {} ({}) ", pkg.popularity, getTitleForPopularity(pkg.popularity));
+    fmt::print(BOLD, "{} ", pkg.name);
+    fmt::print(BOLD_TEXT(color.version), "{} ", pkg.version);
+    // Don't print popularity and votes on system packages
+    if (pkg.votes > -1) {
+        fmt::print(fg(color.popularity), " Popularity: {:.2f} ", pkg.popularity);
+        fmt::print(fg(color.votes), "Votes: {} ({}) ", pkg.votes, getTitleFromVotes(pkg.votes));
+    }
     if (pkg.installed)
-        fmt::println(fmt::fg(config->getThemeValue("installed", config->getThemeHexValue("gray", gray))), "[Installed]");
+        fmt::println(BOLD_TEXT(color.installed), "[Installed]");
     else
-        fmt::println("");
+        fmt::print("\n");
     fmt::println("    {}", pkg.desc);
 }
 
 // faster than makepkg --packagelist
-string makepkg_list(string pkg_name, string path) {
+string makepkg_list(string const& pkg_name, string const& path) {
     string ret;
 
     string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
-    string pkgrel = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
-    string epoch = shell_exec("grep 'epoch=' " + path + "/PKGBUILD | cut -d= -f2");
-    
+    string pkgrel      = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
+    string epoch       = shell_exec("grep 'epoch=' "  + path + "/PKGBUILD | cut -d= -f2");
+
     if (!pkgrel.empty() && pkgrel[0] != '\0')
         versionInfo += '-' + pkgrel;
 
     if (!epoch.empty() && epoch[0] != '\0')
         versionInfo = epoch + ':' + versionInfo;
-    
-    string arch = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+
+    string arch       = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
     string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path + "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
-    
+
     if (arch_field == "any")
         arch = "any";
-    
+
     string pkgext = shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
-    
+
     ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
     return ret;
 }
@@ -417,16 +412,13 @@ string makepkg_list(string pkg_name, string path) {
 */
 optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
-        return pkgs[0].url.empty() ? pkgs : vector<TaurPkg_t>({ backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]) });
+        return pkgs[0].url.empty() ? pkgs : vector<TaurPkg_t>({backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0])});
     } else if (pkgs.size() > 1) {
         log_println(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
         string input;
         do {
             // CTRL-D
-            if (!std::cin) {
-                log_println(LOG_WARN, "Exiting due to CTRL-D!");
-                return {};
-            }
+            ctrl_d_handler();
 
             if (!input.empty())
                 log_println(LOG_WARN, "Invalid input!");
@@ -438,7 +430,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
             std::getline(std::cin, input);
         } while (!is_number(input, true));
 
-        vector<string> indices = split(input, ' ');
+        vector<string>    indices = split(input, ' ');
 
         vector<TaurPkg_t> output;
 
@@ -450,11 +442,18 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
 
             output.push_back(pkgs[selected].url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]));
         }
-        
+
         return output;
     }
 
     return {};
+}
+
+void ctrl_d_handler() {
+    if (std::cin.eof()) {
+        log_println(LOG_WARN, "Exiting due to CTRL-D");
+        exit(-1);
+    }
 }
 
 /** Filters out/only AUR packages.
@@ -469,7 +468,7 @@ vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncd
     for (; syncdbs; syncdbs = syncdbs->next) {
         for (size_t i = 0; i < pkgs.size(); i++) {
             bool existsInSync = alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), alpm_pkg_get_name(pkgs[i])) != nullptr;
-            
+
             if ((existsInSync && inverse) || (!existsInSync && !inverse))
                 pkgs[i] = nullptr;
         }
@@ -482,16 +481,16 @@ vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncd
     return out;
 }
 
-string getTitleForPopularity(float popularity) {
-    if (popularity < 0.2)
+string getTitleFromVotes(float votes) {
+    if (votes < 2)
         return "Untrustable";
-    if (popularity < 0.8)
+    if (votes < 5)
         return "Caution";
-    if (popularity < 10)
+    if (votes < 10)
         return "Normal";
-    if (popularity < 20)
+    if (votes < 20)
         return "Good";
-    if (popularity >= 20)
+    if (votes >= 20)
         return "Trustable";
     return "Weird, report this bug.";
 }
@@ -502,8 +501,8 @@ string getTitleForPopularity(float popularity) {
 * @return user's cache directory  
 */
 string getHomeCacheDir() {
-    char* dir = getenv("XDG_CACHE_HOME");
-    if (dir != NULL && fs::exists(string(dir))) {
+    char *dir = getenv("XDG_CACHE_HOME");
+    if (dir != NULL && std::filesystem::exists(string(dir))) {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     } else {
@@ -520,8 +519,8 @@ string getHomeCacheDir() {
 * @return user's config directory  
 */
 string getHomeConfigDir() {
-    char* dir = getenv("XDG_CONFIG_HOME");
-    if (dir != NULL && fs::exists(string(dir))) {
+    char *dir = getenv("XDG_CONFIG_HOME");
+    if (dir != NULL && std::filesystem::exists(string(dir))) {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     } else {
@@ -542,10 +541,10 @@ string getConfigDir() {
     return getHomeConfigDir() + "/TabAUR";
 }
 
-std::vector<string> split(string text, char delim) {
+std::vector<string> split(string_view text, char delim) {
     string              line;
     std::vector<string> vec;
-    std::stringstream   ss(text);
+    std::stringstream   ss(text.data());
     while (std::getline(ss, line, delim)) {
         vec.push_back(line);
     }
