@@ -4,6 +4,7 @@
 #include "taur.hpp"
 #include "util.hpp"
 
+using namespace std::string_view_literals;
 #define BRANCH  "libalpm-test"
 #define VERSION "0.6.4"
 
@@ -13,8 +14,8 @@ std::unique_ptr<TaurBackend> backend;
 // this may be hard to read, but better than calling fmt::println multiple times
 void usage(int op) {
     if (op == OP_MAIN) {
-        fmt::println("TabAUR usage: taur <op> [...]");
-        fmt::print("options:\n{}", R"#(
+        fmt::println("TabAUR usage: taur <op> [...]"sv);
+        fmt::print("options:\n{}", R"(
     taur {-h --help}
     taur {-V --version}
     taur {-t, --test-colors}
@@ -25,24 +26,24 @@ void usage(int op) {
     taur {-S --sync}     [options] [package(s)]
     taur {-T --deptest}  [options] [package(s)]
     taur {-U --upgrade}  [options] <file(s)>
-    )#");
+    )"sv);
     } else {
         if (op == OP_SYNC) {
             fmt::println("usage:  taur {{-S --sync}} [options] [package(s)]");
-            fmt::println("options:{}", R"#(
+            fmt::println("options:{}", R"(
     -s, --search <regex> search remote repositories for matching strings
     -u, --sysupgrade     upgrade installed packages (-uu enables downgrades)
     -y, --refresh        download fresh package databases from the server
-            )#");
+            )"sv);
         } else if (op == OP_QUERY) {
             fmt::println("usage: taur {{-Q --query}} [options] [package(s)]");
-            fmt::print("options:{}", R"#(
+            fmt::print("options:{}", R"(
     -q, --quiet          show less information for query and search
-                         )#");
+                         )"sv);
         }
     }
 
-    fmt::println("{}", R"#(
+    fmt::println("{}", R"(
     -a, --aur-only       do only AUR operations
     -g, --use-git        use git instead of tarballs for AUR repos
     --config    <path>   set an alternate configuration file
@@ -52,7 +53,7 @@ void usage(int op) {
     --debug     <1,0>    show debug messages
     --sudo      <path>   choose which binary to use for privilage-escalation
     --noconfirm          do not ask for any confirmation (passed to both makepkg and pacman)
-    )#");
+    )"sv);
 }
 
 void test_colors() {
@@ -123,14 +124,14 @@ bool execPacman(int argc, char *argv[]) {
 
 int installPkg(alpm_list_t *pkgNames) {
     bool           useGit   = config->useGit;
-    string         cacheDir = config->cacheDir;
+    string_view    cacheDir = config->cacheDir;
 
     bool           returnStatus = true;
 
     vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
 
     for (; pkgNames; pkgNames = pkgNames->next) {
-        string            pkgName = string((char *)(pkgNames->data));
+        string_view       pkgName = string_view((char *)(pkgNames->data));
         vector<TaurPkg_t> pkgs    = backend->search(pkgName, useGit, !op.op_s_search);
 
         if (pkgs.empty()) {
@@ -157,12 +158,12 @@ int installPkg(alpm_list_t *pkgNames) {
         vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
 
         for (size_t i = 0; i < selectedPkgs.size(); i++) {
-            TaurPkg_t pkg = selectedPkgs[i];
+            TaurPkg_t   pkg = selectedPkgs[i];
 
-            string    url = pkg.url;
+            string_view url = pkg.url;
 
             if (url == "") {
-                log_printf(LOG_DEBUG, "Scheduled system package {} for installation!\n", pkg.name);
+                log_println(LOG_DEBUG, "Scheduled system package {} for installation!", pkg.name);
                 pacmanPkgs.push_back(pkg.name);
                 continue;
             }
@@ -491,7 +492,6 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char *argv[]) {
     config         = std::make_unique<Config>();
-    char *no_color = getenv("NO_COLOR");
 
     configfile = (getConfigDir() + "/config.toml");
     themefile  = (getConfigDir() + "/theme.toml");
@@ -500,11 +500,6 @@ int main(int argc, char *argv[]) {
         return 1;
 
     config->init(configfile, themefile);
-
-    if (no_color != NULL && no_color[0] != '\0') {
-        fmt::disable_colors = true;
-        config->colors      = false;
-    }
 
     if (op.test_colors) {
         test_colors();

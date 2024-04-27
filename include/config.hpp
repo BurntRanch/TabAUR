@@ -5,11 +5,13 @@
 #include <alpm.h>
 #include <map>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include "fmt/color.h"
 #include "toml++/toml.hpp"
 
 using std::string;
+using std::string_view;
 
 // so we don't need to include util.hpp for getConfigValue()
 string expandVar(string& str);
@@ -75,13 +77,13 @@ class Config {
 
     bool isInitialized();
 
-    void loadConfigFile(string filename);
+    void loadConfigFile(string_view filename);
     void loadPacmanConfigFile(string filename);
-    void loadThemeFile(string filename);
+    void loadThemeFile(string_view filename);
 
     // stupid c++ that wants template functions in header
     template <typename T>
-    T getConfigValue(string value, T fallback) {
+    T getConfigValue(const string& value, T fallback) {
         auto overridePos = overrides.find(value);
 
         // user wants a bool (overridable), we found an override matching the name, and the override is a bool.
@@ -101,8 +103,8 @@ class Config {
             return ret.value_or(fallback);
     }
 
-    fmt::rgb getThemeValue(string value, string fallback);
-    string   getThemeHexValue(string value, string fallback);
+    fmt::rgb getThemeValue(const string& value, const string& fallback);
+    string   getThemeHexValue(const string& value, const string& fallback);
 
   private:
     toml::table tbl, theme_tbl;
@@ -113,7 +115,7 @@ extern std::unique_ptr<Config> config;
 inline struct _color_t         color;
 
 // we comment the default config values, just like /etc/pacman.conf
-inline const string AUTOCONFIG = R"#([general]
+inline const constexpr string_view AUTOCONFIG = R"#([general]
 # All options are commented out with their default values listed.
 # If you wish to use different options values, uncomment and update those.
 # It's safe to remove any options you want, just remember their default value
@@ -157,7 +159,7 @@ inline const string AUTOCONFIG = R"#([general]
 #MakepkgConf = "/etc/makepkg.conf"
 )#";
 
-inline const string AUTOTHEME = R"#([theme]
+inline const constexpr string_view AUTOTHEME = R"#([theme]
 red = "#ff2000"
 green = "#00ff00"
 blue = "#00aaff"

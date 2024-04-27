@@ -7,13 +7,13 @@
 #include <iostream>
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
-bool hasEnding(string const& fullString, string const& ending) {
+bool hasEnding(string_view fullString, string_view ending) {
     if (ending.length() > fullString.length())
         return false;
     return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
 }
 
-bool hasStart(string const& fullString, string const& start) {
+bool hasStart(string_view fullString, string_view start) {
     if (start.length() > fullString.length())
         return false;
     return (0 == fullString.compare(0, start.length(), start));
@@ -137,7 +137,7 @@ string expandVar(string& str) {
     return str;
 }
 
-fmt::rgb hexStringToColor(string hexstr) {
+fmt::rgb hexStringToColor(string_view hexstr) {
     hexstr = hexstr.substr(1);
     // convert the hexadecimal string to individual components
     std::stringstream ss;
@@ -154,10 +154,10 @@ fmt::rgb hexStringToColor(string hexstr) {
 }
 
 // http://stackoverflow.com/questions/478898/ddg#478960
-string shell_exec(string cmd) {
+string shell_exec(string_view cmd) {
     std::array<char, 128> buffer;
     string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.data(), "r"), pclose);
 
     if (!pipe)
         throw std::runtime_error("popen() failed!");
@@ -172,7 +172,7 @@ string shell_exec(string cmd) {
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_number(const string& s, bool allowSpace) {
+bool is_number(string_view s, bool allowSpace) {
     if (allowSpace)
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
     else
@@ -279,7 +279,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
  * @param exitOnFailure Whether to call exit(-1) on command failure.
  * @return true if the command successed, else false 
  */
-bool makepkg_exec(string cmd, bool exitOnFailure) {
+bool makepkg_exec(string_view cmd, bool exitOnFailure) {
     vector<const char *> ccmd = {config->makepkgBin.c_str()};
 
     if (config->noconfirm)
@@ -304,13 +304,13 @@ bool makepkg_exec(string cmd, bool exitOnFailure) {
  * @param root If pacman should be executed as root (Default true)
  * @return true if the command successed, else false 
  */
-bool pacman_exec(string op, vector<string> args, bool exitOnFailure, bool root) {
+bool pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure, bool root) {
     vector<const char *> ccmd;
 
     if (root)
-        ccmd = {config->sudo.c_str(), "pacman", op.c_str()};
+        ccmd = {config->sudo.c_str(), "pacman", op.data()};
     else
-        ccmd = {"pacman", op.c_str()};
+        ccmd = {"pacman", op.data()};
 
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
@@ -345,7 +345,7 @@ void free_list_and_internals(alpm_list_t *list) {
  * @param db_name The database name
  * @return database's color in bold
  */
-fmt::text_style getColorFromDBName(string db_name) {
+fmt::text_style getColorFromDBName(string_view db_name) {
     if (db_name == "aur")
         return BOLD_TEXT(color.aur);
     else if (db_name == "extra")
@@ -359,7 +359,7 @@ fmt::text_style getColorFromDBName(string db_name) {
 }
 
 // Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t& pkg, string& db_name, int index) {
+void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
     if (index > -1)
         fmt::print(fmt::fg(color.index), "[{}] ", index);
 
@@ -379,7 +379,7 @@ void printPkgInfo(TaurPkg_t& pkg, string& db_name, int index) {
 }
 
 // faster than makepkg --packagelist
-string makepkg_list(string pkg_name, string path) {
+string makepkg_list(string const& pkg_name, string const& path) {
     string ret;
 
     string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
@@ -541,10 +541,10 @@ string getConfigDir() {
     return getHomeConfigDir() + "/TabAUR";
 }
 
-std::vector<string> split(string text, char delim) {
+std::vector<string> split(string_view text, char delim) {
     string              line;
     std::vector<string> vec;
-    std::stringstream   ss(text);
+    std::stringstream   ss(text.data());
     while (std::getline(ss, line, delim)) {
         vec.push_back(line);
     }

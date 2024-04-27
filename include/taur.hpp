@@ -1,5 +1,5 @@
-#ifndef GIT_HPP
-#define GIT_HPP
+#ifndef TAUR_HPP
+#define TAUR_HPP
 
 #include "cpr/cpr.h"
 #include "util.hpp"
@@ -16,6 +16,7 @@
 class Config;
 
 using std::string;
+using std::string_view;
 using std::filesystem::path;
 using std::vector;
 using std::optional;
@@ -38,17 +39,17 @@ class TaurBackend {
     TaurBackend(Config& cfg);
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
     vector<TaurPkg_t>   getPkgFromJson(rapidjson::Document& doc, bool useGit);
-    vector<TaurPkg_t>   search_pac(string query);
-    vector<TaurPkg_t>   search(string query, bool useGit, bool checkExactMatch = true);
-    bool                download_tar(string url, path out_path);
-    bool                download_git(string url, string out_path);
-    bool                download_pkg(string url, string out_path);
+    vector<TaurPkg_t>   search_pac(string_view query);
+    vector<TaurPkg_t>   search(string_view query, bool useGit, bool checkExactMatch = true);
+    bool                download_tar(string_view url, path out_path);
+    bool                download_git(string_view url, path out_path);
+    bool                download_pkg(string_view url, path out_path);
     optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
-    vector<TaurPkg_t>   fetch_pkgs(vector<string> pkgs, bool returnGit);
+    vector<TaurPkg_t>   fetch_pkgs(vector<string> const& pkgs, bool returnGit);
     bool                remove_pkgs(alpm_list_smart_pointer& pkgs);
     bool                remove_pkg(alpm_pkg_t *pkgs, bool ownTransaction = true);
-    bool                handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit);
-    bool                build_pkg(string pkg_name, string extracted_path, bool alreadyprepared);
+    bool                handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> const& localPkgs, bool useGit);
+    bool                build_pkg(string_view pkg_name, string extracted_path, bool alreadyprepared);
     bool                update_all_aur_pkgs(path cacheDir, bool useGit);
     vector<TaurPkg_t>   get_all_local_pkgs(bool aurOnly);
 };

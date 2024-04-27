@@ -4,8 +4,6 @@
 #include "util.hpp"
 #include <alpm.h>
 #include <getopt.h>
-#include <sys/types.h>
-#include <vector>
 
 enum {
     OP_MAIN = 1,

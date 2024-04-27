@@ -7,17 +7,17 @@
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
-bool TaurBackend::download_git(string url, string out_path) {
+bool TaurBackend::download_git(string_view url, path out_path) {
     if (std::filesystem::exists(path(out_path) / ".git")) {
         return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
     } else {
         if (std::filesystem::exists(path(out_path)))
             std::filesystem::remove_all(out_path);
-        return taur_exec({config.git.c_str(), "clone", url.c_str(), out_path.c_str()});
+        return taur_exec({config.git.c_str(), "clone", url.data(), out_path.c_str()});
     }
 }
 
-bool TaurBackend::download_tar(string url, path out_path) {
+bool TaurBackend::download_tar(string_view url, path out_path) {
     std::ofstream out(out_path.replace_extension("tar.gz"));
     if (!out.is_open())
         return false;
@@ -40,7 +40,7 @@ bool TaurBackend::download_tar(string url, path out_path) {
  * @param out_path the path to extract the folder, for git folders, this will be where the repo is cloned.
  * @returns bool, true = success, false = failure.
 */
-bool TaurBackend::download_pkg(string url, string out_path) {
+bool TaurBackend::download_pkg(string_view url, path out_path) {
     if (hasEnding(url, ".git"))
         return this->download_git(url, out_path);
     else if (hasEnding(url, ".tar.gz"))
@@ -102,14 +102,14 @@ optional<TaurPkg_t> TaurBackend::fetch_pkg(string pkg, bool returnGit) {
     return {};
 }
 
-vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> pkgs, bool returnGit) {
+vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> const& pkgs, bool returnGit) {
     if (pkgs.empty())
         return vector<TaurPkg_t>();
 
     string urlStr  = "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=" + pkgs[0];
 
-    for (size_t i = 1; i < pkgs.size(); i++)
-        urlStr += ("&arg%5B%5D=" + pkgs[i]);
+    for (auto const& pkg : pkgs)
+        urlStr += ("&arg%5B%5D=" + pkg);
 
     cpr::Url      url  = cpr::Url(urlStr);
     cpr::Response resp = cpr::Get(url);
@@ -141,7 +141,7 @@ bool TaurBackend::remove_pkg(alpm_pkg_t *pkg, bool ownTransaction) {
         return false;
     }
 
-    log_println(LOG_INFO, "Removing package {}.", string(alpm_pkg_get_name(pkg)));
+    log_println(LOG_INFO, "Removing package {}.", alpm_pkg_get_name(pkg));
 
     if (alpm_remove_pkg(this->config.handle, pkg) != 0) {
         log_println(LOG_ERROR, "Failed to remove package ({})", alpm_strerror(alpm_errno(this->config.handle)));
@@ -196,7 +196,7 @@ bool TaurBackend::remove_pkgs(alpm_list_smart_pointer& pkgs) {
     return true;
 }
 
-bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool alreadyprepared) {
+bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool alreadyprepared) {
     // never forget to sanitize
     sanitizeStr(extracted_path);
     std::filesystem::current_path(extracted_path);
@@ -209,7 +209,7 @@ bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool already
         makepkg_exec("--nobuild --skippgpcheck -fs -C --ignorearch");
     }
 
-    built_pkg = makepkg_list(pkg_name, extracted_path);
+    built_pkg = makepkg_list(pkg_name.data(), extracted_path);
     log_println(LOG_DEBUG, "built_pkg = {}", built_pkg);
 
     if (!std::filesystem::exists(built_pkg)) {
@@ -223,7 +223,8 @@ bool TaurBackend::build_pkg(string pkg_name, string extracted_path, bool already
     return true;
 }
 
-bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> localPkgs, bool useGit) {
+// I don't know but I feel this is shitty
+bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> const& localPkgs, bool useGit) {
     log_println(LOG_DEBUG, "pkg.name = {}", pkg.name);
     log_println(LOG_DEBUG, "pkg.depends = {}", pkg.depends);
 
@@ -338,8 +339,8 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
     }
 
     vector<string> pkgNames;
-    for (size_t i = 0; i < pkgs.size(); i++)
-        pkgNames.push_back(pkgs[i].name);
+    for (TaurPkg_t& pkg : pkgs)
+        pkgNames.push_back(pkg.name);
 
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
 
@@ -523,15 +524,12 @@ vector<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool use
     return out;
 }
 
-vector<TaurPkg_t> TaurBackend::search_pac(string query) {
+vector<TaurPkg_t> TaurBackend::search_pac(string_view query) {
     // we search for the package name and print only the name, not the description
-    alpm_list_t *syncdbs;
-    string       packages_str;
-
-    syncdbs = config.repos;
+    alpm_list_t *syncdbs = config.repos;
 
     alpm_list_smart_pointer packages(nullptr, alpm_list_free);
-    alpm_list_smart_pointer query_regex(alpm_list_add(nullptr, (void *)query.c_str()), alpm_list_free);
+    alpm_list_smart_pointer query_regex(alpm_list_add(nullptr, (void *)query.data()), alpm_list_free);
 
     for (; syncdbs; syncdbs = alpm_list_next(syncdbs)) {
         alpm_list_t *ret = nullptr;
@@ -549,12 +547,12 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
     for (alpm_list_t *packages_get = packages.get(); packages_get; packages_get = packages_get->next) {
         alpm_pkg_t *pkg = (alpm_pkg_t *)(packages_get->data);
 
-        TaurPkg_t   taur_pkg = {.name       = string(alpm_pkg_get_name(pkg)),
-                                .version    = string(alpm_pkg_get_version(pkg)),
-                                .desc       = string(alpm_pkg_get_desc(pkg)),
+        TaurPkg_t   taur_pkg = {.name       = alpm_pkg_get_name(pkg),
+                                .version    = alpm_pkg_get_version(pkg),
+                                .desc       = alpm_pkg_get_desc(pkg),
                                 .votes      = -1,
                                 .installed  = alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
-                                .db_name    = string(alpm_db_get_name(alpm_pkg_get_db(pkg)))};
+                                .db_name    = alpm_db_get_name(alpm_pkg_get_db(pkg))};
 
         out.push_back(taur_pkg);
     }
@@ -564,18 +562,18 @@ vector<TaurPkg_t> TaurBackend::search_pac(string query) {
 
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-vector<TaurPkg_t> TaurBackend::search(string query, bool useGit, bool checkExactMatch) {
+vector<TaurPkg_t> TaurBackend::search(string_view query, bool useGit, bool checkExactMatch) {
     if (query.empty())
         return vector<TaurPkg_t>();
     // link to AUR API. Took search pattern from yay
-    cpr::Url            url(("https://aur.archlinux.org/rpc?arg%5B%5D=" + cpr::util::urlEncode(query) + "&by=" + config.getConfigValue("searchBy", "name-desc") + "&type=search&v=5"));
+    cpr::Url            url(("https://aur.archlinux.org/rpc?arg%5B%5D=" + cpr::util::urlEncode(query.data()) + "&by=" + config.getConfigValue("searchBy", "name-desc") + "&type=search&v=5"));
     log_println(LOG_DEBUG, "url search = {}", url.str());
     cpr::Response       r = cpr::Get(url);
 
-    string              raw_text_response = r.text;
+    string_view         raw_text_response = r.text;
 
     rapidjson::Document json_response;
-    json_response.Parse(raw_text_response.c_str());
+    json_response.Parse(raw_text_response.data());
 
     vector<TaurPkg_t> aurPkgs;
     vector<TaurPkg_t> pacPkgs = this->search_pac(query);
