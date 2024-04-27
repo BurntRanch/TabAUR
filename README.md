@@ -4,8 +4,7 @@ TabAUR is an AUR Helper that actually makes releases and it's written in C++20, 
 
 > [!CAUTION]
 > #### TabAUR has decided to become public in **April 27 2024** since we agreeed that is almost in a good beta shape.
-> #### Expect bugs and some problems to happen (we believe that there won't be so so many though, it's great both installing and upgrading)
-> #### **Do not TabAUR for removing packages (taur -R)**
+> #### Expect bugs and some problems to happen, though we believe that there won't be so so many because it's great for both installing and upgrading
 
 > [!NOTE]
 > #### Be free to test and try out TabAUR.
