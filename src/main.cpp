@@ -135,14 +135,16 @@ int installPkg(alpm_list_t *pkgNames) {
     for (; pkgNames; pkgNames = pkgNames->next) {
         pkgNamesVec.push_back((char *)(pkgNames->data));
     }
-
     vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
-    if (!op.op_s_cleanbuild)
-        pkgNamesToCleanBuild = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_CLEANBUILDS);
-    else
-        pkgNamesToCleanBuild = {};
 
-    pkgNamesToReview = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_REVIEWS);
+    if (!op.op_s_search) {
+        if (!op.op_s_cleanbuild)
+            pkgNamesToCleanBuild = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_CLEANBUILDS);
+        else
+            pkgNamesToCleanBuild = {};
+
+        pkgNamesToReview = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_REVIEWS);
+    }
 
     for (size_t i = 0; i < pkgNamesVec.size(); i++) {
         string_view       pkgName = pkgNamesVec[i];

@@ -252,8 +252,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false,
     string sep_str = "Type the index of each package, Seperate with '";
 
     // I love C++ strings.
-    sep_str += separator;
-    sep_str += "'";
+    sep_str += separator + '\'';
 
     string result_str;
 
@@ -262,11 +261,11 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false,
    
     switch (pr) {
         case PROMPT_LIST_CLEANBUILDS:
-            log_printf(LOG_INFO, BOLD, "Pick which queries you'd like to cleanbuild ({}): ", sep_str);
+            log_printf(LOG_INFO, BOLD, "Which queries should be completely rebuilt? ({}): ", sep_str);
             if (config->noconfirm && !required) return {};
             break;
         case PROMPT_LIST_REVIEWS:
-            log_printf(LOG_INFO, BOLD, "Pick which queries you'd like to review before installing ({}): ", sep_str);
+            log_printf(LOG_INFO, BOLD, "Which queries would you like to review? ({}): ", sep_str);
             if (config->noconfirm && !required) return {};
             break;
         default:
@@ -280,8 +279,10 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false,
     while (std::getline(std::cin, result_str)) {
         ctrl_d_handler();
 
-        if (result_str.empty() && !required)
+        if (result_str.empty() && !required) {
+            std::cout << std::endl;
             return {};
+        }
 
         if (result_str == "*")
             return list;
