@@ -241,14 +241,14 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
 }
 
 /** Ask the user to select items from a list, input seperated by <separator>.
- * @param required if this prompt can be skipped manually or by noconfirm.
  * @param source the source list for the user to choose from.
  * @param pr  the prompt enum
+ * @param required if this prompt can be skipped manually or by noconfirm.
  * @param separator the separator used when reading the input, default is space.
  * @returns the resulting list, empty if anything bad happens.
 */
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
-vector<T> askUserForList(bool required, vector<T> &list, prompt_list pr, char separator = ' ') {
+vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false, char separator = ' ') {
     string sep_str = "Type the index of each package, Seperate with '";
 
     // I love C++ strings.
