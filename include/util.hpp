@@ -249,11 +249,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
 */
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
 vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false, char separator = ' ') {
-    string sep_str = "Type the index of each package, Seperate with '";
-
-    // I love C++ strings.
-    sep_str += separator + '\'';
-
+    string sep_str = "Type the index of each package (e.g 4 12 2)";
     string result_str;
 
     for (size_t i = 0; i < list.size(); i++)
@@ -261,11 +257,11 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false,
    
     switch (pr) {
         case PROMPT_LIST_CLEANBUILDS:
-            log_printf(LOG_INFO, BOLD, "Which queries should be completely rebuilt? ({}): ", sep_str);
+            log_printf(LOG_INFO, BOLD, "Packages to completely rebuild: ");
             if (config->noconfirm && !required) return {};
             break;
         case PROMPT_LIST_REVIEWS:
-            log_printf(LOG_INFO, BOLD, "Which queries would you like to review? ({}): ", sep_str);
+            log_printf(LOG_INFO, BOLD, "Packages you'd like to review: ");
             if (config->noconfirm && !required) return {};
             break;
         default:
@@ -277,7 +273,6 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false,
     vector<T> result;
 
     while (std::getline(std::cin, result_str)) {
-        ctrl_d_handler();
 
         if (result_str.empty() && !required) {
             std::cout << std::endl;
@@ -311,6 +306,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false,
 
         break;
     }
+    ctrl_d_handler();
     
     return result;
 }

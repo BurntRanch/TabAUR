@@ -28,6 +28,7 @@ struct TaurPkg_t {
     string         url;
     string         desc;
     time_t         last_modified;
+    time_t         outofdate;
     float          popularity = 1; // normal
     float          votes = 0; // system packages have no votes
     vector<string> depends;

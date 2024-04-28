@@ -361,12 +361,20 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
         fmt::print(fg(color.popularity), " Popularity: {:.2f} ", pkg.popularity);
         fmt::print(fg(color.votes), "Votes: {} ({}) ", pkg.votes, getTitleFromVotes(pkg.votes));
     }
-    if (pkg.last_modified) {
+    /*if (pkg.last_modified) {
         char *timestr = std::ctime(&pkg.last_modified);
         string_view timestr_view = timestr;
         if (!timestr_view.empty()) {
             timestr[timestr_view.length()-1] = '\0';    // delete the last newline.
             fmt::print(fg(color.last_modified), "(Last Modified: {}) ", timestr);
+        }
+    }*/
+    if (pkg.outofdate) {
+        char *timestr = std::ctime(&pkg.outofdate);
+        string_view timestr_view = timestr;
+        if (!timestr_view.empty()) {
+            timestr[timestr_view.length()-1] = '\0';    // delete the last newline.
+            fmt::print(BOLD_TEXT(color.outofdate), "(Outdated: {}) ", timestr);
         }
     }
     if (pkg.installed)

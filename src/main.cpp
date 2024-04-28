@@ -162,7 +162,7 @@ int installPkg(alpm_list_t *pkgNames) {
         if (op.op_s_search) {
             for (size_t i = 0; i < pkgs.size(); i++)
                 printPkgInfo(pkgs[i], pkgs[i].db_name);
-            returnStatus = false;
+            returnStatus = true;
             continue;
         }
 

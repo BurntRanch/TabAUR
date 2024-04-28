@@ -42,6 +42,7 @@ struct _color_t {
     fmt::rgb others;
     fmt::rgb version;
     fmt::rgb last_modified;
+    fmt::rgb outofdate;
     fmt::rgb popularity;
     fmt::rgb votes;
     fmt::rgb installed;
@@ -181,6 +182,7 @@ gray = "#5a5a5a"
 
 #version = "#00ff00"
 #last_modified = "#ff11cc"
+#outofdate = "#ff2000"
 #popularity = "#00ffff"
 #votes = "#00ffff"
 #installed = "#5a5a5a"
