@@ -71,14 +71,15 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
     }
 
     TaurPkg_t out = {
-        pkgJson["Name"].GetString(),                                                               // name
-        pkgJson["Version"].GetString(),                                                            // version
-        getUrl(pkgJson, returnGit),                                                                // url
-        pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",               // description
-        pkgJson["Popularity"].GetFloat(),                                                          // popularity
-        pkgJson["NumVotes"].GetFloat(),                                                            // votes
-        depends,                                                                                   // depends
-        alpm_db_get_pkg(alpm_get_localdb(config->handle), pkgJson["Name"].GetString()) != nullptr, // installed
+        .name = pkgJson["Name"].GetString(),
+        .version = pkgJson["Version"].GetString(),
+        .url = getUrl(pkgJson, returnGit),
+        .desc = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
+        .last_modified = pkgJson["LastModified"].GetInt64(),
+        .popularity = pkgJson["Popularity"].GetFloat(),
+        .votes = pkgJson["NumVotes"].GetFloat(),
+        .depends = depends,
+        .installed = alpm_db_get_pkg(alpm_get_localdb(config->handle), pkgJson["Name"].GetString()) != nullptr,
     };
 
     return out;
@@ -436,7 +437,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
         log_println(LOG_DEBUG, "pkg {} versions: local {} vs online {}", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);
 
-        if ((alpm_pkg_vercmp(pkgs[pkgIndex].version.c_str(), versionInfo.c_str())) == 0) {
+        if ((alpm_pkg_vercmp(pkgs[pkgIndex].version.data(), versionInfo.c_str())) == 0) {
             log_println(LOG_DEBUG, "pkg {} has a the same version on the AUR than in its PKGBUILD, local: {}, online: {}, PKGBUILD: {}, skipping!", pkgs[pkgIndex].name,
                         pkgs[pkgIndex].version, onlinePkgs[i].version, versionInfo);
             continue;
@@ -547,12 +548,14 @@ vector<TaurPkg_t> TaurBackend::search_pac(string_view query) {
     for (alpm_list_t *packages_get = packages.get(); packages_get; packages_get = packages_get->next) {
         alpm_pkg_t *pkg = (alpm_pkg_t *)(packages_get->data);
 
-        TaurPkg_t   taur_pkg = {.name       = alpm_pkg_get_name(pkg),
-                                .version    = alpm_pkg_get_version(pkg),
-                                .desc       = alpm_pkg_get_desc(pkg),
-                                .votes      = -1,
-                                .installed  = alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
-                                .db_name    = alpm_db_get_name(alpm_pkg_get_db(pkg))};
+        TaurPkg_t taur_pkg = {
+            .name       = alpm_pkg_get_name(pkg),
+            .version    = alpm_pkg_get_version(pkg),
+            .desc       = alpm_pkg_get_desc(pkg),
+            .votes      = -1,
+            .installed  = alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
+            .db_name    = alpm_db_get_name(alpm_pkg_get_db(pkg))
+        };
 
         out.push_back(taur_pkg);
     }

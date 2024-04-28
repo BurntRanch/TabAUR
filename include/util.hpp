@@ -11,7 +11,9 @@
 #include "config.hpp"
 #include "fmt/base.h"
 #include "fmt/color.h"
+#include "fmt/format.h"
 #include "fmt/ranges.h"
+#include <type_traits>
 
 using std::string;
 using std::string_view;
@@ -36,6 +38,11 @@ enum prompt_yn {
     PROMPT_YN_CONTINUE_WITHOUT_DIFF,
     PROMPT_YN_EDIT_PKGBUILD,
     PROMPT_YN_PROCEED_INSTALL,
+    PROMPT_YN_PROCEED_TRANSACTION,
+};
+enum prompt_list {
+    PROMPT_LIST_CLEANBUILDS,
+    PROMPT_LIST_REVIEWS,
 };
 
 enum {
@@ -54,7 +61,7 @@ enum log_level {
 bool                             hasEnding(string_view fullString, string_view ending);
 bool                             hasStart(string_view fullString, string_view start);
 string                           expandVar(string& str);
-bool                             is_number(string_view s, bool allowSpace = false);
+bool                             is_numerical(string_view s, bool allowSpace = false);
 bool                             taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure = true);
 void                             interruptHandler(int);
 bool                             taur_exec(vector<const char *> cmd, bool exitOnFailure = true);
@@ -77,6 +84,22 @@ string                           getHomeConfigDir();
 bool                             makepkg_exec(string_view cmd, bool exitOnFailure = true);
 bool                             pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure = true, bool root = true);
 std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
+
+template <typename T>
+struct is_fmt_convertible {
+private:
+    template <typename U>
+    static auto test(int) -> decltype(fmt::to_string(std::declval<U>()), std::true_type{});
+
+    template <typename>
+    static auto test(...) -> std::false_type;
+
+public:
+    static constexpr bool value = decltype(test<T>(0))::value;
+};
+
+template <typename T>
+constexpr bool is_fmt_convertible_v = is_fmt_convertible<T>::value;
 
 template <typename... Args>
 void log_println(int log, const fmt::text_style& ts, std::string_view fmt, Args&&... args) {
@@ -193,6 +216,10 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
             log_printf(LOG_INFO, BOLD, "Proceed with the installation? {}", inputs_str);
             if (config->noconfirm) return YES;
             break;
+        case PROMPT_YN_PROCEED_TRANSACTION:
+            log_printf(LOG_INFO, BOLD, "Would you like to proceed with this transaction? {}", inputs_str);
+            if (config->noconfirm) return NO;
+            break;
         default:
             return def;
     }
@@ -211,6 +238,79 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
         return def;
 
     return !def;
+}
+
+/** Ask the user to select items from a list, input seperated by <separator>.
+ * @param source the source list for the user to choose from.
+ * @param pr  the prompt enum
+ * @param separator the separator used when reading the input, default is space.
+ * @returns the resulting list, empty if anything bad happens.
+*/
+template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
+vector<T> askUserForList(vector<T> &list, prompt_list pr, char separator = ' ') {
+    string sep_str = "Type the index of each package, Seperate with '";
+
+    // I love C++ strings.
+    sep_str += separator;
+    sep_str += "'";
+
+    string result_str;
+
+    for (size_t i = 0; i < list.size(); i++)
+        fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD | fmt::fg(fmt::color::white), "{}", list[i]));
+   
+    switch (pr) {
+        case PROMPT_LIST_CLEANBUILDS:
+            log_printf(LOG_INFO, BOLD, "Pick which queries you'd like to cleanbuild ({}): ", sep_str);
+            if (config->noconfirm) return list;
+            break;
+        case PROMPT_LIST_REVIEWS:
+            log_printf(LOG_INFO, BOLD, "Pick which queries you'd like to review before installing ({}): ", sep_str);
+            if (config->noconfirm) return {};
+            break;
+        default:
+            return {};
+    }
+
+    //std::cin.sync();
+    // while the getline function works, and the result is not 1 character long, keep reminding the user.
+    vector<T> result;
+
+    while (std::getline(std::cin, result_str)) {
+        ctrl_d_handler();
+
+        if (result_str.empty())
+            return {};
+
+        if (result_str == "*")
+            return list;
+    
+        if (!is_numerical(result_str)) {
+            log_printf(LOG_WARN, "{}: ", sep_str);
+            continue;
+        }
+        vector<string> input_indices = split(result_str, separator);
+
+        int added_elements = 0;
+        for (size_t i = 0; i < input_indices.size(); i++) {
+            int index = std::stoi(input_indices[i]);
+            if (0 > index || index >= list.size()) {
+                log_println(LOG_WARN, "Invalid index! Ignoring index #{}.", input_indices[i]);
+                continue;
+            }
+            result.push_back(list[index]);
+            added_elements++;
+        }
+
+        if (added_elements == 0) {
+            log_printf(LOG_WARN, "{}: ", sep_str);
+            continue;
+        }
+
+        break;
+    }
+    
+    return result;
 }
 
 template <typename T>

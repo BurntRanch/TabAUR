@@ -57,6 +57,7 @@ bool commitTransactionAndRelease(bool soft) {
     alpm_list_t   *addPkgs    = alpm_trans_get_add(handle);
     alpm_list_t   *removePkgs = alpm_trans_get_remove(handle);
     alpm_list_t   *combined   = alpm_list_join(addPkgs, removePkgs);
+
     if (soft && !combined)
         return true;
 
@@ -71,18 +72,7 @@ bool commitTransactionAndRelease(bool soft) {
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
-    fmt::print("Would you like to proceed with this transaction? [Y/n] ");
-
-    string response;
-    std::cin >> response;
-
-    ctrl_d_handler();
-
-    for (char& c : response) {
-        c = tolower(c);
-    }
-
-    if (!response.empty() && response != "y") {
+    if (!askUserYorN(true, PROMPT_YN_PROCEED_TRANSACTION)) {
         bool releaseStatus = alpm_trans_release(handle) == 0;
         if (!releaseStatus)
             log_println(LOG_ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
@@ -172,7 +162,7 @@ string shell_exec(string_view cmd) {
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_number(string_view s, bool allowSpace) {
+bool is_numerical(string_view s, bool allowSpace) {
     if (allowSpace)
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
     else
@@ -371,6 +361,14 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
         fmt::print(fg(color.popularity), " Popularity: {:.2f} ", pkg.popularity);
         fmt::print(fg(color.votes), "Votes: {} ({}) ", pkg.votes, getTitleFromVotes(pkg.votes));
     }
+    if (pkg.last_modified) {
+        char *timestr = std::ctime(&pkg.last_modified);
+        string_view timestr_view = timestr;
+        if (!timestr_view.empty()) {
+            timestr[timestr_view.length()-1] = '\0';    // delete the last newline.
+            fmt::print(fg(color.last_modified), "(Last Modified: {}) ", timestr);
+        }
+    }
     if (pkg.installed)
         fmt::println(BOLD_TEXT(color.installed), "[Installed]");
     else
@@ -428,7 +426,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
 
             fmt::print("Choose a package to download: ");
             std::getline(std::cin, input);
-        } while (!is_number(input, true));
+        } while (!is_numerical(input, true));
 
         vector<string>    indices = split(input, ' ');
 

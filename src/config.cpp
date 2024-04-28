@@ -163,23 +163,24 @@ string Config::getThemeHexValue(const string& value, const string& fallback) {
 }
 
 void Config::initColors() {
-    color.red        = this->getThemeValue("red",        "#ff2000");
-    color.green      = this->getThemeValue("green",      "#00ff00");
-    color.blue       = this->getThemeValue("blue",       "#00aaff");
-    color.cyan       = this->getThemeValue("cyan",       "#00ffff");
-    color.yellow     = this->getThemeValue("yellow",     "#ffff00");
-    color.magenta    = this->getThemeValue("magenta",    "#ff11cc");
-    color.gray       = this->getThemeValue("gray",       "#5a5a5a");
-    color.aur        = this->getThemeValue("aur",        "#00aaff");
-    color.extra      = this->getThemeValue("extra",      "#00ff00");
-    color.core       = this->getThemeValue("core",       "#ffff00");
-    color.multilib   = this->getThemeValue("multilib",   "#00ffff");
-    color.others     = this->getThemeValue("others",     "#ff11cc");
-    color.version    = this->getThemeValue("version",    "#00ff00");
-    color.popularity = this->getThemeValue("popularity", "#00ffff");
-    color.votes      = this->getThemeValue("votes",      "#00ffff");
-    color.installed  = this->getThemeValue("installed",  "#5a5a5a");
-    color.index      = this->getThemeValue("index",      "#ff11cc");
+    color.red           = this->getThemeValue("red",           "#ff2000");
+    color.green         = this->getThemeValue("green",         "#00ff00");
+    color.blue          = this->getThemeValue("blue",          "#00aaff");
+    color.cyan          = this->getThemeValue("cyan",          "#00ffff");
+    color.yellow        = this->getThemeValue("yellow",        "#ffff00");
+    color.magenta       = this->getThemeValue("magenta",       "#ff11cc");
+    color.gray          = this->getThemeValue("gray",          "#5a5a5a");
+    color.aur           = this->getThemeValue("aur",           this->getThemeHexValue("blue", "#00aaff"));
+    color.extra         = this->getThemeValue("extra",         this->getThemeHexValue("green", "#00ff00"));
+    color.core          = this->getThemeValue("core",          this->getThemeHexValue("yellow", "#ffff00"));
+    color.multilib      = this->getThemeValue("multilib",      this->getThemeHexValue("cyan", "#00ffff"));
+    color.others        = this->getThemeValue("others",        this->getThemeHexValue("magenta", "#ff11cc"));
+    color.version       = this->getThemeValue("version",       this->getThemeHexValue("green", "#00ff00"));
+    color.last_modified = this->getThemeValue("last_modified", this->getThemeHexValue("magenta", "#ff11cc"));
+    color.popularity    = this->getThemeValue("popularity",    this->getThemeHexValue("cyan", "#00ffff"));
+    color.votes         = this->getThemeValue("votes",         this->getThemeHexValue("cyan", "#00ffff"));
+    color.installed     = this->getThemeValue("installed",     this->getThemeHexValue("gray", "#5a5a5a"));
+    color.index         = this->getThemeValue("index",         this->getThemeHexValue("magenta", "#ff11cc"));
 }
 
 bool addServers(alpm_db_t *db, const string& includeFilename, string_view repoName) {

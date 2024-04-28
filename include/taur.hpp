@@ -5,6 +5,7 @@
 #include "util.hpp"
 #include <alpm.h>
 #include <alpm_list.h>
+#include <ctime>
 #include <fcntl.h>
 #include <optional>
 #include <rapidjson/document.h>
@@ -26,6 +27,7 @@ struct TaurPkg_t {
     string         version;
     string         url;
     string         desc;
+    time_t         last_modified;
     float          popularity = 1; // normal
     float          votes = 1;
     vector<string> depends;

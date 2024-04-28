@@ -129,9 +129,25 @@ int installPkg(alpm_list_t *pkgNames) {
     bool           returnStatus = true;
 
     vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
+    vector<string_view> pkgNamesVec;
 
+    // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next) {
-        string_view       pkgName = string_view((char *)(pkgNames->data));
+        pkgNamesVec.push_back((char *)(pkgNames->data));
+    }
+
+    vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
+    if (!op.op_s_cleanbuild)
+        pkgNamesToCleanBuild = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_CLEANBUILDS);
+    else
+        pkgNamesToCleanBuild = {};
+
+    pkgNamesToReview = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_REVIEWS);
+
+    for (size_t i = 0; i < pkgNamesVec.size(); i++) {
+        string_view       pkgName = pkgNamesVec[i];
+        bool           cleanBuild = op.op_s_cleanbuild ? true : std::find(pkgNamesToCleanBuild.begin(), pkgNamesToCleanBuild.end(), pkgName) != pkgNamesToCleanBuild.end();
+        bool               review = std::find(pkgNamesToReview.begin(), pkgNamesToReview.end(), pkgName) != pkgNamesToReview.end();
         vector<TaurPkg_t> pkgs    = backend->search(pkgName, useGit, !op.op_s_search);
 
         if (pkgs.empty()) {
@@ -172,17 +188,25 @@ int installPkg(alpm_list_t *pkgNames) {
 
             bool pkgDirExists = std::filesystem::exists(pkgDir);
 
-            // nasty ahh nested if statments
-            if (useGit && pkgDirExists && std::filesystem::exists(pkgDir / ".git")) {
-                if (askUserYorN(YES, PROMPT_YN_DIFF, pkg.name))
-                    if (taur_exec({config->git.c_str(), "-C", pkgDir.c_str(), "diff", "HEAD..origin/HEAD", "--", ".", ":(exclude).SRCINFO"}))
-                        if(!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
-                            return false;
+            // nasty ahh nested if statements
+            // if the user is using git, and the package exists, and is a git repo.
+            if (useGit && pkgDirExists && std::filesystem::exists(pkgDir / ".git")
+            // then ask the user if they want to see the diff
+             && (review || askUserYorN(YES, PROMPT_YN_DIFF, pkg.name))
+            // then show them the actual diff
+             && taur_exec({config->git.c_str(), "-C", pkgDir.c_str(), "diff", "HEAD..origin/HEAD", "--", ".", ":(exclude).SRCINFO"})
+            // they don't like what they saw? oh.
+             && !askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL)) {
+            // return false then.
+                return false;
             } else if ((!useGit || !std::filesystem::exists(pkgDir / ".git")) && pkgDirExists) {
                 // inform the user they disabled git repo support, thus diffs are not supported.
                 if (!askUserYorN(NO, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
                     continue;
             }
+
+            if (cleanBuild)
+                std::filesystem::remove_all(pkgDir);
 
             bool stat = backend->download_pkg(url, pkgDir);
             if (!stat) {
@@ -192,7 +216,7 @@ int installPkg(alpm_list_t *pkgNames) {
             }
 
             // it wasn't there, now it is, show the user the PKGBUILD
-            if (askUserYorN(YES, PROMPT_YN_EDIT_PKGBUILD, pkg.name)) {
+            if (review || askUserYorN(YES, PROMPT_YN_EDIT_PKGBUILD, pkg.name)) {
                 if (!taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()}, false)) {
                     log_println(LOG_ERROR, "Failed to run {} on {}!", config->editorBin, (pkgDir / "PKGBUILD").string());
                     continue;
@@ -200,13 +224,15 @@ int installPkg(alpm_list_t *pkgNames) {
                     return false;
             }
 
-            if (!useGit) {
-                stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->build_pkg(pkg.name, pkgDir, false);
-            } else {
-                stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->build_pkg(pkg.name, pkgDir, false);
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+
+            if (!stat) {
+                log_println(LOG_ERROR, "Installing AUR dependencies for your package has failed.");
+                returnStatus = false;
+                continue;
             }
+
+            stat = backend->build_pkg(pkg.name, pkgDir, false);
 
             if (!stat) {
                 log_println(LOG_ERROR, "Building your package has failed.");
@@ -400,6 +426,7 @@ int parseargs(int argc, char* argv[]) {
         {"refresh",    no_argument,       0, OP_REFRESH},
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
         {"search",     no_argument,       0, OP_SEARCH},
+        {"cleanbuild", no_argument,       0, OP_CLEANBUILD},
         {"cachedir",   required_argument, 0, OP_CACHEDIR},
         {"colors",     required_argument, 0, OP_COLORS},
         {"config",     required_argument, 0, OP_CONFIG},

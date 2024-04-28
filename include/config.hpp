@@ -41,6 +41,7 @@ struct _color_t {
     fmt::rgb multilib;
     fmt::rgb others;
     fmt::rgb version;
+    fmt::rgb last_modified;
     fmt::rgb popularity;
     fmt::rgb votes;
     fmt::rgb installed;
@@ -179,6 +180,7 @@ gray = "#5a5a5a"
 #others = "#ff11cc"
 
 #version = "#00ff00"
+#last_modified = "#ff11cc"
 #popularity = "#00ffff"
 #votes = "#00ffff"
 #installed = "#5a5a5a"

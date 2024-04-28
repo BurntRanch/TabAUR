@@ -128,6 +128,9 @@ int parsearg_sync(int opt) {
         case 's':
             op.op_s_search = 1; 
             break;
+        case OP_CLEANBUILD:
+            op.op_s_cleanbuild = 1;
+            break;
         default:
             return 1;
     }

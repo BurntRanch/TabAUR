@@ -21,6 +21,7 @@ enum {
     OP_USEGIT,
     OP_REFRESH,
     OP_SYSUPGRADE,
+    OP_CLEANBUILD,
     OP_COLORS,
     OP_DEBUG,
     OP_CONFIG,
@@ -37,6 +38,7 @@ struct Operation_t {
     u_short op_s_upgrade;
     u_short op_s_search;
     u_short op_s_pacman;
+    u_short op_s_cleanbuild;
 
     bool    requires_root = false;
     u_short help;
