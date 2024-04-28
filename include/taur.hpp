@@ -29,7 +29,7 @@ struct TaurPkg_t {
     string         desc;
     time_t         last_modified;
     float          popularity = 1; // normal
-    float          votes = 1;
+    float          votes = 0; // system packages have no votes
     vector<string> depends;
     bool           installed = false;
     string         db_name   = "aur";

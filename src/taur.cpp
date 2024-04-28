@@ -3,6 +3,7 @@
 #include "taur.hpp"
 #include "config.hpp"
 #include "util.hpp"
+#include <alpm.h>
 #include <filesystem>
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
@@ -549,12 +550,13 @@ vector<TaurPkg_t> TaurBackend::search_pac(string_view query) {
         alpm_pkg_t *pkg = (alpm_pkg_t *)(packages_get->data);
 
         TaurPkg_t taur_pkg = {
-            .name       = alpm_pkg_get_name(pkg),
-            .version    = alpm_pkg_get_version(pkg),
-            .desc       = alpm_pkg_get_desc(pkg),
-            .votes      = -1,
-            .installed  = alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
-            .db_name    = alpm_db_get_name(alpm_pkg_get_db(pkg))
+            .name          = alpm_pkg_get_name(pkg),
+            .version       = alpm_pkg_get_version(pkg),
+            .desc          = alpm_pkg_get_desc(pkg),
+            .last_modified = alpm_pkg_get_builddate(pkg),
+            .votes         = -1,
+            .installed     = alpm_db_get_pkg(alpm_get_localdb(config.handle), alpm_pkg_get_name(pkg)) != nullptr,
+            .db_name       = alpm_db_get_name(alpm_pkg_get_db(pkg))
         };
 
         out.push_back(taur_pkg);
