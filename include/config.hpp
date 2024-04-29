@@ -43,6 +43,7 @@ struct _color_t {
     fmt::rgb version;
     fmt::rgb last_modified;
     fmt::rgb outofdate;
+    fmt::rgb orphan;
     fmt::rgb popularity;
     fmt::rgb votes;
     fmt::rgb installed;

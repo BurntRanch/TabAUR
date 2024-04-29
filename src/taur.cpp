@@ -57,10 +57,9 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
-    vector<string> makedepends;
-    vector<string> depends;
-    vector<string> totaldepends;
-    if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
+    vector<string> makedepends, depends, totaldepends;
+
+    if ((pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray()) || (pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray())) {
         const rapidjson::Value& dependsArray     = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
@@ -68,6 +67,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
             depends.push_back(dependsArray[i].GetString());
         for (size_t i = 0; i < makeDependsArray.Size(); i++)
             makedepends.push_back(makeDependsArray[i].GetString());
+        
         totaldepends = depends;
         for (size_t i = 0; i < makeDependsArray.Size(); i++) {
             // make sure it isn't in the depends list
@@ -82,6 +82,7 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
         .version       = pkgJson["Version"].GetString(),
         .url           = getUrl(pkgJson, returnGit),
         .desc          = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
+        .maintainer    = pkgJson["Maintainer"].IsString() ? pkgJson["Maintainer"].GetString() : "o", // o stands for orphan (un-maintained)
         .last_modified = pkgJson["LastModified"].GetInt64(),
         .outofdate     = pkgJson["OutOfDate"].IsInt64() ? pkgJson["OutOfDate"].GetInt64() : 0,
         .popularity    = pkgJson["Popularity"].GetFloat(),

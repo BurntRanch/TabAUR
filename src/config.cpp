@@ -178,6 +178,7 @@ void Config::initColors() {
     color.version       = this->getThemeValue("version",       this->getThemeHexValue("green", "#00ff00"));
     color.last_modified = this->getThemeValue("last_modified", this->getThemeHexValue("magenta", "#ff11cc"));
     color.outofdate     = this->getThemeValue("outofdate",     this->getThemeHexValue("red", "#ff2000"));
+    color.orphan        = this->getThemeValue("orphan",        this->getThemeHexValue("red", "#ff2000"));
     color.popularity    = this->getThemeValue("popularity",    this->getThemeHexValue("cyan", "#00ffff"));
     color.votes         = this->getThemeValue("votes",         this->getThemeHexValue("cyan", "#00ffff"));
     color.installed     = this->getThemeValue("installed",     this->getThemeHexValue("gray", "#5a5a5a"));

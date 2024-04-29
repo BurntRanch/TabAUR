@@ -27,6 +27,7 @@ struct TaurPkg_t {
     string         version;
     string         url;
     string         desc;
+    string         maintainer;
     time_t         last_modified;
     time_t         outofdate;
     float          popularity = 1; // normal

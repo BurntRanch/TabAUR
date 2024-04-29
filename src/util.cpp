@@ -369,6 +369,9 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
             fmt::print(fg(color.last_modified), "(Last Modified: {}) ", timestr);
         }
     }*/
+    if (pkg.maintainer == "o")
+        fmt::print(BOLD_TEXT(color.orphan), "(un-maintained) ");
+
     if (pkg.outofdate) {
         char *timestr = std::ctime(&pkg.outofdate);
         string_view timestr_view = timestr;
@@ -377,6 +380,7 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
             fmt::print(BOLD_TEXT(color.outofdate), "(Outdated: {}) ", timestr);
         }
     }
+
     if (pkg.installed)
         fmt::println(BOLD_TEXT(color.installed), "[Installed]");
     else
