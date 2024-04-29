@@ -188,6 +188,9 @@ int installPkg(alpm_list_t *pkgNames) {
 
             path pkgDir = path(cacheDir) / pkg.name;
 
+            if (cleanBuild)
+                std::filesystem::remove_all(pkgDir);
+
             bool pkgDirExists = std::filesystem::exists(pkgDir);
 
             // nasty ahh nested if statements
@@ -206,9 +209,6 @@ int installPkg(alpm_list_t *pkgNames) {
                 if (!askUserYorN(NO, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
                     continue;
             }
-
-            if (cleanBuild)
-                std::filesystem::remove_all(pkgDir);
 
             bool stat = backend->download_pkg(url, pkgDir);
             if (!stat) {

@@ -244,11 +244,10 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
  * @param source the source list for the user to choose from.
  * @param pr  the prompt enum
  * @param required if this prompt can be skipped manually or by noconfirm.
- * @param separator the separator used when reading the input, default is space.
  * @returns the resulting list, empty if anything bad happens.
 */
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
-vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false, char separator = ' ') {
+vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false) {
     string sep_str = "Type the index of each package (e.g 4 12 2)";
     string result_str;
 
@@ -281,15 +280,43 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false,
 
         if (result_str == "*")
             return list;
-    
-        if (!is_numerical(result_str)) {
-            log_printf(LOG_WARN, "{}: ", sep_str);
-            continue;
-        }
-        vector<string> input_indices = split(result_str, separator);
+
+        vector<string> input_indices = split(result_str, ' ');
 
         int added_elements = 0;
-        for (size_t i = 0; i < input_indices.size(); i++) {
+        bool breakandcontinue = false;
+        for (size_t i = 0; i < input_indices.size() && !breakandcontinue; i++) {
+            // 1-5 means 1 through 5
+            if (input_indices[i].find('-') != std::string::npos) {
+                vector<string> loop_bounds = split(input_indices[i], '-');
+                if (loop_bounds.size() != 2 || !is_numerical(loop_bounds[0]) || !is_numerical(loop_bounds[1])) {
+                    log_printf(LOG_WARN, "Invalid loop range! (loop ranges look like \"0-5\"): ");
+                    breakandcontinue = true;
+                    break;
+                }
+
+                int lowerbound  = std::stoi(loop_bounds[0]);
+                int higherbound = std::stoi(loop_bounds[1]);
+
+                if ((0 > lowerbound || lowerbound > list.size()) || (lowerbound > higherbound || higherbound >= list.size())) {
+                    log_printf(LOG_WARN, "Invalid loop range! (loop ranges must stay in bounds and in order): ");
+                    breakandcontinue = true;
+                    break;
+                }
+
+                for (int i = lowerbound; i <= higherbound; i++) {
+                    result.push_back(list[i]);
+                    added_elements++;
+                }
+
+                continue;
+            }
+    
+            if (!is_numerical(input_indices[i])) {
+                log_printf(LOG_WARN, "{}: ", sep_str);
+                continue;
+            }
+
             int index = std::stoi(input_indices[i]);
             if (0 > index || index >= list.size()) {
                 log_println(LOG_WARN, "Invalid index! Ignoring index #{}.", input_indices[i]);
@@ -298,6 +325,9 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false,
             result.push_back(list[index]);
             added_elements++;
         }
+
+        if (breakandcontinue)
+            continue;
 
         if (added_elements == 0) {
             log_printf(LOG_WARN, "{}: ", sep_str);
