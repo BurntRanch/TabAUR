@@ -152,8 +152,6 @@ bool TaurBackend::remove_pkg(alpm_pkg_t *pkg, bool ownTransaction) {
         return false;
     }
 
-    log_println(LOG_INFO, "Removing package {}.", alpm_pkg_get_name(pkg));
-
     if (alpm_remove_pkg(this->config.handle, pkg) != 0) {
         log_println(LOG_ERROR, "Failed to remove package ({})", alpm_strerror(alpm_errno(this->config.handle)));
         if (ownTransaction)
