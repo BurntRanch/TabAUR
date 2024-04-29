@@ -308,32 +308,30 @@ bool removePkg(alpm_list_t *pkgNames) {
     if (ret_length == 1)
         return backend->remove_pkg((alpm_pkg_t *)ret->data);
 
-    fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
+    vector<string_view> pkgs;
 
-    for (size_t i = 0; i < ret_length; i++) {
-        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
-    }
+    //fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
 
-    string included;
-    std::getline(std::cin, included);
-    ctrl_d_handler();
+    for (size_t i = 0; i < ret_length; i++)
+        pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
 
-    vector<string> includedIndexes = split(included, ' ');
+    vector<string_view> includedPkgs = askUserForList<string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
 
     alpm_list_t   *finalPackageList      = nullptr;
     alpm_list_t   *finalPackageListStart = nullptr;
 
-    if (included == "*")
-        return backend->remove_pkgs(ret);
-
-    for (size_t i = 0; i < includedIndexes.size(); i++) {
+    for (size_t i = 0; i < includedPkgs.size(); i++) {
         try {
-            size_t includedIndex = (size_t)stoi(includedIndexes[i]);
+            auto pkg = std::find(pkgs.begin(), pkgs.end(), includedPkgs[i]);
 
-            if (includedIndex >= ret_length)
+            if (pkgs.begin() >= pkg || pkg >= pkgs.end())
                 continue;
 
-            finalPackageList = alpm_list_add(finalPackageList, alpm_list_nth(ret.get(), includedIndex)->data);
+            size_t pkgIndex = std::distance(pkgs.begin(), pkg);
+
+            alpm_list_nth(ret.get(), pkgIndex);
+
+            finalPackageList = alpm_list_add(finalPackageList, alpm_list_nth(ret.get(), pkgIndex)->data);
 
             if (finalPackageList != nullptr && finalPackageListStart == nullptr)
                 finalPackageListStart = finalPackageList;

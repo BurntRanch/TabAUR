@@ -43,6 +43,7 @@ enum prompt_yn {
 enum prompt_list {
     PROMPT_LIST_CLEANBUILDS,
     PROMPT_LIST_REVIEWS,
+    PROMPT_LIST_REMOVE_PKGS,
 };
 
 enum {
@@ -261,6 +262,10 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
             break;
         case PROMPT_LIST_REVIEWS:
             log_printf(LOG_INFO, BOLD, "Packages you'd like to review: ");
+            if (config->noconfirm && !required) return {};
+            break;
+        case PROMPT_LIST_REMOVE_PKGS:
+            log_printf(LOG_INFO, BOLD, "Packages you'd like to remove: ");
             if (config->noconfirm && !required) return {};
             break;
         default:

@@ -31,7 +31,9 @@ struct TaurPkg_t {
     time_t         outofdate;
     float          popularity = 1; // normal
     float          votes = 0; // system packages have no votes
+    vector<string> makedepends;
     vector<string> depends;
+    vector<string> totaldepends;
     bool           installed = false;
     string         db_name   = "aur";
 };

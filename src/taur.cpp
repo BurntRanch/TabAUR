@@ -57,17 +57,23 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
+    vector<string> makedepends;
     vector<string> depends;
+    vector<string> totaldepends;
     if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
         const rapidjson::Value& dependsArray     = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
+        for (size_t i = 0; i < makeDependsArray.Size(); i++)
+            makedepends.push_back(makeDependsArray[i].GetString());
+        totaldepends = depends;
         for (size_t i = 0; i < makeDependsArray.Size(); i++) {
-            if (std::find(depends.begin(), depends.end(), makeDependsArray[i].GetString()) != depends.end())
+            // make sure it isn't in the depends list
+            if (std::find(totaldepends.begin(), totaldepends.end(), makeDependsArray[i].GetString()) != totaldepends.end())
                 continue;
-            depends.push_back(makeDependsArray[i].GetString());
+            totaldepends.push_back(makeDependsArray[i].GetString());
         }
     }
 
@@ -80,7 +86,9 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
         .outofdate     = pkgJson["OutOfDate"].IsInt64() ? pkgJson["OutOfDate"].GetInt64() : 0,
         .popularity    = pkgJson["Popularity"].GetFloat(),
         .votes         = pkgJson["NumVotes"].GetFloat(),
+        .makedepends   = makedepends,
         .depends       = depends,
+        .totaldepends  = totaldepends,
         .installed     = alpm_db_get_pkg(alpm_get_localdb(config->handle), pkgJson["Name"].GetString()) != nullptr,
     };
 
@@ -229,18 +237,18 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
 // I don't know but I feel this is shitty
 bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> const& localPkgs, bool useGit) {
     log_println(LOG_DEBUG, "pkg.name = {}", pkg.name);
-    log_println(LOG_DEBUG, "pkg.depends = {}", pkg.depends);
+    log_println(LOG_DEBUG, "pkg.totaldepends = {}", pkg.totaldepends);
 
-    for (size_t i = 0; i < pkg.depends.size(); i++) {
+    for (size_t i = 0; i < pkg.totaldepends.size(); i++) {
 
-        optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg.depends[i], useGit);
+        optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg.totaldepends[i], useGit);
 
         if (!oDepend)
             continue;
 
         TaurPkg_t depend = oDepend.value();
 
-        log_println(LOG_DEBUG, "depend = {} -- depend.depends = {}", depend.name, depend.depends);
+        log_println(LOG_DEBUG, "depend = {} -- depend.totaldepends = {}", depend.name, depend.totaldepends);
 
         bool alreadyExists = false;
         for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
@@ -252,8 +260,8 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
             continue;
         }
 
-        for (size_t i = 0; i < depend.depends.size(); i++) {
-            optional<TaurPkg_t> oSubDepend = this->fetch_pkg(depend.depends[i], useGit);
+        for (size_t i = 0; i < depend.totaldepends.size(); i++) {
+            optional<TaurPkg_t> oSubDepend = this->fetch_pkg(depend.totaldepends[i], useGit);
             if (!oSubDepend)
                 continue;
 
@@ -281,7 +289,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
             }
 
             log_println(LOG_DEBUG, "Handling dependencies for dependency {} of dependency {}.", subDepend.name, depend.name);
-            if (!depend.depends.empty() && !handle_aur_depends(subDepend, out_path, localPkgs, useGit)) {
+            if (!depend.totaldepends.empty() && !handle_aur_depends(subDepend, out_path, localPkgs, useGit)) {
                 log_println(LOG_ERROR, "Failed to handle dependencies for dependency {} of dependency {}.", subDepend.name, depend.name);
                 continue;
             }
@@ -366,7 +374,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         }
 
         log_println(LOG_DEBUG, "onlinePkgs.name = {}", onlinePkgs[i].name);
-        log_println(LOG_DEBUG, "onlinePkgs.depends = {}", onlinePkgs[i].depends);
+        log_println(LOG_DEBUG, "onlinePkgs.totaldepends = {}", onlinePkgs[i].totaldepends);
 
         if (!found) {
             log_println(LOG_WARN, "We couldn't find {} in the local pkg database, This shouldn't happen.", onlinePkgs[i].name);
