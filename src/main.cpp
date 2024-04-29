@@ -61,6 +61,8 @@ void test_colors() {
         .name       = "TabAUR",
         .version    = VERSION,
         .desc       = "A customizable and lightweight AUR helper, designed to be simple but powerful.",
+        .maintainer = "o",
+        .outofdate  = 1697035356,
         .popularity = 100,
         .votes      = 34,
         .installed  = true,
@@ -93,6 +95,8 @@ void test_colors() {
     fmt::println(fg(color.votes), "Votes: {} ({})", pkg.votes, getTitleFromVotes(pkg.votes));
     fmt::println(fg(color.index), "index [1]");
     fmt::println(BOLD_TEXT(color.installed), "(bold) indicator [Installed]");
+    fmt::println(BOLD_TEXT(color.orphan), "(bold) (un-maintained)");
+    fmt::println(BOLD_TEXT(color.outofdate), "(bold) (Outdated: Wed Oct 11 16:42:36 2023)");
 
     fmt::println("\nexamples package search preview:");
     printPkgInfo(pkg, pkg.db_name, 1);
