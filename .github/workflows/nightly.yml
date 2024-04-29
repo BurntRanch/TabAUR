@@ -27,11 +27,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Delete release drafts
-        uses: andreaswilli/delete-release-assets-action@v4.0.0
+        uses: sgpublic/delete-release-action@v1.1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          deleteOnlyFromDrafts: true
-          tag: nightly
+          release-drop: false
+          release-drop-tag: false
+          pre-release-drop: false
+          pre-release-drop-tag: false
+          draft-drop: true
+          draft-drop-count: -1
+        env:
+          GITHUB_TOKEN: ${{ secrets.TOKEN }}
 
   build:
     runs-on: ubuntu-latest
