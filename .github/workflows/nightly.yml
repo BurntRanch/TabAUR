@@ -26,10 +26,11 @@ jobs:
   delete-drafts:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete drafts
-        uses: hugo19941994/delete-draft-releases@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Delete release drafts
+        uses: andreaswilli/delete-release-assets-action@v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          deleteOnlyFromDrafts: true
 
   build:
     runs-on: ubuntu-latest
