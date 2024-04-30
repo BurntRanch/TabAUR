@@ -50,16 +50,20 @@ bool TaurBackend::download_pkg(string_view url, path out_path) {
 }
 
 string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
+    std::stringstream ss;
     if (returnGit)
-        return ("https://aur.archlinux.org/" + string(pkgJson["Name"].GetString()) + ".git");
+        ss << "https://aur.archlinux.org/" << pkgJson["Name"].GetString() <<  ".git";
     else
-        return ("https://aur.archlinux.org" + string(pkgJson["URLPath"].GetString()));
+        ss << "https://aur.archlinux.org" << pkgJson["URLPath"].GetString();
+    
+    return ss.str();
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
     vector<string> makedepends, depends, totaldepends;
-
-    if ((pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray()) || (pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray())) {
+    
+    // yes, it will get both depends and makedepends even one doesn't have it
+    if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
         const rapidjson::Value& dependsArray     = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
 
@@ -122,6 +126,8 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> const& pkgs, bool retur
 
     for (auto const& pkg : pkgs)
         urlStr += ("&arg%5B%5D=" + pkg);
+
+    log_println(LOG_DEBUG, "info url = {}", urlStr);
 
     cpr::Url      url  = cpr::Url(urlStr);
     cpr::Response resp = cpr::Get(url);

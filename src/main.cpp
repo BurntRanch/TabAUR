@@ -135,10 +135,27 @@ int installPkg(alpm_list_t *pkgNames) {
     vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
     vector<string_view> pkgNamesVec;
 
-    // move them into a vector for askUserForList
-    for (; pkgNames; pkgNames = pkgNames->next) {
-        pkgNamesVec.push_back((char *)(pkgNames->data));
+    if (op.op_s_upgrade) {
+        if (!config->aurOnly) {
+            log_println(LOG_DEBUG, "Upgrading system packages!");
+            string op_s = "-Su";
+
+            if (op.op_s_sync)
+                op_s += 'y';
+        
+            pacman_exec(op_s, pacmanPkgs); // pacmanPkgs is actually empty so it will only upgrade the packages
+        }
+
+        backend->update_all_aur_pkgs(cacheDir, useGit);
     }
+
+    // move them into a vector for askUserForList
+    for (; pkgNames; pkgNames = pkgNames->next)
+        pkgNamesVec.push_back((char *)(pkgNames->data));
+    
+    if (pkgNamesVec.empty())
+        return false;
+
     vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
 
     if (!op.op_s_search) {
@@ -149,7 +166,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
         pkgNamesToReview = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_REVIEWS);
     }
-
+    
     for (size_t i = 0; i < pkgNamesVec.size(); i++) {
         string_view       pkgName = pkgNamesVec[i];
         bool           cleanBuild = op.op_s_cleanbuild ? true : std::find(pkgNamesToCleanBuild.begin(), pkgNamesToCleanBuild.end(), pkgName) != pkgNamesToCleanBuild.end();
@@ -255,21 +272,15 @@ int installPkg(alpm_list_t *pkgNames) {
         }
     }
 
-    if (!config->aurOnly && (op.op_s_upgrade || !pacmanPkgs.empty())) {
-        log_printf(LOG_DEBUG, "{} system packages!\n", (op.op_s_upgrade ? "Upgrading" : "Installing"));
+    if (!pacmanPkgs.empty()) {
         string op_s = "-S";
 
         if (op.op_s_sync)
-            op_s += "y";
+            op_s += 'y';
         if (op.op_s_upgrade)
-            op_s += "u";
+            op_s += 'u';
 
         pacman_exec(op_s, pacmanPkgs);
-    }
-
-    if (op.op_s_upgrade) {
-        log_println(LOG_INFO, "Upgrading AUR packages");
-        return backend->update_all_aur_pkgs(cacheDir, useGit) && returnStatus;
     }
 
     return returnStatus;
@@ -422,7 +433,6 @@ int parseargs(int argc, char* argv[]) {
         {"deptest",    no_argument,       0, 'T'}, /* used by makepkg */
         {"upgrade",    no_argument,       0, 'U'},
         {"version",    no_argument,       0, 'V'},
-        {"aur-only",   no_argument,       0, 'a'},
         {"help",       no_argument,       0, 'h'},
         {"test-colors",no_argument,       0, 't'},
         {"recipe",     no_argument,       0, 'r'},
@@ -435,6 +445,7 @@ int parseargs(int argc, char* argv[]) {
         {"colors",     required_argument, 0, OP_COLORS},
         {"config",     required_argument, 0, OP_CONFIG},
         {"theme",      required_argument, 0, OP_THEME},
+        {"aur-only",   no_argument,       0, OP_AURONLY},
         {"sudo",       required_argument, 0, OP_SUDO},
         {"use-git",    required_argument, 0, OP_USEGIT},
         {"quiet",      no_argument,       0, OP_QUIET},
@@ -450,33 +461,20 @@ int parseargs(int argc, char* argv[]) {
         else if (opt == '?')
             return 1;
         parsearg_op(opt, 0);
+    }
 
-        if (op.op == 0) {
-            log_println(LOG_ERROR, "only one operation may be used at a time");
-            return 1;
-        }
+    if (op.op == 0) {
+        log_println(LOG_NONE, "ERROR: only one operation may be used at a time");
+        return 1;
+    }
 
-        if (op.version) {
-            fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
-            exit(0);
-        }
-        if (op.help) {
-            usage(op.op);
-            exit(1);
-        }
-
-        /* parse all other options */
-        switch (op.op) {
-            case OP_SYNC:
-                result = parsearg_sync(opt);
-                break;
-            case OP_QUERY:
-                result = parsearg_query(opt);
-                break;
-            default:
-                result = 1;
-                break;
-        }
+    if (op.version) {
+        fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
+        exit(0);
+    }
+    if (op.help) {
+        usage(op.op);
+        exit(1);
     }
 
     optind = 1;
@@ -490,8 +488,22 @@ int parseargs(int argc, char* argv[]) {
         else if (parsearg_op(opt, 1) == 0)
             continue;
 
-        if (result == 0)
-            continue;
+        /* parse all other options */
+        switch (op.op) {
+            case OP_SYNC:
+                result = parsearg_sync(opt);
+                break;
+            case OP_QUERY:
+                result = parsearg_query(opt);
+                break;
+            default:
+                result = 1;
+                break;
+        }
+        
+        if(result == 0) {
+	    continue;
+	}
 
         /* fall back to global options */
         result = parsearg_global(opt);
@@ -499,12 +511,12 @@ int parseargs(int argc, char* argv[]) {
             if (result == 1) {
                 /* global option parsing failed, abort */
                 if (opt < 1000) {
-                    log_println(LOG_NONE, "Error: invalid option '-{}'", (char)opt);
+                    log_println(LOG_NONE, "ERROR: invalid option '-{}'", opt);
                 } else {
-                    log_println(LOG_NONE, "Error: invalid option '--{}'", opts[option_index].name);
+                    log_println(LOG_NONE, "ERROR: invalid option '--{}'", opts[option_index].name);
                 }
             }
-            return 1;
+            return result;
         }
     }
 
