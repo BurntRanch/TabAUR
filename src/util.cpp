@@ -31,7 +31,7 @@ void sanitizeStr(string& str) {
  * Used only in main() for signal()
  */
 void interruptHandler(int) {
-    log_println(LOG_WARN, "Caught CTRL-C, Exiting!");
+    log_println(WARN, "Caught CTRL-C, Exiting!");
 
     std::exit(-1);
 }
@@ -61,7 +61,7 @@ bool commitTransactionAndRelease(bool soft) {
     if (soft && !combined)
         return true;
 
-    log_println(LOG_INFO, "Changes to be made:");
+    log_println(INFO, "Changes to be made:");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
         fmt::print(BOLD_TEXT(color.green), "    ++ ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
@@ -75,26 +75,26 @@ bool commitTransactionAndRelease(bool soft) {
     if (!askUserYorN(true, PROMPT_YN_PROCEED_TRANSACTION)) {
         bool releaseStatus = alpm_trans_release(handle) == 0;
         if (!releaseStatus)
-            log_println(LOG_ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
+            log_println(ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
-        log_println(LOG_INFO, "Cancelled transaction.");
+        log_println(INFO, "Cancelled transaction.");
         return soft;
     }
 
     bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
     if (!prepareStatus)
-        log_println(LOG_ERROR, "Failed to prepare transaction ({}).", alpm_strerror(alpm_errno(handle)));
+        log_println(ERROR, "Failed to prepare transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
     bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
     if (!commitStatus)
-        log_println(LOG_ERROR, "Failed to commit transaction ({}).", alpm_strerror(alpm_errno(handle)));
+        log_println(ERROR, "Failed to commit transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
     bool releaseStatus = alpm_trans_release(handle) == 0;
     if (!releaseStatus)
-        log_println(LOG_ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
+        log_println(ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
     if (prepareStatus && commitStatus && releaseStatus) {
-        log_println(LOG_INFO, "Successfully finished transaction.");
+        log_println(INFO, "Successfully finished transaction.");
         return true;
     }
 
@@ -110,7 +110,7 @@ string expandVar(string& str) {
     if (str[0] == '~') {
         env = getenv("HOME");
         if (env == nullptr) {
-            log_println(LOG_ERROR, "$HOME enviroment variable is not set (how?)");
+            log_println(ERROR, "$HOME enviroment variable is not set (how?)");
             exit(-1);
         }
         str.replace(0, 1, string(env)); // replace ~ with the $HOME value
@@ -118,7 +118,7 @@ string expandVar(string& str) {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
         if (env == nullptr) {
-            log_println(LOG_ERROR, "No such enviroment variable: {}", str);
+            log_println(ERROR, "No such enviroment variable: {}", str);
             exit(-1);
         }
         str = string(env);
@@ -173,7 +173,7 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
-        log_println(LOG_ERROR, "pipe() failed: {}", strerror(errno));
+        log_println(ERROR, "pipe() failed: {}", strerror(errno));
         exit(127);
     }
 
@@ -196,7 +196,7 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
 
             return true;
         } else {
-            log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
+            log_println(ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
         }
@@ -209,10 +209,10 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
-        log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
+        log_println(ERROR, "An error has occurred: {}", strerror(errno));
         exit(127);
     } else {
-        log_println(LOG_ERROR, "fork() failed: {}", strerror(errno));
+        log_println(ERROR, "fork() failed: {}", strerror(errno));
 
         close(pipeout[0]);
         close(pipeout[1]);
@@ -236,17 +236,17 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
     int pid = fork();
 
     if (pid < 0) {
-        log_println(LOG_ERROR, "fork() failed: {}", strerror(errno));
+        log_println(ERROR, "fork() failed: {}", strerror(errno));
         exit(-1);
     }
 
     if (pid == 0) {
-        log_println(LOG_DEBUG, "running {}", fmt::join(cmd, " "));
+        log_println(DEBUG, "running {}", fmt::join(cmd, " "));
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
         // execvp() returns instead of exiting when failed
-        log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
+        log_println(ERROR, "An error has occurred: {}", strerror(errno));
         exit(-1);
     } else if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
@@ -255,7 +255,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
         else {
-            log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
+            log_println(ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
         }
@@ -424,14 +424,14 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
     if (pkgs.size() == 1) {
         return pkgs[0].url.empty() ? pkgs : vector<TaurPkg_t>({backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0])});
     } else if (pkgs.size() > 1) {
-        log_println(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
+        log_println(INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
         string input;
         do {
             // CTRL-D
             ctrl_d_handler();
 
             if (!input.empty())
-                log_println(LOG_WARN, "Invalid input!");
+                log_println(WARN, "Invalid input!");
 
             for (size_t i = 0; i < pkgs.size(); i++)
                 printPkgInfo(pkgs[i], pkgs[i].db_name, i);
@@ -461,7 +461,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
 
 void ctrl_d_handler() {
     if (std::cin.eof()) {
-        log_println(LOG_WARN, "Exiting due to CTRL-D");
+        log_println(WARN, "Exiting due to CTRL-D");
         exit(-1);
     }
 }

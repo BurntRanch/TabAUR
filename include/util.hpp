@@ -52,11 +52,11 @@ enum {
 };
 
 enum log_level {
-    LOG_ERROR,
-    LOG_WARN,
-    LOG_INFO,
-    LOG_DEBUG,
-    LOG_NONE // display no prefix for this.
+    ERROR,
+    WARN,
+    INFO,
+    DEBUG,
+    NONE // display no prefix for this.
 };
 
 bool                             hasEnding(string_view fullString, string_view ending);
@@ -103,21 +103,24 @@ template <typename T>
 constexpr bool is_fmt_convertible_v = is_fmt_convertible<T>::value;
 
 template <typename... Args>
-void log_println(int log, const fmt::text_style& ts, std::string_view fmt, Args&&... args) {
+void log_println(log_level log, const fmt::text_style& ts, std::string_view fmt, Args&&... args) {
     switch (log) {
-        case LOG_ERROR:
+        case ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: ");
             break;
-        case LOG_WARN:
+        case WARN:
             fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
             break;
-        case LOG_INFO:
+        case INFO:
             fmt::print(BOLD_TEXT(color.cyan), "Info: ");
             break;
-        case LOG_DEBUG:
+        case DEBUG:
             if (!config->debug)
                 return;
             fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
+            break;
+        case NONE:
+        default:
             break;
     }
     // I don't want to add a '\n' each time i'm writing a log_printf(), I just forget it all the time
@@ -125,63 +128,72 @@ void log_println(int log, const fmt::text_style& ts, std::string_view fmt, Args&
 }
 
 template <typename... Args>
-void log_println(int log, std::string_view fmt, Args&&... args) {
+void log_println(log_level log, std::string_view fmt, Args&&... args) {
     switch (log) {
-        case LOG_ERROR:
+        case ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: ");
             break;
-        case LOG_WARN:
+        case WARN:
             fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
             break;
-        case LOG_INFO:
+        case INFO:
             fmt::print(BOLD_TEXT(color.cyan), "Info: ");
             break;
-        case LOG_DEBUG:
+        case DEBUG:
             if (!config->debug)
                 return;
             fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
+            break;
+        case NONE:
+        default:
             break;
     }
     fmt::println(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_printf(int log, std::string_view fmt, Args&&... args) {
+void log_printf(log_level log, std::string_view fmt, Args&&... args) {
     switch (log) {
-        case LOG_ERROR:
+        case ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: ");
             break;
-        case LOG_WARN:
+        case WARN:
             fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
             break;
-        case LOG_INFO:
+        case INFO:
             fmt::print(BOLD_TEXT(color.cyan), "Info: ");
             break;
-        case LOG_DEBUG:
+        case DEBUG:
             if (!config->debug)
                 return;
             fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
+            break;
+        case NONE:
+        default:
             break;
     }
     fmt::print(fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_printf(int log, const fmt::text_style& ts, std::string_view fmt, Args&&... args) {
+void log_printf(log_level log, const fmt::text_style& ts, std::string_view fmt, Args&&... args) {
     switch (log) {
-        case LOG_ERROR:
+        case ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: ");
             break;
-        case LOG_WARN:
+        case WARN:
             fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
             break;
-        case LOG_INFO:
+        case INFO:
             fmt::print(BOLD_TEXT(color.cyan), "Info: ");
             break;
-        case LOG_DEBUG:
+        case DEBUG:
             if (!config->debug)
                 return;
             fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
+            break;
+        case NONE:
+        default:
             break;
     }
     fmt::print(ts, fmt::runtime(fmt), std::forward<Args>(args)...);
@@ -200,25 +212,25 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
    
     switch (pr) {
         case PROMPT_YN_DIFF:
-            log_printf(LOG_INFO, BOLD, "View the diffs for {}? {}", std::forward<Args>(args)..., inputs_str);
+            log_printf(INFO, BOLD, "View the diffs for {}? {}", std::forward<Args>(args)..., inputs_str);
             if (config->noconfirm) return NO;
             break;
         case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
-            log_printf(LOG_WARN, BOLD,
+            log_printf(WARN, BOLD,
                        "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), continue with the installation anyway? {}",
                            inputs_str);
             if (config->noconfirm) return YES;
             break;
         case PROMPT_YN_EDIT_PKGBUILD:
-            log_printf(LOG_INFO, BOLD, "Review PKGBUILD for {}? {}", std::forward<Args>(args)..., inputs_str);
+            log_printf(INFO, BOLD, "Review PKGBUILD for {}? {}", std::forward<Args>(args)..., inputs_str);
             if (config->noconfirm) return NO;
             break;
         case PROMPT_YN_PROCEED_INSTALL:
-            log_printf(LOG_INFO, BOLD, "Proceed with the installation? {}", inputs_str);
+            log_printf(INFO, BOLD, "Proceed with the installation? {}", inputs_str);
             if (config->noconfirm) return YES;
             break;
         case PROMPT_YN_PROCEED_TRANSACTION:
-            log_printf(LOG_INFO, BOLD, "Would you like to proceed with this transaction? {}", inputs_str);
+            log_printf(INFO, BOLD, "Would you like to proceed with this transaction? {}", inputs_str);
             if (config->noconfirm) return NO;
             break;
         default:
@@ -228,7 +240,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
     //std::cin.sync();
     // while the getline function works, and the result is not 1 character long, keep reminding the user.
     while (std::getline(std::cin, result) && (result.length() > 1))
-        log_printf(LOG_WARN, "Please provide a valid response {}", inputs_str);
+        log_printf(WARN, "Please provide a valid response {}", inputs_str);
 
     ctrl_d_handler();
     
@@ -257,15 +269,15 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
    
     switch (pr) {
         case PROMPT_LIST_CLEANBUILDS:
-            log_printf(LOG_INFO, BOLD, "Packages to completely rebuild: ");
+            log_printf(INFO, BOLD, "Packages to completely rebuild: ");
             if (config->noconfirm && !required) return {};
             break;
         case PROMPT_LIST_REVIEWS:
-            log_printf(LOG_INFO, BOLD, "Packages you'd like to review: ");
+            log_printf(INFO, BOLD, "Packages you'd like to review: ");
             if (config->noconfirm && !required) return {};
             break;
         case PROMPT_LIST_REMOVE_PKGS:
-            log_printf(LOG_INFO, BOLD, "Packages you'd like to remove: ");
+            log_printf(INFO, BOLD, "Packages you'd like to remove: ");
             if (config->noconfirm && !required) return {};
             break;
         default:
@@ -295,7 +307,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
             if (input_indices[i].find('-') != std::string::npos) {
                 vector<string> loop_bounds = split(input_indices[i], '-');
                 if (loop_bounds.size() != 2 || !is_numerical(loop_bounds[0]) || !is_numerical(loop_bounds[1])) {
-                    log_printf(LOG_WARN, "Invalid loop range! (loop ranges look like \"0-5\"): ");
+                    log_printf(WARN, "Invalid loop range! (loop ranges look like \"0-5\"): ");
                     breakandcontinue = true;
                     break;
                 }
@@ -304,7 +316,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
                 int higherbound = std::stoi(loop_bounds[1]);
 
                 if ((0 > lowerbound || lowerbound > list.size()) || (lowerbound > higherbound || higherbound >= list.size())) {
-                    log_printf(LOG_WARN, "Invalid loop range! (loop ranges must stay in bounds and in order): ");
+                    log_printf(WARN, "Invalid loop range! (loop ranges must stay in bounds and in order): ");
                     breakandcontinue = true;
                     break;
                 }
@@ -318,13 +330,13 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
             }
     
             if (!is_numerical(input_indices[i])) {
-                log_printf(LOG_WARN, "{}: ", sep_str);
+                log_printf(WARN, "{}: ", sep_str);
                 continue;
             }
 
             int index = std::stoi(input_indices[i]);
             if (0 > index || index >= list.size()) {
-                log_println(LOG_WARN, "Invalid index! Ignoring index #{}.", input_indices[i]);
+                log_println(WARN, "Invalid index! Ignoring index #{}.", input_indices[i]);
                 continue;
             }
             result.push_back(list[index]);
@@ -335,7 +347,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
             continue;
 
         if (added_elements == 0) {
-            log_printf(LOG_WARN, "{}: ", sep_str);
+            log_printf(WARN, "{}: ", sep_str);
             continue;
         }
 

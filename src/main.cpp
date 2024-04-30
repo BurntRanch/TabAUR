@@ -71,10 +71,10 @@ void test_colors() {
 
     if (fmt::disable_colors)
         fmt::println("Colors are disabled");
-    log_println(LOG_DEBUG, "Debug color: {}", fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
-    log_println(LOG_INFO, "Info color: {}", fmt::format(BOLD_TEXT(color.cyan), "(bold) cyan"));
-    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow), "(bold) yellow"));
-    log_println(LOG_ERROR, "Error color: {}", fmt::format(BOLD_TEXT(color.red), "(bold) red"));
+    log_println(DEBUG, "Debug color: {}", fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
+    log_println(INFO, "Info color: {}", fmt::format(BOLD_TEXT(color.cyan), "(bold) cyan"));
+    log_println(WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow), "(bold) yellow"));
+    log_println(ERROR, "Error color: {}", fmt::format(BOLD_TEXT(color.red), "(bold) red"));
     fmt::println(fg(color.red), "red");
     fmt::println(fg(color.blue), "blue");
     fmt::println(fg(color.yellow), "yellow");
@@ -103,7 +103,7 @@ void test_colors() {
 }
 
 bool execPacman(int argc, char *argv[]) {
-    log_println(LOG_DEBUG, "Passing command to pacman! (argc: {:d})", argc);
+    log_println(DEBUG, "Passing command to pacman! (argc: {:d})", argc);
 
     if (0 > argc || argc > 512)
         throw std::invalid_argument("argc is invalid! (512 > argc > 0)");
@@ -113,7 +113,7 @@ bool execPacman(int argc, char *argv[]) {
     args[0] = _(config->sudo.c_str());
     args[1] = _("pacman"); // The command to run as superuser (pacman)
     for (int i = 0; i < argc; ++i) {
-        log_println(LOG_DEBUG, "args[{}] = argv[{}] ({})", i + 2, i, argv[i]);
+        log_println(DEBUG, "args[{}] = argv[{}] ({})", i + 2, i, argv[i]);
         args[i + 2] = argv[i];
     }
 
@@ -137,7 +137,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     if (op.op_s_upgrade) {
         if (!config->aurOnly) {
-            log_println(LOG_DEBUG, "Upgrading system packages!");
+            log_println(DEBUG, "Upgrading system packages!");
             string op_s = "-Su";
 
             if (op.op_s_sync)
@@ -174,7 +174,7 @@ int installPkg(alpm_list_t *pkgNames) {
         vector<TaurPkg_t> pkgs    = backend->search(pkgName, useGit, !op.op_s_search);
 
         if (pkgs.empty()) {
-            log_println(LOG_WARN, "No results found!");
+            log_println(WARN, "No results found!");
             returnStatus = false;
             continue;
         }
@@ -202,7 +202,7 @@ int installPkg(alpm_list_t *pkgNames) {
             string_view url = pkg.url;
 
             if (url == "") {
-                log_println(LOG_DEBUG, "Scheduled system package {} for installation!", pkg.name);
+                log_println(DEBUG, "Scheduled system package {} for installation!", pkg.name);
                 pacmanPkgs.push_back(pkg.name);
                 continue;
             }
@@ -233,7 +233,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
             bool stat = backend->download_pkg(url, pkgDir);
             if (!stat) {
-                log_println(LOG_ERROR, "Failed to download {}", pkg.name);
+                log_println(ERROR, "Failed to download {}", pkg.name);
                 returnStatus = false;
                 continue;
             }
@@ -241,7 +241,7 @@ int installPkg(alpm_list_t *pkgNames) {
             // it wasn't there, now it is, show the user the PKGBUILD
             if (review || askUserYorN(YES, PROMPT_YN_EDIT_PKGBUILD, pkg.name)) {
                 if (!taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()}, false)) {
-                    log_println(LOG_ERROR, "Failed to run {} on {}!", config->editorBin, (pkgDir / "PKGBUILD").string());
+                    log_println(ERROR, "Failed to run {} on {}!", config->editorBin, (pkgDir / "PKGBUILD").string());
                     continue;
                 } else if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
                     return false;
@@ -250,7 +250,7 @@ int installPkg(alpm_list_t *pkgNames) {
             stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
 
             if (!stat) {
-                log_println(LOG_ERROR, "Installing AUR dependencies for your package has failed.");
+                log_println(ERROR, "Installing AUR dependencies for your package has failed.");
                 returnStatus = false;
                 continue;
             }
@@ -258,14 +258,14 @@ int installPkg(alpm_list_t *pkgNames) {
             stat = backend->build_pkg(pkg.name, pkgDir, false);
 
             if (!stat) {
-                log_println(LOG_ERROR, "Building your package has failed.");
+                log_println(ERROR, "Building your package has failed.");
                 returnStatus = false;
                 continue;
             }
 
-            log_println(LOG_DEBUG, "Installing {}.", pkg.name);
+            log_println(DEBUG, "Installing {}.", pkg.name);
             if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
-                log_println(LOG_ERROR, "Failed to install {}.", pkg.name);
+                log_println(ERROR, "Failed to install {}.", pkg.name);
                 returnStatus = false;
                 continue;
             }
@@ -307,7 +307,7 @@ bool removePkg(alpm_list_t *pkgNames) {
         if (exactMatches)
             alpm_list_free(exactMatches);
         alpm_list_free(filteredPkgNames);
-        log_println(LOG_ERROR, "Searching failed, Bailing out!");
+        log_println(ERROR, "Searching failed, Bailing out!");
         return false;
     }
 
@@ -316,7 +316,7 @@ bool removePkg(alpm_list_t *pkgNames) {
     size_t ret_length = alpm_list_count(ret.get());
 
     if (ret_length == 0) {
-        log_println(LOG_ERROR, "No packages found!");
+        log_println(ERROR, "No packages found!");
         return false;
     }
 
@@ -352,7 +352,7 @@ bool removePkg(alpm_list_t *pkgNames) {
                 finalPackageListStart = finalPackageList;
 
         } catch (std::invalid_argument const&) {
-            log_println(LOG_WARN, "Invalid argument! Assuming all.");
+            log_println(WARN, "Invalid argument! Assuming all.");
 
             if (finalPackageListStart != nullptr)
                 alpm_list_free(finalPackageListStart);
@@ -374,7 +374,7 @@ bool updateAll() {
 }
 
 bool queryPkgs() {
-    log_println(LOG_DEBUG, "AUR Only: {}", config->aurOnly);
+    log_println(DEBUG, "AUR Only: {}", config->aurOnly);
     alpm_list_t         *pkg;
 
     vector<const char *> pkgs, pkgs_ver;
@@ -387,7 +387,7 @@ bool queryPkgs() {
         alpm_list_t *syncdbs = alpm_get_syncdbs(config->handle);
 
         if (!syncdbs) {
-            log_println(LOG_ERROR, "Failed to get syncdbs!");
+            log_println(ERROR, "Failed to get syncdbs!");
             return false;
         }
 
@@ -464,7 +464,7 @@ int parseargs(int argc, char* argv[]) {
     }
 
     if (op.op == 0) {
-        log_println(LOG_NONE, "ERROR: only one operation may be used at a time");
+        log_println(NONE, "ERROR: only one operation may be used at a time");
         return 1;
     }
 
@@ -511,9 +511,9 @@ int parseargs(int argc, char* argv[]) {
             if (result == 1) {
                 /* global option parsing failed, abort */
                 if (opt < 1000) {
-                    log_println(LOG_NONE, "ERROR: invalid option '-{}'", opt);
+                    log_println(NONE, "ERROR: invalid option '-{}'", opt);
                 } else {
-                    log_println(LOG_NONE, "ERROR: invalid option '--{}'", opts[option_index].name);
+                    log_println(NONE, "ERROR: invalid option '--{}'", opts[option_index].name);
                 }
             }
             return result;
@@ -551,8 +551,8 @@ int main(int argc, char *argv[]) {
 
     if (op.show_recipe) {
         if (config->secretRecipe) {
-            log_println(LOG_INFO, "Secret recipe unlocked!");
-            log_println(LOG_INFO, "Loading secret recipe...");
+            log_println(INFO, "Secret recipe unlocked!");
+            log_println(INFO, "Loading secret recipe...");
             for (auto const& i : secret) {
                 fmt::println("{}", i);
                 usleep(650000); // 0.65 seconds
@@ -567,10 +567,10 @@ int main(int argc, char *argv[]) {
     backend = std::make_unique<TaurBackend>(*config);
 
     if (op.requires_root && geteuid() != 0) {
-        log_println(LOG_ERROR, "You need to be root to do this.");
+        log_println(ERROR, "You need to be root to do this.");
         return 1;
     } else if (!op.requires_root && geteuid() == 0) {
-        log_println(LOG_ERROR, "You are trying to run TabAUR as root when you don't need it.");
+        log_println(ERROR, "You are trying to run TabAUR as root when you don't need it.");
         return 1;
     }
 
@@ -587,7 +587,7 @@ int main(int argc, char *argv[]) {
             // we are gonna use pacman to other ops than -S,-R,-Q
             return execPacman(argc, argv);
         default:
-            log_println(LOG_ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
+            log_println(ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
             return EXIT_SUCCESS;
     }
 
