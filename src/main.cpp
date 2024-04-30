@@ -133,7 +133,7 @@ int installPkg(alpm_list_t *pkgNames) {
     bool           returnStatus = true;
 
     vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
-    vector<string_view> pkgNamesVec;
+    vector<string_view> pkgNamesVec, aurPkgNamesVec;
 
     if (op.op_s_upgrade) {
         if (!config->aurOnly) {
@@ -156,15 +156,17 @@ int installPkg(alpm_list_t *pkgNames) {
     if (pkgNamesVec.empty())
         return false;
 
+    aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+
     vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
 
     if (!op.op_s_search) {
         if (!op.op_s_cleanbuild)
-            pkgNamesToCleanBuild = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_CLEANBUILDS);
+            pkgNamesToCleanBuild = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_CLEANBUILDS);
         else
             pkgNamesToCleanBuild = {};
 
-        pkgNamesToReview = askUserForList<string_view>(pkgNamesVec, PROMPT_LIST_REVIEWS);
+        pkgNamesToReview = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_REVIEWS);
     }
     
     for (size_t i = 0; i < pkgNamesVec.size(); i++) {
@@ -262,14 +264,15 @@ int installPkg(alpm_list_t *pkgNames) {
                 returnStatus = false;
                 continue;
             }
-
-            log_println(DEBUG, "Installing {}.", pkg.name);
-            if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
-                log_println(ERROR, "Failed to install {}.", pkg.name);
-                returnStatus = false;
-                continue;
-            }
+            pkgs_to_install += built_pkg + ' ';
         }
+    }
+    
+    log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
+    pkgs_to_install.erase(pkgs_to_install.length()-1);
+    if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
+        log_println(ERROR, "Failed to install {}.", fmt::join(pkgNamesVec, " "));
+        returnStatus = false;
     }
 
     if (!pacmanPkgs.empty()) {

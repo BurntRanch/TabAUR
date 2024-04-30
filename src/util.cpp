@@ -274,6 +274,7 @@ bool makepkg_exec(string_view cmd, bool exitOnFailure) {
 
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
+    
     if (!config->colors)
         ccmd.push_back("--nocolor");
 
@@ -486,6 +487,31 @@ vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncd
 
     for (size_t i = 0; i < pkgs.size(); i++)
         if (pkgs[i])
+            out.push_back(pkgs[i]);
+
+    return out;
+}
+
+/** Filters out/only AUR packages (names only).
+ * Default behavior is filtering out.
+ * @param pkgs a unique_ptr to a list of packages to filter.
+ * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
+ * @return an optional unique_ptr to a result.
+*/
+vector<string_view> filterAURPkgsNames(vector<string_view> pkgs, alpm_list_t *syncdbs, bool inverse) {
+    vector<string_view> out;
+
+    for (; syncdbs; syncdbs = syncdbs->next) {
+        for (size_t i = 0; i < pkgs.size(); i++) {
+            bool existsInSync = alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i].data()) != nullptr;
+
+            if ((existsInSync && inverse) || (!existsInSync && !inverse))
+                pkgs[i] = "";
+        }
+    }
+
+    for (size_t i = 0; i < pkgs.size(); i++)
+        if (pkgs[i].length())
             out.push_back(pkgs[i]);
 
     return out;

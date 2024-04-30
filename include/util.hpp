@@ -74,6 +74,7 @@ string                           makepkg_list(string const& pkg_name, string con
 void                             free_list_and_internals(alpm_list_t *list);
 fmt::text_style                  getColorFromDBName(string_view db_name);
 vector<alpm_pkg_t *>             filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse);
+vector<string_view>              filterAURPkgsNames(vector<string_view> pkgs, alpm_list_t *syncdbs, bool inverse);
 string                           shell_exec(string_view cmd);
 vector<string>                   split(string_view text, char delim);
 fmt::rgb                         hexStringToColor(string_view hexstr);
@@ -261,12 +262,14 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
 */
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
 vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false) {
-    string sep_str = "Type the index of each package (e.g 4 12 2)";
+    string sep_str = "Type the index of each package (eg: \"0 1 2\", \"0-2\", \"*\" for all, \"n\" for none)";
     string result_str;
 
     for (size_t i = 0; i < list.size(); i++)
         fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD | fmt::fg(fmt::color::white), "{}", list[i]));
-   
+    
+    log_println(INFO, "{}", sep_str);
+
     switch (pr) {
         case PROMPT_LIST_CLEANBUILDS:
             log_printf(INFO, BOLD, "Packages to completely rebuild: ");
@@ -290,7 +293,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
 
     while (std::getline(std::cin, result_str)) {
 
-        if (result_str.empty() && !required) {
+        if ((result_str.empty() && !required) || result_str == "n") {
             std::cout << std::endl;
             return {};
         }
@@ -304,7 +307,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
         bool breakandcontinue = false;
         for (size_t i = 0; i < input_indices.size() && !breakandcontinue; i++) {
             // 1-5 means 1 through 5
-            if (input_indices[i].find('-') != std::string::npos) {
+            if (input_indices[i].find('-') != string::npos) {
                 vector<string> loop_bounds = split(input_indices[i], '-');
                 if (loop_bounds.size() != 2 || !is_numerical(loop_bounds[0]) || !is_numerical(loop_bounds[1])) {
                     log_printf(WARN, "Invalid loop range! (loop ranges look like \"0-5\"): ");
