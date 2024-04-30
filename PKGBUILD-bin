@@ -1,40 +1,30 @@
 # Maintainer: Toni500 <tonino512@linuxmail.org>
-pkgname="tabaur-git"
+pkgname="tabaur-bin"
 _pkgname="TabAUR"
-pkgver=0.6.4.r18.1712d47
+pkgver=0.6.4
 pkgrel=1
 pkgdesc="A customizable and lightweight AUR helper, designed to be simple but powerful."
 arch=('x86_64' 'aarch64')
 url="https://github.com/BurntRanch/TabAUR"
 license=('GPL3')
 depends=('pacman' 'curl')
-makedepends=('cmake' 'make' 'gcc')
 optdepends=(
   "sudo: privilege elevation"
   "doas: privilege elevation"
   "git: for using the AUR git repo"
   "tar: for using the AUR tarball repo"
 )
-source=("git+${url}.git")
-sha256sums=("SKIP")
-
-pkgver() {
-    cd "${srcdir}/${_pkgname}"
-    git describe --long --tags | sed 's/^v//;s/\([^-]*-\)g/r\1/;s/-/./g'
-}
-
-prepare() {
-    cd "${srcdir}/${_pkgname}"
-    git submodule init
-    git submodule update --init --recursive
-}
-
-build() {
-    make -C "${srcdir}/${_pkgname}" CPPFLAGS="-O2 -mtune=generic -funroll-all-loops -march=native -isystem include -std=c++20"
-}
+source=(
+  "${url}/releases/download/v${pkgver}/${_pkgname}-v${pkgver}.tar.zst"
+  "${url}/raw/main/LICENSE"
+)
+sha256sums=(
+  "3b7b33d4902a13c0cbd5925baa2587b4317c222f5486b3cb19094c2adc43bf46"
+  "SKIP"
+)
 
 package() {
-    cd "${srcdir}/${_pkgname}"
+    cd "${srcdir}/"
     install -Dm755 "taur" "${pkgdir}/usr/bin/taur"
     install -Dm644 "LICENSE" "${pkgdir}/usr/share/licenses/${_pkgname}/LICENSE"
 }
