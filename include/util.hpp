@@ -33,6 +33,9 @@ class TaurBackend;
 #define alpm_list_smart_deleter          unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>
 #define make_list_smart_deleter(pointer) (unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>(pointer, free_list_and_internals))
 
+#define NOCONFIRMREQ(x)    if (config->noconfirm && !required) { fmt::print("\n"); return x; }
+#define NOCONFIRM(x)       if (config->noconfirm) { fmt::print("\n"); return x; }
+
 enum prompt_yn {
     PROMPT_YN_DIFF,
     PROMPT_YN_CONTINUE_WITHOUT_DIFF,
@@ -214,25 +217,25 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
     switch (pr) {
         case PROMPT_YN_DIFF:
             log_printf(INFO, BOLD, "View the diffs for {}? {}", std::forward<Args>(args)..., inputs_str);
-            if (config->noconfirm) return NO;
+            NOCONFIRM(NO);
             break;
         case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
             log_printf(WARN, BOLD,
                        "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), continue with the installation anyway? {}",
                            inputs_str);
-            if (config->noconfirm) return YES;
+            NOCONFIRM(YES);
             break;
         case PROMPT_YN_EDIT_PKGBUILD:
             log_printf(INFO, BOLD, "Review PKGBUILD for {}? {}", std::forward<Args>(args)..., inputs_str);
-            if (config->noconfirm) return NO;
+            NOCONFIRM(NO);
             break;
         case PROMPT_YN_PROCEED_INSTALL:
             log_printf(INFO, BOLD, "Proceed with the installation? {}", inputs_str);
-            if (config->noconfirm) return YES;
+            NOCONFIRM(YES);
             break;
         case PROMPT_YN_PROCEED_TRANSACTION:
             log_printf(INFO, BOLD, "Would you like to proceed with this transaction? {}", inputs_str);
-            if (config->noconfirm) return NO;
+            NOCONFIRM(YES);
             break;
         default:
             return def;
@@ -262,26 +265,27 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
 */
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
 vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false) {
+    
     string sep_str = "Type the index of each package (eg: \"0 1 2\", \"0-2\", \"*\" for all, \"n\" for none)";
     string result_str;
 
     for (size_t i = 0; i < list.size(); i++)
-        fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD | fmt::fg(fmt::color::white), "{}", list[i]));
+        fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD_TEXT (fmt::color::white), "{}", list[i]));
     
     log_println(INFO, "{}", sep_str);
 
     switch (pr) {
         case PROMPT_LIST_CLEANBUILDS:
             log_printf(INFO, BOLD, "Packages to completely rebuild: ");
-            if (config->noconfirm && !required) return {};
+            NOCONFIRMREQ({});
             break;
         case PROMPT_LIST_REVIEWS:
             log_printf(INFO, BOLD, "Packages you'd like to review: ");
-            if (config->noconfirm && !required) return {};
+            NOCONFIRMREQ({});
             break;
         case PROMPT_LIST_REMOVE_PKGS:
             log_printf(INFO, BOLD, "Packages you'd like to remove: ");
-            if (config->noconfirm && !required) return {};
+            NOCONFIRMREQ({});
             break;
         default:
             return {};
