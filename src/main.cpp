@@ -265,6 +265,9 @@ int installPkg(alpm_list_t *pkgNames) {
         }
     }
     
+    if (op.op_s_search) // we already searched the package and printed the infos
+        return returnStatus;
+
     log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
     pkgs_to_install.erase(pkgs_to_install.length()-1);
     if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
