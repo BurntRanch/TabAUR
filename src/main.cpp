@@ -4,6 +4,8 @@
 #include "taur.hpp"
 #include "util.hpp"
 
+#include <limits.h>
+
 using namespace std::string_view_literals;
 #define BRANCH  "libalpm-test"
 #define VERSION "0.6.4"
@@ -103,19 +105,14 @@ void test_colors() {
 }
 
 bool execPacman(int argc, char *argv[]) {
-    log_println(DEBUG, "Passing command to pacman! (argc: {:d})", argc);
+    if (argc > _POSIX_ARG_MAX)
+        throw std::invalid_argument(std::format("argc is invalid! (argc > {})", _POSIX_ARG_MAX));
 
-    if (0 > argc || argc > 512)
-        throw std::invalid_argument("argc is invalid! (512 > argc > 0)");
+    char *args[argc+1]; // null terminator
 
-    char *args[argc + 3]; // sudo + pacman + null terminator
-
-    args[0] = _(config->sudo.c_str());
-    args[1] = _("pacman"); // The command to run as superuser (pacman)
-    for (int i = 0; i < argc; ++i) {
-        log_println(DEBUG, "args[{}] = argv[{}] ({})", i + 2, i, argv[i]);
-        args[i + 2] = argv[i];
-    }
+    args[0] = _("pacman");
+    for (int i = 1; i < argc; ++i)
+        args[i] = argv[i];
 
     args[argc + 2] = nullptr; // null-terminate the array
 
@@ -123,7 +120,7 @@ bool execPacman(int argc, char *argv[]) {
 
     // If execvp returns, it means an error occurred
     perror("execvp");
-    return false;
+    exit(1);
 }
 
 int installPkg(alpm_list_t *pkgNames) {
@@ -465,7 +462,11 @@ int parseargs(int argc, char* argv[]) {
             return 1;
         parsearg_op(opt, 0);
     }
-
+    
+    if(op.op == OP_PACMAN) {
+        log_println(NONE, "Please use pacman for this command (may need root too)");
+        execPacman(argc, argv);
+    }
     if (op.op == 0) {
         log_println(NONE, "ERROR: only one operation may be used at a time");
         return 1;
@@ -514,7 +515,7 @@ int parseargs(int argc, char* argv[]) {
             if (result == 1) {
                 /* global option parsing failed, abort */
                 if (opt < 1000) {
-                    log_println(NONE, "ERROR: invalid option '-{}'", opt);
+                    log_println(NONE, "ERROR: invalid option '-{}'", (char)opt);
                 } else {
                     log_println(NONE, "ERROR: invalid option '--{}'", opts[option_index].name);
                 }
@@ -586,12 +587,8 @@ int main(int argc, char *argv[]) {
             return (queryPkgs()) ? 0 : 1;
         case OP_SYSUPGRADE:
             return (updateAll()) ? 0 : 1;
-        case OP_PACMAN:
-            // we are gonna use pacman to other ops than -S,-R,-Q
-            return execPacman(argc, argv);
         default:
             log_println(ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
-            return EXIT_SUCCESS;
     }
 
     return EXIT_SUCCESS;
