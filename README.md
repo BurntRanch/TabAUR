@@ -1,7 +1,6 @@
-![arch](https://img.shields.io/badge/Arch_Linux-10A0CC?style=for-the-badge&logo=arch-linux&logoColor=white)
 [![tabaur](https://img.shields.io/aur/version/tabaur?color=1793d1&label=tabaur&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/tabaur/)
-[![tabaur](https://img.shields.io/aur/version/tabaur?color=1793d1&label=tabaur-git&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/tabaur-git/)
-[![tabaur](https://img.shields.io/aur/version/tabaur?color=1793d1&label=tabaur-bin&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/tabaur-bin/)
+[![tabaur](https://img.shields.io/aur/version/tabaur-git?color=1793d1&label=tabaur-git&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/tabaur-git/)
+[![tabaur](https://img.shields.io/aur/version/tabaur-bin?color=1793d1&label=tabaur-bin&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/tabaur-bin/)
 [![customize](https://img.shields.io/badge/customize-your_colors-blue?color=5544ff&style=for-the-badge)](https://github.com/BurntRanch/TabAUR/tree/libalpm-test/predefined-themes)\
 [![forthebadge](https://forthebadge.com/images/badges/works-on-my-machine.svg)](https://forthebadge.com)
 
