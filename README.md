@@ -45,7 +45,7 @@ Just run `make`.
 If the compilation time is too slow, use `make -j$(nproc)` and it will use 100% of your CPU, making the compilation way faster.
 
 ## Pull requests
-If you want to make a PR that fixes/adds functionality, even some comments typos, feel free to do so! :)\
+If you want to make a PR that fixes/adds functionality, even fix some comments typos, feel free to do so! :)\
 **Be free to test and try out TabAUR**
 
 ## TODO
