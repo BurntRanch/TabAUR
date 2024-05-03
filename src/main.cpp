@@ -391,12 +391,30 @@ bool queryPkgs(alpm_list_t *pkgNames) {
             pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
         }
     } else {
-            alpm_list_t *ret = nullptr;
-            if (alpm_db_search(localdb, pkgNames, &ret) == 0)
-            for (; ret; ret = ret->next) {
-                pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(ret->data)));
-                pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(ret->data)));
+        alpm_list_t *result = nullptr;
+
+        if (op.op_s_search) {
+            for (alpm_list_t *i = pkgNames; i; i = i->next) {
+                alpm_list_t *ret = nullptr;
+                alpm_list_t *i_next = i->next;  // save the next value, we will overwrite it.
+
+                i->next = nullptr;
+
+                if (alpm_db_search(localdb, i, &ret) != 0)
+                    return false;
+                result = alpm_list_join(result, ret);
+
+                i->next = i_next;   // put it back
             }
+        } else {
+            for (alpm_list_t *i = pkgNames; i; i = i->next)
+                result = alpm_list_add(result, alpm_db_get_pkg(localdb, (const char *)(i->data)));
+        }
+
+        for (; result; result = result->next) {
+            pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(result->data)));
+            pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(result->data)));
+        }
     }
 
     if (config->aurOnly) {

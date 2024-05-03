@@ -51,5 +51,4 @@ If you want to make a PR that fixes/adds functionality, even fix some comments t
 
 ## TODO
 
-- More insight for the user to decide whether they trust this package or not.
-- Work on putting the whole "diff viewing" code in a function instead of repeating myself
+- Replace alpm_db_search with a helper function, because the alpm_db_search function itself searches for packages that match all (instead of any) regex patterns.

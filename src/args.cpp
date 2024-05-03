@@ -108,6 +108,10 @@ int parsearg_query(int opt) {
         case 'q':
             config->quiet = true;
             break;
+        case OP_SEARCH:
+        case 's':
+            op.op_s_search = 1;
+            break;
         default:
             return 1;
     }
