@@ -349,11 +349,8 @@ fmt::text_style getColorFromDBName(string_view db_name) {
         return BOLD_TEXT(color.others);
 }
 
-// Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
-    if (index > -1)
-        fmt::print(fmt::fg(color.index), "[{}] ", index);
-
+// Takes a pkg to show on search.
+void printPkgInfo(TaurPkg_t& pkg, string_view db_name) {
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(BOLD, "{} ", pkg.name);
     fmt::print(BOLD_TEXT(color.version), "{} ", pkg.version);
@@ -362,15 +359,8 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
         fmt::print(fg(color.popularity), " Popularity: {:.2f} ", pkg.popularity);
         fmt::print(fg(color.votes), "Votes: {} ({}) ", pkg.votes, getTitleFromVotes(pkg.votes));
     }
-    /*if (pkg.last_modified) {
-        char *timestr = std::ctime(&pkg.last_modified);
-        string_view timestr_view = timestr;
-        if (!timestr_view.empty()) {
-            timestr[timestr_view.length()-1] = '\0';    // delete the last newline.
-            fmt::print(fg(color.last_modified), "(Last Modified: {}) ", timestr);
-        }
-    }*/
-    if (pkg.maintainer == "o")
+    
+    if (pkg.maintainer == "\1")
         fmt::print(BOLD_TEXT(color.orphan), "(un-maintained) ");
 
     if (pkg.outofdate) {
@@ -387,6 +377,20 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
     else
         fmt::print("\n");
     fmt::println("    {}", pkg.desc);
+}
+
+void printFullPkgInfo(TaurPkg_t& pkg) {
+    #define NOCOLOR       "\033[0m"
+    #define println(x,y)  fmt::println(BOLD, "{}", fmt::format("{} {}{:>15}: {}", x, NOCOLOR, "", y));
+
+    println("Repository", pkg.db_name);
+    println("Name", pkg.name);
+    println("Version", pkg.version);
+    println("Description", pkg.desc);
+    println("Licenses", fmt::join(pkg.licenses, " "));
+    println("Depends on", fmt::join(pkg.depends, " "));
+    println("Make Depends", fmt::join(pkg.makedepends, " "));
+
 }
 
 // faster than makepkg --packagelist
@@ -423,7 +427,7 @@ string makepkg_list(string const& pkg_name, string const& path) {
 */
 optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
-        return pkgs[0].url.empty() ? pkgs : vector<TaurPkg_t>({backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0])});
+        return pkgs[0].aur_url.empty() ? pkgs : vector<TaurPkg_t>({backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0])});
     } else if (pkgs.size() > 1) {
         log_println(INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
         string input;
@@ -434,8 +438,10 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
             if (!input.empty())
                 log_println(WARN, "Invalid input!");
 
-            for (size_t i = 0; i < pkgs.size(); i++)
-                printPkgInfo(pkgs[i], pkgs[i].db_name, i);
+            for (size_t i = 0; i < pkgs.size(); i++) {
+                fmt::print(fg(color.index), "[{}] ", i);
+                printPkgInfo(pkgs[i], pkgs[i].db_name);
+            }
 
             fmt::print("Choose a package to download: ");
             std::getline(std::cin, input);
@@ -444,6 +450,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
         vector<string>    indices = split(input, ' ');
 
         vector<TaurPkg_t> output;
+        output.reserve(indices.size());
 
         for (size_t i = 0; i < indices.size(); i++) {
             size_t selected = std::stoi(indices[i]);
@@ -451,7 +458,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
             if (selected >= pkgs.size())
                 continue;
 
-            output.push_back(pkgs[selected].url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]));
+            output.push_back(pkgs[selected].aur_url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]));
         }
 
         return output;
@@ -475,6 +482,7 @@ void ctrl_d_handler() {
 */
 vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse) {
     vector<alpm_pkg_t *> out;
+    out.reserve(pkgs.size());
 
     for (; syncdbs; syncdbs = syncdbs->next) {
         for (size_t i = 0; i < pkgs.size(); i++) {
@@ -500,6 +508,7 @@ vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncd
 */
 vector<string_view> filterAURPkgsNames(vector<string_view> pkgs, alpm_list_t *syncdbs, bool inverse) {
     vector<string_view> out;
+    out.reserve(pkgs.size());
 
     for (; syncdbs; syncdbs = syncdbs->next) {
         for (size_t i = 0; i < pkgs.size(); i++) {

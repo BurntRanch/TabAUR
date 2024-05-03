@@ -60,15 +60,27 @@ string getUrl(rapidjson::Value& pkgJson, bool returnGit = false) {
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
-    vector<string> makedepends, depends, totaldepends;
+    vector<string> makedepends, depends, totaldepends, licenses;
     
-    // yes, it will get both depends and makedepends even one doesn't have it
-    if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
+    // yes, it will get depends and makedepends even one doesn't have it
+    if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() 
+        && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()
+        && pkgJson.HasMember("License") && pkgJson["License"].IsArray()) {
         const rapidjson::Value& dependsArray     = pkgJson["Depends"].GetArray();
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
+        const rapidjson::Value& licensesArray    = pkgJson["License"].GetArray();
+
+        depends.reserve(dependsArray.Size());
+        makedepends.reserve(makeDependsArray.Size());
+        totaldepends.reserve(dependsArray.Size());
+        licenses.reserve(licensesArray.Size());
+        
+        for (size_t i = 0; i < licensesArray.Size(); ++i)
+            licenses.push_back(licensesArray[i].GetString());
 
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
+        
         for (size_t i = 0; i < makeDependsArray.Size(); i++)
             makedepends.push_back(makeDependsArray[i].GetString());
         
@@ -80,17 +92,18 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
             totaldepends.push_back(makeDependsArray[i].GetString());
         }
     }
-
+    
     TaurPkg_t out = {
         .name          = pkgJson["Name"].GetString(),
         .version       = pkgJson["Version"].GetString(),
-        .url           = getUrl(pkgJson, returnGit),
+        .aur_url       = getUrl(pkgJson, returnGit),
         .desc          = pkgJson["Description"].IsString() ? pkgJson["Description"].GetString() : "",
-        .maintainer    = pkgJson["Maintainer"].IsString() ? pkgJson["Maintainer"].GetString() : "o", // o stands for orphan (un-maintained)
+        .maintainer    = pkgJson["Maintainer"].IsString() ? pkgJson["Maintainer"].GetString() : "\1", // it's impossible that the maintainer name is a binary char
         .last_modified = pkgJson["LastModified"].GetInt64(),
         .outofdate     = pkgJson["OutOfDate"].IsInt64() ? pkgJson["OutOfDate"].GetInt64() : 0,
         .popularity    = pkgJson["Popularity"].GetFloat(),
         .votes         = pkgJson["NumVotes"].GetFloat(),
+        .licenses      = licenses,
         .makedepends   = makedepends,
         .depends       = depends,
         .totaldepends  = totaldepends,
@@ -139,6 +152,7 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> const& pkgs, bool retur
     json.Parse(resp.text.c_str());
 
     vector<TaurPkg_t> out;
+    out.reserve(json["resultcount"].GetInt());
     for (int i = 0; i < json["resultcount"].GetInt(); i++)
         out.push_back(parsePkg(json["results"][i], returnGit));
 
@@ -234,7 +248,7 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
 
         return makepkg_exec("-f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", false);
     } else
-        log_println(INFO, "{} exists already, no need to build", built_pkg);
+        log_println(INFO, "{} exists already, skipping...", built_pkg);
 
     return true;
 }
@@ -282,13 +296,13 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
                 continue;
             }
 
-            string filename = out_path / subDepend.url.substr(subDepend.url.rfind("/") + 1);
+            string filename = out_path / subDepend.aur_url.substr(subDepend.aur_url.rfind("/") + 1);
 
             if (useGit)
                 filename = filename.substr(0, filename.rfind(".git"));
 
             log_println(DEBUG, "Downloading dependency {} of dependency {}.", subDepend.name, depend.name);
-            if (!this->download_pkg(subDepend.url, filename)) {
+            if (!this->download_pkg(subDepend.aur_url, filename)) {
                 log_println(ERROR, "Failed to download dependency {} of dependency {}.", subDepend.name, depend.name);
                 continue;
             }
@@ -317,15 +331,15 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
 
         log_println(INFO, "Downloading dependency {}", depend.name);
 
-        string filename = out_path / depend.url.substr(depend.url.rfind("/") + 1);
+        string filename = out_path / depend.aur_url.substr(depend.aur_url.rfind("/") + 1);
 
         if (useGit)
             filename = filename.substr(0, filename.rfind(".git"));
 
-        bool downloadStatus = this->download_pkg(depend.url, filename);
+        bool downloadStatus = this->download_pkg(depend.aur_url, filename);
 
         if (!downloadStatus) {
-            log_println(ERROR, "Failed to download dependency of {} (Source: {})", pkg.name, depend.url);
+            log_println(ERROR, "Failed to download dependency of {} (Source: {})", pkg.name, depend.aur_url);
             return false;
         }
 
@@ -355,8 +369,10 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
     }
 
     vector<string> pkgNames;
-    for (TaurPkg_t& pkg : pkgs)
-        pkgNames.push_back(pkg.name);
+    pkgNames.reserve(pkgs.size());
+
+    for (size_t i = 0; i < pkgs.size(); ++i)
+        pkgNames.push_back(pkgs[i].name);
 
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
 
@@ -393,33 +409,12 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
         path pkgDir = cacheDir / onlinePkgs[i].name;
 
-        /*if (useGit && std::filesystem::exists(path(pkgDir) / ".git")) {
-            if (askUserYorN(YES, PROMPT_YN_DIFF, onlinePkgs[i].name)) {
-                std::filesystem::current_path(pkgDir);
-                if (!taur_exec({config.git.c_str(), "fetch", "origin"}, false)) {
-                    log_println(ERROR, "Failed to run `{} fetch`!", config.git);
-                    continue;
-                }
-                if (!taur_exec({config.git.c_str(), "diff", "origin", "PKGBUILD"}, false)) {
-                    log_println(ERROR, "Failed to run `{} diff`!", config.git);
-                    continue;
-                }
-
-                // make sure the user 100% can read the diff.
-                sleep(3);
-            }
-        } else {
-            // inform the user they disabled git repo support, thus diffs are not supported.
-            if (!askUserYorN(NO, PROMPT_YN_CONTINUE_WITHOUT_DIFF, onlinePkgs[i].name))
-                continue;
-        }*/
-
         log_println(INFO, "Downloading {}.", onlinePkgs[i].name);
 
         if (!useGit)
             std::filesystem::remove_all(pkgDir);
 
-        bool downloadSuccess = this->download_pkg(onlinePkgs[i].url, pkgDir);
+        bool downloadSuccess = this->download_pkg(onlinePkgs[i].aur_url, pkgDir);
 
         if (!downloadSuccess) {
             log_println(WARN, "Failed to download package {}!", onlinePkgs[i].name);
@@ -442,7 +437,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         }
 
         string pkgrel = shell_exec("grep 'pkgrel=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
-        string epoch  = shell_exec("grep 'epoch=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
+        string epoch  = shell_exec("grep 'epoch=' "  + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
 
         if (!pkgrel.empty() && pkgrel[0] != '\0')
             versionInfo += '-' + pkgrel;
@@ -470,7 +465,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
             log_println(DEBUG, "pkgs_to_install = {}", pkgs_to_install);
             updatedPkgs++;
         } else {
-            pkgs_failed_to_build += pkgs[pkgIndex].name + "; ";
+            pkgs_failed_to_build += pkgs[pkgIndex].name + ' ';
             log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
         }
     }
@@ -517,11 +512,12 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
         pkgs = filterAURPkgs(pkgs, syncdbs, true);
 
     vector<TaurPkg_t> out;
+    out.reserve(pkgs.size());
     for (size_t i = 0; i < pkgs.size(); i++) {
         alpm_pkg_t *pkg = pkgs[i];
         out.push_back({.name       = alpm_pkg_get_name(pkg),
                        .version    = alpm_pkg_get_version(pkg),
-                       .url        = "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git",
+                       .aur_url    = "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git",
                        .installed  = true});
     }
 

@@ -25,13 +25,14 @@ using std::optional;
 struct TaurPkg_t {
     string         name;
     string         version;
-    string         url;
+    string         aur_url;
     string         desc;
     string         maintainer;
     time_t         last_modified;
     time_t         outofdate;
     float          popularity = 1; // normal
     float          votes = 0; // system packages have no votes
+    vector<string> licenses;
     vector<string> makedepends;
     vector<string> depends;
     vector<string> totaldepends;

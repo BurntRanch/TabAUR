@@ -27,6 +27,8 @@ class TaurBackend;
 
 #define BOLD                             fmt::emphasis::bold
 #define BOLD_TEXT(x)                     (fmt::emphasis::bold | fmt::fg(x))
+#define NOCOLOR       "\033[0m"
+
 #define alpm_list_smart_pointer          unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
 #define make_list_smart_pointer(pointer) (unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
 
@@ -72,7 +74,8 @@ bool                             taur_exec(vector<const char *> cmd, bool exitOn
 void                             sanitizeStr(string& str);
 bool                             is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool                             commitTransactionAndRelease(bool soft = false);
-void                             printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index = -1);
+void                             printPkgInfo(TaurPkg_t& pkg, string_view db_name);
+void                             printFullPkgInfo(TaurPkg_t& pkg);
 string                           makepkg_list(string const& pkg_name, string const& path);
 void                             free_list_and_internals(alpm_list_t *list);
 fmt::text_style                  getColorFromDBName(string_view db_name);

@@ -6,12 +6,11 @@ This is a directory containing themes that you can setup in no time!
 
 ## Themes
 
-File names should be self-explanatory, for now I am putting my own favorite theme, it uses the [catppuccin](https://github.com/catppuccin/catppuccin) color palette, specifically macchiato is my favorite, but you can use whatever!
-
+File names should be self-explanatory.
 Open a Pull Request for introducing your own color palette and share it with the community if you want.
 
 ## Test before installation
-If you want to preview some colors without having to moving and renaming it, you can download the theme flavour and just test it with `taur -t --theme file.toml`
+If you want to preview some colors without having to moving and renaming it, you can download the theme flavour and just test it with `taur -t --theme /path/to/file.toml`
 
 As simple as that!
 

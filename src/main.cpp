@@ -101,7 +101,7 @@ void test_colors() {
     fmt::println(BOLD_TEXT(color.outofdate), "(bold) (Outdated: Wed Oct 11 16:42:36 2023)");
 
     fmt::println("\nexamples package search preview:");
-    printPkgInfo(pkg, pkg.db_name, 1);
+    printPkgInfo(pkg, pkg.db_name);
 }
 
 bool execPacman(int argc, char *argv[]) {
@@ -198,7 +198,7 @@ int installPkg(alpm_list_t *pkgNames) {
         for (size_t i = 0; i < selectedPkgs.size(); i++) {
             TaurPkg_t   pkg = selectedPkgs[i];
 
-            string_view url = pkg.url;
+            string_view url = pkg.aur_url;
 
             if (url == "") {
                 log_println(DEBUG, "Scheduled system package {} for installation!", pkg.name);
@@ -267,12 +267,14 @@ int installPkg(alpm_list_t *pkgNames) {
     
     if (op.op_s_search) // we already searched the package and printed the infos
         return returnStatus;
-
-    log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
-    pkgs_to_install.erase(pkgs_to_install.length()-1);
-    if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
-        log_println(ERROR, "Failed to install {}.", fmt::join(pkgNamesVec, " "));
-        returnStatus = false;
+    
+    if (!pkgs_to_install.empty()) {
+        log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
+        pkgs_to_install.erase(pkgs_to_install.length()-1);
+        if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
+            log_println(ERROR, "Failed to install {}.", fmt::join(pkgNamesVec, " "));
+            returnStatus = false;
+        }
     }
 
     if (!pacmanPkgs.empty()) {
@@ -376,14 +378,25 @@ bool updateAll() {
     return backend->update_all_aur_pkgs(config->cacheDir, config->useGit);
 }
 
-bool queryPkgs() {
+bool queryPkgs(alpm_list_t *pkgNames) {
     log_println(DEBUG, "AUR Only: {}", config->aurOnly);
-    alpm_list_t         *pkg;
-
+    
     vector<const char *> pkgs, pkgs_ver;
-    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)) {
-        pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
-        pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
+    alpm_db_t *localdb = alpm_get_localdb(config->handle);
+
+    if (!pkgNames) {
+        alpm_list_t *pkg;
+        for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = alpm_list_next(pkg)) {
+            pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+            pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
+        }
+    } else {
+            alpm_list_t *ret = nullptr;
+            if (alpm_db_search(localdb, pkgNames, &ret) == 0)
+            for (; ret; ret = ret->next) {
+                pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(ret->data)));
+                pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(ret->data)));
+            }
     }
 
     if (config->aurOnly) {
@@ -410,7 +423,7 @@ bool queryPkgs() {
         for (size_t i = 0; i < pkgs.size(); i++) {
             if (!pkgs[i])
                 continue;
-            fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
+            fmt::print(BOLD, "{} ", pkgs[i]);
             fmt::println(BOLD_TEXT(color.green), "{}", pkgs_ver[i]);
         }
     }
@@ -585,9 +598,10 @@ int main(int argc, char *argv[]) {
         case OP_SYNC:
             return installPkg(taur_targets.get()) ? 0 : 1;
         case OP_REM:
+            log_println(WARN, "the -R operation is unstable at the moment, Please use pacman. Be careful");
             return removePkg(taur_targets.get()) ? 0 : 1;
         case OP_QUERY:
-            return (queryPkgs()) ? 0 : 1;
+            return (queryPkgs(taur_targets.get())) ? 0 : 1;
         case OP_SYSUPGRADE:
             return (updateAll()) ? 0 : 1;
         default:
