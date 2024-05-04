@@ -381,19 +381,25 @@ bool updateAll() {
 bool queryPkgs(alpm_list_t *pkgNames) {
     log_println(DEBUG, "AUR Only: {}", config->aurOnly);
     
-    vector<const char *> pkgs, pkgs_ver;
+    // we seperate pkgs that needs to be searched, like they'll include a description, to the ones that we just wanna query out
+    // pkgs will be used for -Qs, for then using it on printPkgInfo()
+    // pkgs_name and pkgs_ver will be used for bare operations (only -Q)
+    vector<const char *> pkgs_name, pkgs_ver;
+    vector<TaurPkg_t> pkgs;
     alpm_db_t *localdb = alpm_get_localdb(config->handle);
 
-    if (!pkgNames) {
-        alpm_list_t *pkg;
-        for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = alpm_list_next(pkg)) {
-            pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
-            pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
-        }
-    } else {
-        alpm_list_t *result = nullptr;
-
-        if (op.op_s_search) {
+    if (op.op_q_search) {
+        if (!pkgNames) {
+            alpm_list_t *pkg;
+            for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = pkg->next) {
+                pkgs.push_back({
+                    .name = alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)),
+                    .version = alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)),
+                    .desc = alpm_pkg_get_desc((alpm_pkg_t *)(pkg->data)),
+                    .votes = -1}); // push back a negative votes value so we can disable it on printPkgInfo() 
+            }
+        } else {
+            alpm_list_t *result = nullptr;
             for (alpm_list_t *i = pkgNames; i; i = i->next) {
                 alpm_list_t *ret = nullptr;
                 alpm_list_t *i_next = i->next;  // save the next value, we will overwrite it.
@@ -406,14 +412,39 @@ bool queryPkgs(alpm_list_t *pkgNames) {
 
                 i->next = i_next;   // put it back
             }
-        } else {
-            for (alpm_list_t *i = pkgNames; i; i = i->next)
-                result = alpm_list_add(result, alpm_db_get_pkg(localdb, (const char *)(i->data)));
+            for (; result; result = result->next) {
+                pkgs.push_back({
+                    .name = alpm_pkg_get_name((alpm_pkg_t *)(result->data)),
+                    .version = alpm_pkg_get_version((alpm_pkg_t *)(result->data)),
+                    .desc = alpm_pkg_get_desc((alpm_pkg_t *)(result->data)),
+                    .votes = -1});
+            }
         }
 
-        for (; result; result = result->next) {
-            pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(result->data)));
-            pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(result->data)));
+        for (size_t i = 0; i < pkgs.size(); i++)
+            printPkgInfo(pkgs[i], "local");
+
+        return true;
+    }
+    
+    // just -Q, no options other than --quiet and global ones
+    if (!pkgNames) {
+        alpm_list_t *pkg;
+        for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = alpm_list_next(pkg)) {
+            pkgs_name.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+            pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
+        }
+    } else {
+        alpm_pkg_t *pkg;
+        for (; pkgNames; pkgNames = pkgNames->next) {
+            const char *strname = (const char*)pkgNames->data;
+            pkg = alpm_db_get_pkg(localdb, strname);
+
+            if(pkg == nullptr)
+		pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
+
+            pkgs_name.push_back(alpm_pkg_get_name(pkg));
+            pkgs_ver.push_back(alpm_pkg_get_version(pkg));
         }
     }
 
@@ -426,22 +457,22 @@ bool queryPkgs(alpm_list_t *pkgNames) {
         }
 
         for (; syncdbs; syncdbs = syncdbs->next)
-            for (size_t i = 0; i < pkgs.size(); i++)
-                if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i]))
-                    pkgs[i] = NULL; // wont be printed
+            for (size_t i = 0; i < pkgs_name.size(); i++)
+                if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs_name[i]))
+                    pkgs_name[i] = NULL; // wont be printed
     }
 
     if (config->quiet) {
-        for (size_t i = 0; i < pkgs.size(); i++) {
-            if (!pkgs[i])
+        for (size_t i = 0; i < pkgs_name.size(); i++) {
+            if (!pkgs_name[i])
                 continue;
-            fmt::println("{}", pkgs[i]);
+            fmt::println("{}", pkgs_name[i]);
         }
     } else {
-        for (size_t i = 0; i < pkgs.size(); i++) {
-            if (!pkgs[i])
+        for (size_t i = 0; i < pkgs_name.size(); i++) {
+            if (!pkgs_name[i])
                 continue;
-            fmt::print(BOLD, "{} ", pkgs[i]);
+            fmt::print(BOLD, "{} ", pkgs_name[i]);
             fmt::println(BOLD_TEXT(color.green), "{}", pkgs_ver[i]);
         }
     }

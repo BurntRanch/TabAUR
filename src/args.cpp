@@ -110,7 +110,7 @@ int parsearg_query(int opt) {
             break;
         case OP_SEARCH:
         case 's':
-            op.op_s_search = 1;
+            op.op_q_search = 1;
             break;
         default:
             return 1;

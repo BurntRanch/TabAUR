@@ -40,6 +40,8 @@ struct Operation_t {
     u_short op_s_pacman;
     u_short op_s_cleanbuild;
 
+    u_short op_q_search;
+
     bool    requires_root = false;
     u_short help;
     u_short version;
