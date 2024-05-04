@@ -440,8 +440,16 @@ bool queryPkgs(alpm_list_t *pkgNames) {
             const char *strname = (const char*)pkgNames->data;
             pkg = alpm_db_get_pkg(localdb, strname);
 
-            if(pkg == nullptr)
+            if (pkg == nullptr)
 		pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
+            
+            // why double check the same thing? because:
+            // the 1st is to see if pkg "foo" exists, and if not, it will search for (aliases?)
+            // this one is if no aliases has been found, print the error and continue for the next target
+            if (pkg == nullptr) {
+                log_println(ERROR, "package \"{}\" was not found", strname);
+                continue;
+            }
 
             pkgs_name.push_back(alpm_pkg_get_name(pkg));
             pkgs_ver.push_back(alpm_pkg_get_version(pkg));
