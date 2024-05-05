@@ -112,6 +112,10 @@ int parsearg_query(int opt) {
         case 's':
             op.op_q_search = 1;
             break;
+        case OP_INFO:
+        case 'i':
+            op.op_q_info = 1;
+            break;
         default:
             return 1;
     }

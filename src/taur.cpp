@@ -471,7 +471,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
     }
 
     if (pkgs_to_install.size() <= 0) {
-        log_println(ERROR, "No packages to be upgraded.");
+        log_println(WARN, "No packages to be upgraded.");
         // oh no, a goto oh noooo this program is ruined
         goto text;
     }
@@ -488,9 +488,9 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 text:
     if (attemptedDownloads > updatedPkgs) {
         pkgs_failed_to_build.erase(pkgs_failed_to_build.end() - 1);
-        log_println(WARN, "Failed to upgrade: {}", pkgs_failed_to_build);
-        log_println(WARN,
-                    "Some packages failed to download/upgrade, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.");
+        log_println(WARN, fg(color.red), "Failed to upgrade: {}", pkgs_failed_to_build);
+        //log_println(WARN, "Some packages failed to download/upgrade, Please redo this command and log the issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub.");
+        log_println(INFO, fg(color.cyan), "Tip: try to run taur with \"-S {}\" (e.g \"taur -S {}\")", pkgs_failed_to_build, pkgs_failed_to_build);
     }
 
     return true;
@@ -513,8 +513,8 @@ vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(bool aurOnly) {
 
     vector<TaurPkg_t> out;
     out.reserve(pkgs.size());
-    for (size_t i = 0; i < pkgs.size(); i++) {
-        alpm_pkg_t *pkg = pkgs[i];
+    
+    for (alpm_pkg_t *pkg : pkgs) {
         out.push_back({.name       = alpm_pkg_get_name(pkg),
                        .version    = alpm_pkg_get_version(pkg),
                        .aur_url    = "https://aur.archlinux.org/" + cpr::util::urlEncode(alpm_pkg_get_name(pkg)) + ".git",
@@ -529,9 +529,9 @@ vector<TaurPkg_t> TaurBackend::getPkgFromJson(rapidjson::Document& doc, bool use
     int resultcount = doc["resultcount"].GetInt();
 
     vector<TaurPkg_t> out(resultcount);
-    for (int i = 0; i < resultcount; i++) {
+    
+    for (int i = 0; i < resultcount; i++)
         out[i] = parsePkg(doc["results"][i], useGit);
-    }
 
     return out;
 }

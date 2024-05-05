@@ -76,7 +76,7 @@ bool                             is_package_from_syncdb(alpm_pkg_t *pkg, alpm_li
 bool                             commitTransactionAndRelease(bool soft = false);
 void                             printPkgInfo(TaurPkg_t& pkg, string_view db_name);
 void                             printFullPkgInfo(TaurPkg_t& pkg);
-string                           makepkg_list(string const& pkg_name, string const& path);
+string                           makepkg_list(string_view pkg_name, string path);
 void                             free_list_and_internals(alpm_list_t *list);
 fmt::text_style                  getColorFromDBName(string_view db_name);
 vector<alpm_pkg_t *>             filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse);

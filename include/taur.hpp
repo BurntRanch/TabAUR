@@ -26,7 +26,9 @@ struct TaurPkg_t {
     string         name;
     string         version;
     string         aur_url;
+    string         url;
     string         desc;
+    string         arch;
     string         maintainer;
     time_t         last_modified;
     time_t         outofdate;
@@ -38,6 +40,9 @@ struct TaurPkg_t {
     vector<string> totaldepends;
     bool           installed = false;
     string         db_name   = "aur";
+
+    alpm_list_t   *licenses_list;
+    alpm_list_t   *depends_list;
 };
 
 class TaurBackend {

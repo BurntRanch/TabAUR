@@ -426,6 +426,58 @@ bool queryPkgs(alpm_list_t *pkgNames) {
 
         return true;
     }
+
+    if (op.op_q_info) {
+        alpm_pkg_t  *pkg;
+        
+        if (!pkgNames) {
+            alpm_list_t *local_pkg;
+            for (local_pkg = alpm_db_get_pkgcache(localdb); local_pkg; local_pkg = local_pkg->next) {
+                pkg = (alpm_pkg_t *)(local_pkg->data);
+
+                pkgs.push_back({
+                    .name = alpm_pkg_get_name(pkg),
+                    .version = alpm_pkg_get_version(pkg),
+                    .url = alpm_pkg_get_url(pkg),
+                    .desc = alpm_pkg_get_desc(pkg),
+                    .arch = alpm_pkg_get_arch(pkg),
+                    .licenses_list = alpm_pkg_get_licenses(pkg),
+                    .depends_list = alpm_pkg_get_depends(pkg)
+                });
+            }
+        } else {
+            for (alpm_list_t *i = pkgNames; i; i = i->next) {
+                const char *strname = (const char*)i->data;
+                pkg = alpm_db_get_pkg(localdb, strname);
+
+                if (pkg == nullptr)
+		    pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
+            
+                // why double check the same thing? because:
+                // the 1st is to see if pkg "foo" exists, and if not, it will search for (aliases?)
+                // this one is if no aliases has been found, print the error and continue for the next target
+                if (pkg == nullptr) {
+                    log_println(ERROR, "package \"{}\" was not found", strname);
+                    continue;
+                }
+            
+                pkgs.push_back({
+                    .name = alpm_pkg_get_name(pkg),
+                    .version = alpm_pkg_get_version(pkg),
+                    .url = alpm_pkg_get_url(pkg),
+                    .desc = alpm_pkg_get_desc(pkg),
+                    .arch = alpm_pkg_get_arch(pkg),
+                    .licenses_list = alpm_pkg_get_licenses(pkg),
+                    .depends_list = alpm_pkg_get_depends(pkg)
+                });
+            }
+        }
+
+        for (size_t i = 0; i < pkgs.size(); i++)
+            printFullPkgInfo(pkgs[i]);
+
+        return true;
+    }
     
     // just -Q, no options other than --quiet and global ones
     if (!pkgNames) {
@@ -443,9 +495,6 @@ bool queryPkgs(alpm_list_t *pkgNames) {
             if (pkg == nullptr)
 		pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
             
-            // why double check the same thing? because:
-            // the 1st is to see if pkg "foo" exists, and if not, it will search for (aliases?)
-            // this one is if no aliases has been found, print the error and continue for the next target
             if (pkg == nullptr) {
                 log_println(ERROR, "package \"{}\" was not found", strname);
                 continue;
@@ -495,7 +544,7 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-    const char *optstring = "DFQRSTUVahqsuryt";
+    const char *optstring = "DFQRSTUVaihqsuryt";
     static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
@@ -513,6 +562,7 @@ int parseargs(int argc, char* argv[]) {
         {"refresh",    no_argument,       0, OP_REFRESH},
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
         {"search",     no_argument,       0, OP_SEARCH},
+        {"info",       no_argument,       0, OP_INFO},
         {"cleanbuild", no_argument,       0, OP_CLEANBUILD},
         {"cachedir",   required_argument, 0, OP_CACHEDIR},
         {"colors",     required_argument, 0, OP_COLORS},

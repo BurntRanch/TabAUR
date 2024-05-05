@@ -3,8 +3,71 @@
 #include "config.hpp"
 #include "taur.hpp"
 #include "util.hpp"
+#include "pacman.hpp"
 #include <filesystem>
 #include <iostream>
+
+/** Build the `titles` array of localized titles and pad them with spaces so
+ * that they align with the longest title. Storage for strings is stack
+ * allocated and naively truncated to TITLE_MAXLEN characters.
+ */
+static void make_aligned_titles(void)
+{
+	unsigned int i;
+	size_t maxlen = 0;
+	int maxcol = 0;
+	static const wchar_t title_suffix[] = L" :";
+	wchar_t wbuf[ARRAYSIZE(titles)][TITLE_MAXLEN + ARRAYSIZE(title_suffix)] = {{ 0 }};
+	size_t wlen[ARRAYSIZE(wbuf)];
+	int wcol[ARRAYSIZE(wbuf)];
+	char *buf[ARRAYSIZE(wbuf)];
+	buf[T_ARCHITECTURE] = _("Architecture");
+	buf[T_BACKUP_FILES] = _("Backup Files");
+	buf[T_BUILD_DATE] = _("Build Date");
+	buf[T_COMPRESSED_SIZE] = _("Compressed Size");
+	buf[T_CONFLICTS_WITH] = _("Conflicts With");
+	buf[T_DEPENDS_ON] = _("Depends On");
+	buf[T_DESCRIPTION] = _("Description");
+	buf[T_DOWNLOAD_SIZE] = _("Download Size");
+	buf[T_GROUPS] = _("Groups");
+	buf[T_INSTALL_DATE] = _("Install Date");
+	buf[T_INSTALL_REASON] = _("Install Reason");
+	buf[T_INSTALL_SCRIPT] = _("Install Script");
+	buf[T_INSTALLED_SIZE] = _("Installed Size");
+	buf[T_LICENSES] = _("Licenses");
+	buf[T_MD5_SUM] = _("MD5 Sum");
+	buf[T_NAME] = _("Name");
+	buf[T_OPTIONAL_DEPS] = _("Optional Deps");
+	buf[T_OPTIONAL_FOR] = _("Optional For");
+	buf[T_PACKAGER] = _("Packager");
+	buf[T_PROVIDES] = _("Provides");
+	buf[T_REPLACES] = _("Replaces");
+	buf[T_REPOSITORY] = _("Repository");
+	buf[T_REQUIRED_BY] = _("Required By");
+	buf[T_SHA_256_SUM] = _("SHA-256 Sum");
+	buf[T_SIGNATURES] = _("Signatures");
+	buf[T_URL] = _("URL");
+	buf[T_VALIDATED_BY] = _("Validated By");
+	buf[T_VERSION] = _("Version");
+
+	for(i = 0; i < ARRAYSIZE(wbuf); i++) {
+		wlen[i] = mbstowcs(wbuf[i], buf[i], strlen(buf[i]) + 1);
+		wcol[i] = wcswidth(wbuf[i], wlen[i]);
+		if(wcol[i] > maxcol) {
+			maxcol = wcol[i];
+		}
+		if(wlen[i] > maxlen) {
+			maxlen = wlen[i];
+		}
+	}
+
+	for(i = 0; i < ARRAYSIZE(wbuf); i++) {
+		size_t padlen = maxcol - wcol[i];
+		wmemset(wbuf[i] + wlen[i], L' ', padlen);
+		wmemcpy(wbuf[i] + wlen[i] + padlen, title_suffix, ARRAYSIZE(title_suffix));
+		wcstombs(titles[i], wbuf[i], sizeof(wbuf[i]));
+	}
+}
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string_view fullString, string_view ending) {
@@ -110,7 +173,7 @@ string expandVar(string& str) {
     if (str[0] == '~') {
         env = getenv("HOME");
         if (env == nullptr) {
-            log_println(ERROR, "$HOME enviroment variable is not set (how?)");
+            log_println(NONE, "FATAL: $HOME enviroment variable is not set (how?)");
             exit(-1);
         }
         str.replace(0, 1, string(env)); // replace ~ with the $HOME value
@@ -118,7 +181,7 @@ string expandVar(string& str) {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
         if (env == nullptr) {
-            log_println(ERROR, "No such enviroment variable: {}", str);
+            log_println(NONE, "ERROR: No such enviroment variable: {}", str);
             exit(-1);
         }
         str = string(env);
@@ -380,21 +443,28 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name) {
 }
 
 void printFullPkgInfo(TaurPkg_t& pkg) {
-    #define NOCOLOR       "\033[0m"
-    #define println(x,y)  fmt::println(BOLD, "{}", fmt::format("{} {}{:>15}: {}", x, NOCOLOR, "", y));
+    u_short cols = getcols();
 
-    println("Repository", pkg.db_name);
-    println("Name", pkg.name);
-    println("Version", pkg.version);
-    println("Description", pkg.desc);
-    println("Licenses", fmt::join(pkg.licenses, " "));
-    println("Depends on", fmt::join(pkg.depends, " "));
-    println("Make Depends", fmt::join(pkg.makedepends, " "));
+    /* make aligned titles once only */
+    static int need_alignment = 1;
+    if(need_alignment) {
+	need_alignment = 0;
+	make_aligned_titles();
+    }
+
+    string_display(titles[T_NAME], pkg.name, cols);
+    string_display(titles[T_VERSION], pkg.version, cols);
+    string_display(titles[T_DESCRIPTION], pkg.desc, cols);
+    string_display(titles[T_ARCHITECTURE], pkg.arch, cols);
+    list_display(titles[T_LICENSES], pkg.licenses_list, cols);
+    deplist_display(titles[T_DEPENDS_ON], pkg.depends_list, cols);
+
+    fmt::print("\n");
 
 }
 
 // faster than makepkg --packagelist
-string makepkg_list(string const& pkg_name, string const& path) {
+string makepkg_list(string_view pkg_name, string path) {
     string ret;
 
     string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
@@ -415,7 +485,7 @@ string makepkg_list(string const& pkg_name, string const& path) {
 
     string pkgext = shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
 
-    ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
+    ret = fmt::format("{}/{}-{}-{}{}", path, pkg_name, versionInfo, arch, pkgext);
     return ret;
 }
 
@@ -586,9 +656,9 @@ string getConfigDir() {
     return getHomeConfigDir() + "/TabAUR";
 }
 
-std::vector<string> split(string_view text, char delim) {
+vector<string> split(string_view text, char delim) {
     string              line;
-    std::vector<string> vec;
+    vector<string>      vec;
     std::stringstream   ss(text.data());
     while (std::getline(ss, line, delim)) {
         vec.push_back(line);
