@@ -1,7 +1,7 @@
 CXX	?= g++
 SRC 	 = toml.cpp
 TARGET   = toml.o
-CPPFLAGS = -isystem ../include -std=c++20
+CPPFLAGS = -I../../include -std=c++20
 
 all: $(TARGET)
 
