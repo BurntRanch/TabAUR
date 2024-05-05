@@ -51,7 +51,7 @@ jobs:
       run: make clean
 
     - name: Compile
-      run: make CPPFLAGS="-mtune=generic -funroll-all-loops -march=native -isystem include -std=c++20"
+      run: make -C src/toml++ && make CPPFLAGS="-mtune=generic -funroll-all-loops -march=native -isystem include -std=c++20"
 
     - name: Build release
       run: tar --zstd -cf tabaur.tar.zst taur
