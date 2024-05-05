@@ -1,4 +1,3 @@
-#define TOML_IMPLEMENTATION
 #include "config.hpp"
 #include "ini.h"
 #include "util.hpp"
@@ -63,7 +62,7 @@ void Config::init(string configFile, string themeFile) {
                      "Even though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\n"
                      "You should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\n"
                      "This project is in no way liable for any damage done to your system as a result of AUR packages.\n"
-                     "Thank you!\n"sv);
+                     "Thank you!\n");
 }
 
 // get initialized variable
