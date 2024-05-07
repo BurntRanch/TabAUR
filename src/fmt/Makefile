@@ -1,5 +1,6 @@
 # Variables taken from {fmt} cmake build files
-# cmd: cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON
+# I don't wanna use cmake
+# cmd: cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
 
 CXX		?= g++
 #CXX_DEFINES 	= -DFMT_LIB_EXPORT -Dfmt_EXPORTS

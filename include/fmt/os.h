@@ -9,9 +9,11 @@
 #define FMT_OS_H_
 
 #include <cerrno>
-#include <cstddef>
-#include <cstdio>
-#include <system_error>  // std::system_error
+#ifndef FMT_IMPORT_STD
+#  include <cstddef>
+#  include <cstdio>
+#  include <system_error>  // std::system_error
+#endif
 
 #include "format.h"
 
@@ -388,7 +390,7 @@ class file_buffer final : public buffer<char> {
 
  public:
   FMT_API file_buffer(cstring_view path, const ostream_params& params);
-  FMT_API file_buffer(file_buffer&& other);
+  FMT_API file_buffer(file_buffer&& other) noexcept;
   FMT_API ~file_buffer();
 
   void flush() {

@@ -12,9 +12,13 @@
 #include <stdio.h>   // FILE
 #include <string.h>  // strlen
 
+#ifndef FMT_IMPORT_STD
 // <cstddef> is also included transitively from <type_traits>.
-#include <cstddef>      // std::byte
-#include <type_traits>  // std::enable_if
+#  include <cstddef>      // std::byte
+#  include <type_traits>  // std::enable_if
+#else
+import std;
+#endif
 
 // The fmt library version in the form major * 10000 + minor * 100 + patch.
 #define FMT_VERSION 100202
@@ -137,7 +141,7 @@
 #elif defined(__NVCOMPILER)
 #  define FMT_USE_NONTYPE_TEMPLATE_ARGS 0
 #elif FMT_GCC_VERSION >= 903 && FMT_CPLUSPLUS >= 201709L
-#  define FMT_USE_NONTYPE_TEMPLATE_ARGS 0
+#  define FMT_USE_NONTYPE_TEMPLATE_ARGS 1
 #elif defined(__cpp_nontype_template_args) && \
     __cpp_nontype_template_args >= 201911L
 #  define FMT_USE_NONTYPE_TEMPLATE_ARGS 1
@@ -175,8 +179,7 @@
 #endif
 
 // Disable [[noreturn]] on MSVC/NVCC because of bogus unreachable code warnings.
-#if FMT_HAS_CPP_ATTRIBUTE(noreturn) && FMT_EXCEPTIONS && !FMT_MSC_VERSION && \
-    !defined(__NVCC__)
+#if FMT_HAS_CPP_ATTRIBUTE(noreturn) && !FMT_MSC_VERSION && !defined(__NVCC__)
 #  define FMT_NORETURN [[noreturn]]
 #else
 #  define FMT_NORETURN
@@ -368,17 +371,17 @@ template <typename T> constexpr auto const_check(T value) -> T { return value; }
 FMT_NORETURN FMT_API void assert_fail(const char* file, int line,
                                       const char* message);
 
-#ifndef FMT_ASSERT
-#  ifdef NDEBUG
+#if defined(FMT_ASSERT)
+// Use the provided definition.
+#elif defined(NDEBUG)
 // FMT_ASSERT is not empty to avoid -Wempty-body.
-#    define FMT_ASSERT(condition, message) \
-      fmt::detail::ignore_unused((condition), (message))
-#  else
-#    define FMT_ASSERT(condition, message)                                    \
-      ((condition) /* void() fails with -Winvalid-constexpr on clang 4.0.1 */ \
-           ? (void)0                                                          \
-           : fmt::detail::assert_fail(__FILE__, __LINE__, (message)))
-#  endif
+#  define FMT_ASSERT(condition, message) \
+    fmt::detail::ignore_unused((condition), (message))
+#else
+#  define FMT_ASSERT(condition, message)                                    \
+    ((condition) /* void() fails with -Winvalid-constexpr on clang 4.0.1 */ \
+         ? (void)0                                                          \
+         : fmt::detail::assert_fail(__FILE__, __LINE__, (message)))
 #endif
 
 #ifdef FMT_USE_INT128
@@ -1896,7 +1899,7 @@ template <typename Context> class basic_format_args {
       if (id < max_size()) arg = args_[id];
       return arg;
     }
-    if (id >= detail::max_packed_args) return arg;
+    if (static_cast<unsigned>(id) >= detail::max_packed_args) return arg;
     arg.type_ = type(id);
     if (arg.type_ == detail::type::none_type) return arg;
     arg.value_ = values_[id];
@@ -2754,7 +2757,9 @@ template <typename Char, typename... Args> class format_string_checker {
     return id >= 0 && id < num_args ? parse_funcs_[id](context_) : begin;
   }
 
-  FMT_CONSTEXPR void on_error(const char* message) { report_error(message); }
+  FMT_NORETURN FMT_CONSTEXPR void on_error(const char* message) {
+    report_error(message);
+  }
 };
 
 // A base class for compile-time strings.
@@ -2811,7 +2816,7 @@ template <typename T, typename Char, type TYPE> struct native_formatter {
   FMT_CONSTEXPR auto parse(ParseContext& ctx) -> const Char* {
     if (ctx.begin() == ctx.end() || *ctx.begin() == '}') return ctx.begin();
     auto end = parse_format_specs(ctx.begin(), ctx.end(), specs_, ctx, TYPE);
-    if (TYPE == type::char_type) check_char_specs(specs_);
+    if (const_check(TYPE == type::char_type)) check_char_specs(specs_);
     return end;
   }
 

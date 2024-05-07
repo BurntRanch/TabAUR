@@ -1,5 +1,6 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
+#define TOML_HEADER_ONLY 0
 
 #include <alpm.h>
 #include <map>

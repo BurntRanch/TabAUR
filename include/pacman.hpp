@@ -1,11 +1,16 @@
 // code taken from pacman utils
 // putted it on a separeted file for keeping the codebase a bit more clean
+// args.cpp and args.hpp has part of pacman code too
 
 #include <string_view>
 #include <string>
 #include <alpm.h>
 #include <alpm_list.h>
 #include <vector>
+
+#include <sys/types.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
 
 using std::string;
 using std::string_view;

@@ -11,6 +11,7 @@
  * that they align with the longest title. Storage for strings is stack
  * allocated and naively truncated to TITLE_MAXLEN characters.
  */
+// function from pacman code for aligning colonums
 static void make_aligned_titles(void)
 {
 	unsigned int i;

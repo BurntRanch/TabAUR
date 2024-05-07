@@ -1,3 +1,4 @@
+#define TOML_HEADER_ONLY 0
 #include "config.hpp"
 #include "ini.h"
 #include "util.hpp"
@@ -87,7 +88,7 @@ void Config::initVars() {
     this->debug         = this->getConfigValue<bool>("general.debug", true);
     this->colors        = this->getConfigValue<bool>("general.colors", true);
     this->secretRecipe  = this->getConfigValue<bool>("secret.recipe", false);
-    fmt::disable_colors = this->colors == 0;
+    fmt::disable_colors = (!this->colors);
 
     sanitizeStr(this->sudo);
     sanitizeStr(this->editorBin);
