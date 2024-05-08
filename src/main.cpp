@@ -254,15 +254,6 @@ int installPkg(alpm_list_t *pkgNames) {
         }
     }
     
-    if (!pkgs_to_install.empty()) {
-        log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
-        pkgs_to_install.erase(pkgs_to_install.length()-1);
-        if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
-            log_println(ERROR, "Failed to install {}.", fmt::join(pkgNamesVec, " "));
-            returnStatus = false;
-        }
-    }
-
     if (!pacmanPkgs.empty()) {
         string op_s = "-S";
 
@@ -272,6 +263,15 @@ int installPkg(alpm_list_t *pkgNames) {
             op_s += 'u';
 
         pacman_exec(op_s, pacmanPkgs);
+    }
+
+    if (!pkgs_to_install.empty()) {
+        log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
+        pkgs_to_install.erase(pkgs_to_install.length()-1);
+        if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
+            log_println(ERROR, "Failed to install {}.", fmt::join(pkgNamesVec, " "));
+            returnStatus = false;
+        }
     }
 
     return returnStatus;
