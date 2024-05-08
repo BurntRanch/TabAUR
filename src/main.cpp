@@ -108,7 +108,7 @@ bool execPacman(int argc, char *argv[]) {
     if (argc > _POSIX_ARG_MAX)
         throw std::invalid_argument(std::format("argc is invalid! (argc > {})", _POSIX_ARG_MAX));
 
-    char *args[argc+1]; // null terminator
+    char *args[argc + 1]; // null terminator
 
     args[0] = _("pacman");
     for (int i = 1; i < argc; ++i)
@@ -124,13 +124,13 @@ bool execPacman(int argc, char *argv[]) {
 }
 
 int installPkg(alpm_list_t *pkgNames) {
-    bool           useGit   = config->useGit;
-    string_view    cacheDir = config->cacheDir;
+    bool                useGit   = config->useGit;
+    string_view         cacheDir = config->cacheDir;
 
-    bool           returnStatus = true;
-    bool           stat;
+    bool                returnStatus = true;
+    bool                stat;
 
-    vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
+    vector<string>      pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
     vector<string_view> pkgNamesVec, aurPkgNamesVec;
 
     if (op.op_s_upgrade) {
@@ -140,27 +140,26 @@ int installPkg(alpm_list_t *pkgNames) {
 
             if (op.op_s_sync)
                 op_s += 'y';
-        
+
             pacman_exec(op_s, pacmanPkgs); // pacmanPkgs is actually empty so it will only upgrade the packages
         }
         log_println(DEBUG, "Upgrading AUR packages!");
         backend->update_all_aur_pkgs(cacheDir, useGit);
     }
 
-    
     // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next)
         pkgNamesVec.push_back((const char *)(pkgNames->data));
-    
+
     if (pkgNamesVec.empty()) {
         if (op.op_s_search)
             log_println(WARN, "Please specify a target");
         return false;
     }
-    
+
     if (op.op_s_search) {
-        for(size_t i = 0; i < pkgNamesVec.size(); i++) {
-            vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
+        for (size_t i = 0; i < pkgNamesVec.size(); i++) {
+            vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
 
             if (pkgs.empty()) {
                 log_println(WARN, "No results found for {}!", pkgNamesVec[i]);
@@ -170,7 +169,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
             for (size_t i = 0; i < pkgs.size(); i++)
                 printPkgInfo(pkgs[i], pkgs[i].db_name);
-            
+
             returnStatus = true;
         }
         return returnStatus;
@@ -182,7 +181,7 @@ int installPkg(alpm_list_t *pkgNames) {
     if (!op.op_s_cleanbuild) {
         pkgNamesToCleanBuild = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_CLEANBUILDS);
         if (!pkgNamesToCleanBuild.empty()) {
-            for(auto& pkg_name : pkgNamesToCleanBuild) {
+            for (auto& pkg_name : pkgNamesToCleanBuild) {
                 path pkgDir = path(cacheDir) / pkg_name;
                 log_println(INFO, "Removing {}", pkgDir.c_str());
                 std::filesystem::remove_all(pkgDir);
@@ -192,7 +191,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     for (auto& pkg_name : aurPkgNamesVec) {
         path pkgDir = path(cacheDir) / pkg_name;
-        stat = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
+        stat        = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
         if (!stat) {
             log_println(ERROR, "Failed to download {}", pkg_name);
             returnStatus = false;
@@ -211,7 +210,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     for (size_t i = 0; i < pkgNamesVec.size(); i++) {
         vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
-        
+
         optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
         if (!oSelectedPkgs) {
@@ -253,7 +252,7 @@ int installPkg(alpm_list_t *pkgNames) {
             pkgs_to_install += built_pkg + ' ';
         }
     }
-    
+
     if (!pacmanPkgs.empty()) {
         string op_s = "-S";
 
@@ -267,7 +266,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     if (!pkgs_to_install.empty()) {
         log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
-        pkgs_to_install.erase(pkgs_to_install.length()-1);
+        pkgs_to_install.erase(pkgs_to_install.length() - 1);
         if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
             log_println(ERROR, "Failed to install {}.", fmt::join(pkgNamesVec, " "));
             returnStatus = false;
@@ -366,29 +365,28 @@ bool updateAll() {
 
 bool queryPkgs(alpm_list_t *pkgNames) {
     log_println(DEBUG, "AUR Only: {}", config->aurOnly);
-    
+
     // we seperate pkgs that needs to be searched, like they'll include a description, to the ones that we just wanna query out
     // pkgs will be used for -Qs, for then using it on printPkgInfo()
     // pkgs_name and pkgs_ver will be used for bare operations (only -Q)
     vector<const char *> pkgs_name, pkgs_ver;
-    vector<TaurPkg_t> pkgs;
-    alpm_db_t *localdb = alpm_get_localdb(config->handle);
+    vector<TaurPkg_t>    pkgs;
+    alpm_db_t           *localdb = alpm_get_localdb(config->handle);
 
     if (op.op_q_search) {
         if (!pkgNames) {
             alpm_list_t *pkg;
             for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = pkg->next) {
-                pkgs.push_back({
-                    .name = alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)),
-                    .version = alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)),
-                    .desc = alpm_pkg_get_desc((alpm_pkg_t *)(pkg->data)),
-                    .votes = -1}); // push back a negative votes value so we can disable it on printPkgInfo() 
+                pkgs.push_back({.name    = alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)),
+                                .version = alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)),
+                                .desc    = alpm_pkg_get_desc((alpm_pkg_t *)(pkg->data)),
+                                .votes   = -1}); // push back a negative votes value so we can disable it on printPkgInfo()
             }
         } else {
             alpm_list_t *result = nullptr;
             for (alpm_list_t *i = pkgNames; i; i = i->next) {
-                alpm_list_t *ret = nullptr;
-                alpm_list_t *i_next = i->next;  // save the next value, we will overwrite it.
+                alpm_list_t *ret    = nullptr;
+                alpm_list_t *i_next = i->next; // save the next value, we will overwrite it.
 
                 i->next = nullptr;
 
@@ -396,14 +394,13 @@ bool queryPkgs(alpm_list_t *pkgNames) {
                     return false;
                 result = alpm_list_join(result, ret);
 
-                i->next = i_next;   // put it back
+                i->next = i_next; // put it back
             }
             for (; result; result = result->next) {
-                pkgs.push_back({
-                    .name = alpm_pkg_get_name((alpm_pkg_t *)(result->data)),
-                    .version = alpm_pkg_get_version((alpm_pkg_t *)(result->data)),
-                    .desc = alpm_pkg_get_desc((alpm_pkg_t *)(result->data)),
-                    .votes = -1});
+                pkgs.push_back({.name    = alpm_pkg_get_name((alpm_pkg_t *)(result->data)),
+                                .version = alpm_pkg_get_version((alpm_pkg_t *)(result->data)),
+                                .desc    = alpm_pkg_get_desc((alpm_pkg_t *)(result->data)),
+                                .votes   = -1});
             }
         }
 
@@ -414,8 +411,8 @@ bool queryPkgs(alpm_list_t *pkgNames) {
     }
 
     if (op.op_q_info) {
-        alpm_pkg_t  *pkg;
-        
+        alpm_pkg_t *pkg;
+
         if (!pkgNames) {
             alpm_list_t *local_pkg;
             for (local_pkg = alpm_db_get_pkgcache(localdb); local_pkg; local_pkg = local_pkg->next) {
@@ -428,8 +425,8 @@ bool queryPkgs(alpm_list_t *pkgNames) {
                 pkg = alpm_db_get_pkg(localdb, strname);
 
                 if (pkg == nullptr)
-		    pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
-            
+                    pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
+
                 // why double check the same thing? because:
                 // the 1st is to see if pkg "foo" exists, and if not, it will search for (aliases?)
                 // this one is if no aliases has been found, print the error and continue for the next target
@@ -437,14 +434,14 @@ bool queryPkgs(alpm_list_t *pkgNames) {
                     log_println(ERROR, "package \"{}\" was not found", strname);
                     continue;
                 }
-            
+
                 printLocalFullPkgInfo(pkg);
             }
         }
 
         return true;
     }
-    
+
     // just -Q, no options other than --quiet and global ones
     if (!pkgNames) {
         alpm_list_t *pkg;
@@ -455,12 +452,12 @@ bool queryPkgs(alpm_list_t *pkgNames) {
     } else {
         alpm_pkg_t *pkg;
         for (; pkgNames; pkgNames = pkgNames->next) {
-            const char *strname = (const char*)pkgNames->data;
+            const char *strname = (const char *)pkgNames->data;
             pkg = alpm_db_get_pkg(localdb, strname);
 
             if (pkg == nullptr)
-		pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
-            
+                pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
+
             if (pkg == nullptr) {
                 log_println(ERROR, "package \"{}\" was not found", strname);
                 continue;
@@ -551,8 +548,8 @@ int parseargs(int argc, char* argv[]) {
             return 1;
         parsearg_op(opt, 0);
     }
-    
-    if(op.op == OP_PACMAN) {
+
+    if (op.op == OP_PACMAN) {
         log_println(NONE, "Please use pacman for this command (may need root too)");
         execPacman(argc, argv);
     }
@@ -593,10 +590,10 @@ int parseargs(int argc, char* argv[]) {
                 result = 1;
                 break;
         }
-        
-        if(result == 0) {
-	    continue;
-	}
+
+        if (result == 0) {
+            continue;
+        }
 
         /* fall back to global options */
         result = parsearg_global(opt);
@@ -627,7 +624,7 @@ int parseargs(int argc, char* argv[]) {
 
 // main
 int main(int argc, char *argv[]) {
-    config         = std::make_unique<Config>();
+    config = std::make_unique<Config>();
 
     configfile = (getConfigDir() + "/config.toml");
     themefile  = (getConfigDir() + "/theme.toml");

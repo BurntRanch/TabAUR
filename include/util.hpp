@@ -25,12 +25,12 @@ using std::unique_ptr;
 struct TaurPkg_t;
 class TaurBackend;
 
-#define BOLD                             fmt::emphasis::bold
-#define BOLD_TEXT(x)                     (fmt::emphasis::bold | fmt::fg(x))
-#define NOCOLOR                          "\033[0m"
-#define AUR_URL                          "https://aur.archlinux.org"
-#define AUR_URL_GIT(x)                   fmt::format("https://aur.archlinux.org/{}.git", x)
-#define AUR_URL_TAR(x)                   fmt::format("https://aur.archlinux.org/cgit/aur.git/snapshot/{}.tar.gz", x)
+#define BOLD           fmt::emphasis::bold
+#define BOLD_TEXT(x)   (fmt::emphasis::bold | fmt::fg(x))
+#define NOCOLOR        "\033[0m"
+#define AUR_URL        "https://aur.archlinux.org"
+#define AUR_URL_GIT(x) fmt::format("https://aur.archlinux.org/{}.git", x)
+#define AUR_URL_TAR(x) fmt::format("https://aur.archlinux.org/cgit/aur.git/snapshot/{}.tar.gz", x)
 
 #define alpm_list_smart_pointer          unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
 #define make_list_smart_pointer(pointer) (unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
@@ -38,8 +38,16 @@ class TaurBackend;
 #define alpm_list_smart_deleter          unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>
 #define make_list_smart_deleter(pointer) (unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>(pointer, free_list_and_internals))
 
-#define NOCONFIRMREQ(x)    if (config->noconfirm && !required) { fmt::print("\n"); return x; }
-#define NOCONFIRM(x)       if (config->noconfirm) { fmt::print("\n"); return x; }
+#define NOCONFIRMREQ(x)                                                                                                                                                            \
+    if (config->noconfirm && !required) {                                                                                                                                          \
+        fmt::print("\n");                                                                                                                                                          \
+        return x;                                                                                                                                                                  \
+    }
+#define NOCONFIRM(x)                                                                                                                                                               \
+    if (config->noconfirm) {                                                                                                                                                       \
+        fmt::print("\n");                                                                                                                                                          \
+        return x;                                                                                                                                                                  \
+    }
 
 enum prompt_yn {
     PROMPT_YN_DIFF,
@@ -56,7 +64,7 @@ enum prompt_list {
 
 enum {
     YES = 1,
-    NO = 0,
+    NO  = 0,
 };
 
 enum log_level {
@@ -219,16 +227,15 @@ template <typename... Args>
 bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
     string inputs_str = "[" + (string)(def ? "Y" : "y") + "/" + (string)(!def ? "N" : "n") + "] ";
     string result;
-   
+
     switch (pr) {
         case PROMPT_YN_DIFF:
             log_printf(INFO, BOLD, "View the diffs for {}? {}", std::forward<Args>(args)..., inputs_str);
             NOCONFIRM(NO);
             break;
         case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
-            log_printf(WARN, BOLD,
-                       "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), continue with the installation anyway? {}",
-                           inputs_str);
+            log_printf(WARN, BOLD, "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), continue with the installation anyway? {}",
+                       inputs_str);
             NOCONFIRM(YES);
             break;
         case PROMPT_YN_EDIT_PKGBUILD:
@@ -253,7 +260,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
         log_printf(WARN, "Please provide a valid response {}", inputs_str);
 
     ctrl_d_handler();
-    
+
     if (result.empty())
         return def;
 
@@ -270,14 +277,14 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
  * @returns the resulting list, empty if anything bad happens.
 */
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
-vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false) {
-    
+vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false) {
+
     string sep_str = "Type the index of each package (eg: \"0 1 2\", \"0-2\", \"a\" for all, \"n\" or enter for none)";
     string result_str;
 
     for (size_t i = 0; i < list.size(); i++)
-        fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD_TEXT (fmt::color::white), "{}", list[i]));
-    
+        fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD_TEXT(fmt::color::white), "{}", list[i]));
+
     log_println(INFO, "{}", sep_str);
 
     switch (pr) {
@@ -341,7 +348,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
 
                 continue;
             }
-    
+
             if (!is_numerical(input_indices[i])) {
                 log_printf(WARN, "{}: ", sep_str);
                 continue;
@@ -367,7 +374,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
         break;
     }
     ctrl_d_handler();
-    
+
     return result;
 }
 

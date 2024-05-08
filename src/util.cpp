@@ -1,94 +1,92 @@
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
-#include "config.hpp"
-#include "taur.hpp"
 #include "util.hpp"
+#include "config.hpp"
 #include "pacman.hpp"
+#include "taur.hpp"
 
 /** Build the `titles` array of localized titles and pad them with spaces so
  * that they align with the longest title. Storage for strings is stack
  * allocated and naively truncated to TITLE_MAXLEN characters.
  */
 // function from pacman code for aligning colonums
-static void make_aligned_titles(void)
-{
-	unsigned int i;
-	size_t maxlen = 0;
-	int maxcol = 0;
-	static const wchar_t title_suffix[] = L" :";
-	wchar_t wbuf[ARRAYSIZE(titles)][TITLE_MAXLEN + ARRAYSIZE(title_suffix)] = {{ 0 }};
-	size_t wlen[ARRAYSIZE(wbuf)];
-	int wcol[ARRAYSIZE(wbuf)];
-	char *buf[ARRAYSIZE(wbuf)];
-	buf[T_ARCHITECTURE] = _("Architecture");
-	buf[T_BACKUP_FILES] = _("Backup Files");
-	buf[T_BUILD_DATE] = _("Build Date");
-	buf[T_COMPRESSED_SIZE] = _("Compressed Size");
-	buf[T_CONFLICTS_WITH] = _("Conflicts With");
-	buf[T_DEPENDS_ON] = _("Depends On");
-	buf[T_DESCRIPTION] = _("Description");
-	buf[T_DOWNLOAD_SIZE] = _("Download Size");
-	buf[T_GROUPS] = _("Groups");
-	buf[T_INSTALL_DATE] = _("Install Date");
-	buf[T_INSTALL_REASON] = _("Install Reason");
-	buf[T_INSTALL_SCRIPT] = _("Install Script");
-	buf[T_INSTALLED_SIZE] = _("Installed Size");
-	buf[T_LICENSES] = _("Licenses");
-	buf[T_MD5_SUM] = _("MD5 Sum");
-	buf[T_NAME] = _("Name");
-	buf[T_OPTIONAL_DEPS] = _("Optional Deps");
-	buf[T_OPTIONAL_FOR] = _("Optional For");
-	buf[T_PACKAGER] = _("Packager");
-	buf[T_PROVIDES] = _("Provides");
-	buf[T_REPLACES] = _("Replaces");
-	buf[T_REPOSITORY] = _("Repository");
-	buf[T_REQUIRED_BY] = _("Required By");
-	buf[T_SHA_256_SUM] = _("SHA-256 Sum");
-	buf[T_SIGNATURES] = _("Signatures");
-	buf[T_URL] = _("URL");
-	buf[T_VALIDATED_BY] = _("Validated By");
-	buf[T_VERSION] = _("Version");
+static void make_aligned_titles(void) {
+    unsigned int         i;
+    size_t               maxlen                                                          = 0;
+    int                  maxcol                                                          = 0;
+    static const wchar_t title_suffix[]                                                  = L" :";
+    wchar_t              wbuf[ARRAYSIZE(titles)][TITLE_MAXLEN + ARRAYSIZE(title_suffix)] = {{0}};
+    size_t               wlen[ARRAYSIZE(wbuf)];
+    int                  wcol[ARRAYSIZE(wbuf)];
+    char                *buf[ARRAYSIZE(wbuf)];
+    buf[T_ARCHITECTURE]    = _("Architecture");
+    buf[T_BACKUP_FILES]    = _("Backup Files");
+    buf[T_BUILD_DATE]      = _("Build Date");
+    buf[T_COMPRESSED_SIZE] = _("Compressed Size");
+    buf[T_CONFLICTS_WITH]  = _("Conflicts With");
+    buf[T_DEPENDS_ON]      = _("Depends On");
+    buf[T_DESCRIPTION]     = _("Description");
+    buf[T_DOWNLOAD_SIZE]   = _("Download Size");
+    buf[T_GROUPS]          = _("Groups");
+    buf[T_INSTALL_DATE]    = _("Install Date");
+    buf[T_INSTALL_REASON]  = _("Install Reason");
+    buf[T_INSTALL_SCRIPT]  = _("Install Script");
+    buf[T_INSTALLED_SIZE]  = _("Installed Size");
+    buf[T_LICENSES]        = _("Licenses");
+    buf[T_MD5_SUM]         = _("MD5 Sum");
+    buf[T_NAME]            = _("Name");
+    buf[T_OPTIONAL_DEPS]   = _("Optional Deps");
+    buf[T_OPTIONAL_FOR]    = _("Optional For");
+    buf[T_PACKAGER]        = _("Packager");
+    buf[T_PROVIDES]        = _("Provides");
+    buf[T_REPLACES]        = _("Replaces");
+    buf[T_REPOSITORY]      = _("Repository");
+    buf[T_REQUIRED_BY]     = _("Required By");
+    buf[T_SHA_256_SUM]     = _("SHA-256 Sum");
+    buf[T_SIGNATURES]      = _("Signatures");
+    buf[T_URL]             = _("URL");
+    buf[T_VALIDATED_BY]    = _("Validated By");
+    buf[T_VERSION]         = _("Version");
 
-	for(i = 0; i < ARRAYSIZE(wbuf); i++) {
-		wlen[i] = mbstowcs(wbuf[i], buf[i], strlen(buf[i]) + 1);
-		wcol[i] = wcswidth(wbuf[i], wlen[i]);
-		if(wcol[i] > maxcol) {
-			maxcol = wcol[i];
-		}
-		if(wlen[i] > maxlen) {
-			maxlen = wlen[i];
-		}
-	}
+    for (i = 0; i < ARRAYSIZE(wbuf); i++) {
+        wlen[i] = mbstowcs(wbuf[i], buf[i], strlen(buf[i]) + 1);
+        wcol[i] = wcswidth(wbuf[i], wlen[i]);
+        if (wcol[i] > maxcol) {
+            maxcol = wcol[i];
+        }
+        if (wlen[i] > maxlen) {
+            maxlen = wlen[i];
+        }
+    }
 
-	for(i = 0; i < ARRAYSIZE(wbuf); i++) {
-		size_t padlen = maxcol - wcol[i];
-		wmemset(wbuf[i] + wlen[i], L' ', padlen);
-		wmemcpy(wbuf[i] + wlen[i] + padlen, title_suffix, ARRAYSIZE(title_suffix));
-		wcstombs(titles[i], wbuf[i], sizeof(wbuf[i]));
-	}
+    for (i = 0; i < ARRAYSIZE(wbuf); i++) {
+        size_t padlen = maxcol - wcol[i];
+        wmemset(wbuf[i] + wlen[i], L' ', padlen);
+        wmemcpy(wbuf[i] + wlen[i] + padlen, title_suffix, ARRAYSIZE(title_suffix));
+        wcstombs(titles[i], wbuf[i], sizeof(wbuf[i]));
+    }
 }
 
 /** Turn a optdepends list into a text list.
  * @param optdeps a list with items of type alpm_depend_t
  */
-static void optdeplist_display(alpm_pkg_t *pkg, unsigned short cols = getcols())
-{
-	alpm_list_t *i, *text = NULL;
-	alpm_db_t *localdb = alpm_get_localdb(config->handle);
-	for(i = alpm_pkg_get_optdepends(pkg); i; i = alpm_list_next(i)) {
-		alpm_depend_t *optdep = (alpm_depend_t *)i->data;
-		char *depstring = alpm_dep_compute_string(optdep);
-		if(alpm_pkg_get_origin(pkg) == ALPM_PKG_FROM_LOCALDB) {
-			if(alpm_find_satisfier(alpm_db_get_pkgcache(localdb), depstring)) {
-				const char *installed = _(" [installed]");
-				depstring = (char *)realloc(depstring, strlen(depstring) + strlen(installed) + 1);
-				strcpy(depstring + strlen(depstring), installed);
-			}
-		}
-		text = alpm_list_add(text, depstring);
-	}
-	list_display_linebreak(titles[T_OPTIONAL_DEPS], text, cols);
-	FREELIST(text);
+static void optdeplist_display(alpm_pkg_t *pkg, unsigned short cols = getcols()) {
+    alpm_list_t *i, *text = NULL;
+    alpm_db_t   *localdb = alpm_get_localdb(config->handle);
+    for (i = alpm_pkg_get_optdepends(pkg); i; i = alpm_list_next(i)) {
+        alpm_depend_t *optdep    = (alpm_depend_t *)i->data;
+        char          *depstring = alpm_dep_compute_string(optdep);
+        if (alpm_pkg_get_origin(pkg) == ALPM_PKG_FROM_LOCALDB) {
+            if (alpm_find_satisfier(alpm_db_get_pkgcache(localdb), depstring)) {
+                const char *installed = _(" [installed]");
+                depstring             = (char *)realloc(depstring, strlen(depstring) + strlen(installed) + 1);
+                strcpy(depstring + strlen(depstring), installed);
+            }
+        }
+        text = alpm_list_add(text, depstring);
+    }
+    list_display_linebreak(titles[T_OPTIONAL_DEPS], text, cols);
+    FREELIST(text);
 }
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
@@ -241,8 +239,8 @@ string shell_exec(string_view cmd) {
         result += buffer.data();
 
     // why there is a '\n' at the end??
-    if (!result.empty() && result[result.length()-1] == '\n')
-        result.erase(result.length()-1);
+    if (!result.empty() && result[result.length() - 1] == '\n')
+        result.erase(result.length() - 1);
     return result;
 }
 
@@ -359,7 +357,7 @@ bool makepkg_exec(string_view cmd, bool exitOnFailure) {
 
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
-    
+
     if (!config->colors)
         ccmd.push_back("--nocolor");
 
@@ -444,15 +442,15 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name) {
         fmt::print(fg(color.popularity), " Popularity: {:.2f} ", pkg.popularity);
         fmt::print(fg(color.votes), "Votes: {} ({}) ", pkg.votes, getTitleFromVotes(pkg.votes));
     }
-    
+
     if (pkg.maintainer == "\1")
         fmt::print(BOLD_TEXT(color.orphan), "(un-maintained) ");
 
     if (pkg.outofdate) {
-        char *timestr = std::ctime(&pkg.outofdate);
+        char       *timestr      = std::ctime(&pkg.outofdate);
         string_view timestr_view = timestr;
         if (!timestr_view.empty()) {
-            timestr[timestr_view.length()-1] = '\0';    // delete the last newline.
+            timestr[timestr_view.length() - 1] = '\0'; // delete the last newline.
             fmt::print(BOLD_TEXT(color.outofdate), "(Outdated: {}) ", timestr);
         }
     }
@@ -467,9 +465,9 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name) {
 void printLocalFullPkgInfo(alpm_pkg_t *pkg) {
     /* make aligned titles once only */
     static int need_alignment = 1;
-    if(need_alignment) {
-	need_alignment = 0;
-	make_aligned_titles();
+    if (need_alignment) {
+        need_alignment = 0;
+        make_aligned_titles();
     }
 
     string_display(titles[T_NAME], alpm_pkg_get_name(pkg));
@@ -482,7 +480,6 @@ void printLocalFullPkgInfo(alpm_pkg_t *pkg) {
     deplist_display(titles[T_PROVIDES], alpm_pkg_get_provides(pkg));
     deplist_display(titles[T_DEPENDS_ON], alpm_pkg_get_depends(pkg));
     optdeplist_display(pkg);
-
 
     fmt::print("\n");
 }
@@ -681,9 +678,9 @@ string getConfigDir() {
 }
 
 vector<string> split(string_view text, char delim) {
-    string              line;
-    vector<string>      vec;
-    std::stringstream   ss(text.data());
+    string            line;
+    vector<string>    vec;
+    std::stringstream ss(text.data());
     while (std::getline(ss, line, delim)) {
         vec.push_back(line);
     }
