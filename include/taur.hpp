@@ -5,6 +5,7 @@
 #include "util.hpp"
 #include <alpm.h>
 #include <alpm_list.h>
+#include <ctime>
 #include <fcntl.h>
 #include <optional>
 #include <rapidjson/document.h>
@@ -24,13 +25,24 @@ using std::optional;
 struct TaurPkg_t {
     string         name;
     string         version;
+    string         aur_url;
     string         url;
     string         desc;
+    string         arch;
+    string         maintainer;
+    time_t         last_modified;
+    time_t         outofdate;
     float          popularity = 1; // normal
-    float          votes = 1;
+    float          votes      = 0; // system packages have no votes
+    vector<string> licenses;
+    vector<string> makedepends;
     vector<string> depends;
+    vector<string> totaldepends;
     bool           installed = false;
     string         db_name   = "aur";
+
+    alpm_list_t   *licenses_list;
+    alpm_list_t   *depends_list;
 };
 
 class TaurBackend {

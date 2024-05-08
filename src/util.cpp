@@ -1,10 +1,93 @@
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
-#include "config.hpp"
-#include "taur.hpp"
 #include "util.hpp"
-#include <filesystem>
-#include <iostream>
+#include "config.hpp"
+#include "pacman.hpp"
+#include "taur.hpp"
+
+/** Build the `titles` array of localized titles and pad them with spaces so
+ * that they align with the longest title. Storage for strings is stack
+ * allocated and naively truncated to TITLE_MAXLEN characters.
+ */
+// function from pacman code for aligning colonums
+static void make_aligned_titles(void) {
+    unsigned int         i;
+    size_t               maxlen                                                          = 0;
+    int                  maxcol                                                          = 0;
+    static const wchar_t title_suffix[]                                                  = L" :";
+    wchar_t              wbuf[ARRAYSIZE(titles)][TITLE_MAXLEN + ARRAYSIZE(title_suffix)] = {{0}};
+    size_t               wlen[ARRAYSIZE(wbuf)];
+    int                  wcol[ARRAYSIZE(wbuf)];
+    char                *buf[ARRAYSIZE(wbuf)];
+    buf[T_ARCHITECTURE]    = _("Architecture");
+    buf[T_BACKUP_FILES]    = _("Backup Files");
+    buf[T_BUILD_DATE]      = _("Build Date");
+    buf[T_COMPRESSED_SIZE] = _("Compressed Size");
+    buf[T_CONFLICTS_WITH]  = _("Conflicts With");
+    buf[T_DEPENDS_ON]      = _("Depends On");
+    buf[T_DESCRIPTION]     = _("Description");
+    buf[T_DOWNLOAD_SIZE]   = _("Download Size");
+    buf[T_GROUPS]          = _("Groups");
+    buf[T_INSTALL_DATE]    = _("Install Date");
+    buf[T_INSTALL_REASON]  = _("Install Reason");
+    buf[T_INSTALL_SCRIPT]  = _("Install Script");
+    buf[T_INSTALLED_SIZE]  = _("Installed Size");
+    buf[T_LICENSES]        = _("Licenses");
+    buf[T_MD5_SUM]         = _("MD5 Sum");
+    buf[T_NAME]            = _("Name");
+    buf[T_OPTIONAL_DEPS]   = _("Optional Deps");
+    buf[T_OPTIONAL_FOR]    = _("Optional For");
+    buf[T_PACKAGER]        = _("Packager");
+    buf[T_PROVIDES]        = _("Provides");
+    buf[T_REPLACES]        = _("Replaces");
+    buf[T_REPOSITORY]      = _("Repository");
+    buf[T_REQUIRED_BY]     = _("Required By");
+    buf[T_SHA_256_SUM]     = _("SHA-256 Sum");
+    buf[T_SIGNATURES]      = _("Signatures");
+    buf[T_URL]             = _("URL");
+    buf[T_VALIDATED_BY]    = _("Validated By");
+    buf[T_VERSION]         = _("Version");
+
+    for (i = 0; i < ARRAYSIZE(wbuf); i++) {
+        wlen[i] = mbstowcs(wbuf[i], buf[i], strlen(buf[i]) + 1);
+        wcol[i] = wcswidth(wbuf[i], wlen[i]);
+        if (wcol[i] > maxcol) {
+            maxcol = wcol[i];
+        }
+        if (wlen[i] > maxlen) {
+            maxlen = wlen[i];
+        }
+    }
+
+    for (i = 0; i < ARRAYSIZE(wbuf); i++) {
+        size_t padlen = maxcol - wcol[i];
+        wmemset(wbuf[i] + wlen[i], L' ', padlen);
+        wmemcpy(wbuf[i] + wlen[i] + padlen, title_suffix, ARRAYSIZE(title_suffix));
+        wcstombs(titles[i], wbuf[i], sizeof(wbuf[i]));
+    }
+}
+
+/** Turn a optdepends list into a text list.
+ * @param optdeps a list with items of type alpm_depend_t
+ */
+static void optdeplist_display(alpm_pkg_t *pkg, unsigned short cols = getcols()) {
+    alpm_list_t *i, *text = NULL;
+    alpm_db_t   *localdb = alpm_get_localdb(config->handle);
+    for (i = alpm_pkg_get_optdepends(pkg); i; i = alpm_list_next(i)) {
+        alpm_depend_t *optdep    = (alpm_depend_t *)i->data;
+        char          *depstring = alpm_dep_compute_string(optdep);
+        if (alpm_pkg_get_origin(pkg) == ALPM_PKG_FROM_LOCALDB) {
+            if (alpm_find_satisfier(alpm_db_get_pkgcache(localdb), depstring)) {
+                const char *installed = _(" [installed]");
+                depstring             = (char *)realloc(depstring, strlen(depstring) + strlen(installed) + 1);
+                strcpy(depstring + strlen(depstring), installed);
+            }
+        }
+        text = alpm_list_add(text, depstring);
+    }
+    list_display_linebreak(titles[T_OPTIONAL_DEPS], text, cols);
+    FREELIST(text);
+}
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
 bool hasEnding(string_view fullString, string_view ending) {
@@ -31,7 +114,7 @@ void sanitizeStr(string& str) {
  * Used only in main() for signal()
  */
 void interruptHandler(int) {
-    log_println(LOG_WARN, "Caught CTRL-C, Exiting!");
+    log_println(WARN, "Caught CTRL-C, Exiting!");
 
     std::exit(-1);
 }
@@ -57,10 +140,11 @@ bool commitTransactionAndRelease(bool soft) {
     alpm_list_t   *addPkgs    = alpm_trans_get_add(handle);
     alpm_list_t   *removePkgs = alpm_trans_get_remove(handle);
     alpm_list_t   *combined   = alpm_list_join(addPkgs, removePkgs);
+
     if (soft && !combined)
         return true;
 
-    log_println(LOG_INFO, "Changes to be made:");
+    log_println(INFO, "Changes to be made:");
     for (alpm_list_t *addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next) {
         fmt::print(BOLD_TEXT(color.green), "    ++ ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(addPkgsClone->data)));
@@ -71,40 +155,29 @@ bool commitTransactionAndRelease(bool soft) {
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t *)(removePkgsClone->data)));
     }
 
-    fmt::print("Would you like to proceed with this transaction? [Y/n] ");
-
-    string response;
-    std::cin >> response;
-
-    ctrl_d_handler();
-
-    for (char& c : response) {
-        c = tolower(c);
-    }
-
-    if (!response.empty() && response != "y") {
+    if (!askUserYorN(true, PROMPT_YN_PROCEED_TRANSACTION)) {
         bool releaseStatus = alpm_trans_release(handle) == 0;
         if (!releaseStatus)
-            log_println(LOG_ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
+            log_println(ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
-        log_println(LOG_INFO, "Cancelled transaction.");
+        log_println(INFO, "Cancelled transaction.");
         return soft;
     }
 
     bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
     if (!prepareStatus)
-        log_println(LOG_ERROR, "Failed to prepare transaction ({}).", alpm_strerror(alpm_errno(handle)));
+        log_println(ERROR, "Failed to prepare transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
     bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
     if (!commitStatus)
-        log_println(LOG_ERROR, "Failed to commit transaction ({}).", alpm_strerror(alpm_errno(handle)));
+        log_println(ERROR, "Failed to commit transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
     bool releaseStatus = alpm_trans_release(handle) == 0;
     if (!releaseStatus)
-        log_println(LOG_ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
+        log_println(ERROR, "Failed to release transaction ({}).", alpm_strerror(alpm_errno(handle)));
 
     if (prepareStatus && commitStatus && releaseStatus) {
-        log_println(LOG_INFO, "Successfully finished transaction.");
+        log_println(INFO, "Successfully finished transaction.");
         return true;
     }
 
@@ -120,7 +193,7 @@ string expandVar(string& str) {
     if (str[0] == '~') {
         env = getenv("HOME");
         if (env == nullptr) {
-            log_println(LOG_ERROR, "$HOME enviroment variable is not set (how?)");
+            log_println(NONE, "FATAL: $HOME enviroment variable is not set (how?)");
             exit(-1);
         }
         str.replace(0, 1, string(env)); // replace ~ with the $HOME value
@@ -128,7 +201,7 @@ string expandVar(string& str) {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
         if (env == nullptr) {
-            log_println(LOG_ERROR, "No such enviroment variable: {}", str);
+            log_println(NONE, "ERROR: No such enviroment variable: {}", str);
             exit(-1);
         }
         str = string(env);
@@ -166,13 +239,13 @@ string shell_exec(string_view cmd) {
         result += buffer.data();
 
     // why there is a '\n' at the end??
-    if (!result.empty() && result[result.length()-1] == '\n')
-        result.erase(result.length()-1);
+    if (!result.empty() && result[result.length() - 1] == '\n')
+        result.erase(result.length() - 1);
     return result;
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_number(string_view s, bool allowSpace) {
+bool is_numerical(string_view s, bool allowSpace) {
     if (allowSpace)
         return !s.empty() && std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c) && (c != ' ')); }) == s.end();
     else
@@ -183,7 +256,7 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
     int pipeout[2];
 
     if (pipe(pipeout) < 0) {
-        log_println(LOG_ERROR, "pipe() failed: {}", strerror(errno));
+        log_println(ERROR, "pipe() failed: {}", strerror(errno));
         exit(127);
     }
 
@@ -206,7 +279,7 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
 
             return true;
         } else {
-            log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
+            log_println(ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
         }
@@ -219,10 +292,10 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
-        log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
+        log_println(ERROR, "An error has occurred: {}", strerror(errno));
         exit(127);
     } else {
-        log_println(LOG_ERROR, "fork() failed: {}", strerror(errno));
+        log_println(ERROR, "fork() failed: {}", strerror(errno));
 
         close(pipeout[0]);
         close(pipeout[1]);
@@ -246,17 +319,17 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
     int pid = fork();
 
     if (pid < 0) {
-        log_println(LOG_ERROR, "fork() failed: {}", strerror(errno));
+        log_println(ERROR, "fork() failed: {}", strerror(errno));
         exit(-1);
     }
 
     if (pid == 0) {
-        log_println(LOG_DEBUG, "running {}", fmt::join(cmd, " "));
+        log_println(DEBUG, "running {}", fmt::join(cmd, " "));
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
         // execvp() returns instead of exiting when failed
-        log_println(LOG_ERROR, "An error has occurred: {}", strerror(errno));
+        log_println(ERROR, "An error has occurred: {}", strerror(errno));
         exit(-1);
     } else if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
@@ -265,7 +338,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
         if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
             return true;
         else {
-            log_println(LOG_ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
+            log_println(ERROR, "Failed to execute the command: {}", fmt::join(cmd, " "));
             if (exitOnFailure)
                 exit(-1);
         }
@@ -284,6 +357,7 @@ bool makepkg_exec(string_view cmd, bool exitOnFailure) {
 
     if (config->noconfirm)
         ccmd.push_back("--noconfirm");
+
     if (!config->colors)
         ccmd.push_back("--nocolor");
 
@@ -358,11 +432,8 @@ fmt::text_style getColorFromDBName(string_view db_name) {
         return BOLD_TEXT(color.others);
 }
 
-// Takes a pkg, and index, to show. index is for show and can be set to -1 to hide.
-void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
-    if (index > -1)
-        fmt::print(fmt::fg(color.index), "[{}] ", index);
-
+// Takes a pkg to show on search.
+void printPkgInfo(TaurPkg_t& pkg, string_view db_name) {
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(BOLD, "{} ", pkg.name);
     fmt::print(BOLD_TEXT(color.version), "{} ", pkg.version);
@@ -371,6 +442,19 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
         fmt::print(fg(color.popularity), " Popularity: {:.2f} ", pkg.popularity);
         fmt::print(fg(color.votes), "Votes: {} ({}) ", pkg.votes, getTitleFromVotes(pkg.votes));
     }
+
+    if (pkg.maintainer == "\1")
+        fmt::print(BOLD_TEXT(color.orphan), "(un-maintained) ");
+
+    if (pkg.outofdate) {
+        char       *timestr      = std::ctime(&pkg.outofdate);
+        string_view timestr_view = timestr;
+        if (!timestr_view.empty()) {
+            timestr[timestr_view.length() - 1] = '\0'; // delete the last newline.
+            fmt::print(BOLD_TEXT(color.outofdate), "(Outdated: {}) ", timestr);
+        }
+    }
+
     if (pkg.installed)
         fmt::println(BOLD_TEXT(color.installed), "[Installed]");
     else
@@ -378,8 +462,30 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name, int index) {
     fmt::println("    {}", pkg.desc);
 }
 
+void printLocalFullPkgInfo(alpm_pkg_t *pkg) {
+    /* make aligned titles once only */
+    static int need_alignment = 1;
+    if (need_alignment) {
+        need_alignment = 0;
+        make_aligned_titles();
+    }
+
+    string_display(titles[T_NAME], alpm_pkg_get_name(pkg));
+    string_display(titles[T_VERSION], alpm_pkg_get_version(pkg));
+    string_display(titles[T_DESCRIPTION], alpm_pkg_get_desc(pkg));
+    string_display(titles[T_ARCHITECTURE], alpm_pkg_get_arch(pkg));
+    string_display(titles[T_URL], alpm_pkg_get_url(pkg));
+    list_display(titles[T_LICENSES], alpm_pkg_get_licenses(pkg));
+    list_display(titles[T_GROUPS], alpm_pkg_get_groups(pkg));
+    deplist_display(titles[T_PROVIDES], alpm_pkg_get_provides(pkg));
+    deplist_display(titles[T_DEPENDS_ON], alpm_pkg_get_depends(pkg));
+    optdeplist_display(pkg);
+
+    fmt::print("\n");
+}
+
 // faster than makepkg --packagelist
-string makepkg_list(string const& pkg_name, string const& path) {
+string makepkg_list(string_view pkg_name, string path) {
     string ret;
 
     string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
@@ -400,7 +506,7 @@ string makepkg_list(string const& pkg_name, string const& path) {
 
     string pkgext = shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
 
-    ret = path + "/" + pkg_name + '-' + versionInfo + '-' + arch + pkgext;
+    ret = fmt::format("{}/{}-{}-{}{}", path, pkg_name, versionInfo, arch, pkgext);
     return ret;
 }
 
@@ -412,27 +518,30 @@ string makepkg_list(string const& pkg_name, string const& path) {
 */
 optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit) {
     if (pkgs.size() == 1) {
-        return pkgs[0].url.empty() ? pkgs : vector<TaurPkg_t>({backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0])});
+        return pkgs[0].aur_url.empty() ? pkgs : vector<TaurPkg_t>({backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0])});
     } else if (pkgs.size() > 1) {
-        log_println(LOG_INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
+        log_println(INFO, "TabAUR has found multiple packages relating to your search query, Please pick one.");
         string input;
         do {
             // CTRL-D
             ctrl_d_handler();
 
             if (!input.empty())
-                log_println(LOG_WARN, "Invalid input!");
+                log_println(WARN, "Invalid input!");
 
-            for (size_t i = 0; i < pkgs.size(); i++)
-                printPkgInfo(pkgs[i], pkgs[i].db_name, i);
+            for (size_t i = 0; i < pkgs.size(); i++) {
+                fmt::print(fg(color.index), "[{}] ", i);
+                printPkgInfo(pkgs[i], pkgs[i].db_name);
+            }
 
             fmt::print("Choose a package to download: ");
             std::getline(std::cin, input);
-        } while (!is_number(input, true));
+        } while (!is_numerical(input, true));
 
         vector<string>    indices = split(input, ' ');
 
         vector<TaurPkg_t> output;
+        output.reserve(indices.size());
 
         for (size_t i = 0; i < indices.size(); i++) {
             size_t selected = std::stoi(indices[i]);
@@ -440,7 +549,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
             if (selected >= pkgs.size())
                 continue;
 
-            output.push_back(pkgs[selected].url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]));
+            output.push_back(pkgs[selected].aur_url.empty() ? pkgs[selected] : backend.fetch_pkg(pkgs[selected].name, useGit).value_or(pkgs[selected]));
         }
 
         return output;
@@ -451,7 +560,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
 
 void ctrl_d_handler() {
     if (std::cin.eof()) {
-        log_println(LOG_WARN, "Exiting due to CTRL-D");
+        log_println(WARN, "Exiting due to CTRL-D");
         exit(-1);
     }
 }
@@ -464,6 +573,7 @@ void ctrl_d_handler() {
 */
 vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse) {
     vector<alpm_pkg_t *> out;
+    out.reserve(pkgs.size());
 
     for (; syncdbs; syncdbs = syncdbs->next) {
         for (size_t i = 0; i < pkgs.size(); i++) {
@@ -476,6 +586,32 @@ vector<alpm_pkg_t *> filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncd
 
     for (size_t i = 0; i < pkgs.size(); i++)
         if (pkgs[i])
+            out.push_back(pkgs[i]);
+
+    return out;
+}
+
+/** Filters out/only AUR packages (names only).
+ * Default behavior is filtering out.
+ * @param pkgs a unique_ptr to a list of packages to filter.
+ * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
+ * @return an optional unique_ptr to a result.
+*/
+vector<string_view> filterAURPkgsNames(vector<string_view> pkgs, alpm_list_t *syncdbs, bool inverse) {
+    vector<string_view> out;
+    out.reserve(pkgs.size());
+
+    for (; syncdbs; syncdbs = syncdbs->next) {
+        for (size_t i = 0; i < pkgs.size(); i++) {
+            bool existsInSync = alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i].data()) != nullptr;
+
+            if ((existsInSync && inverse) || (!existsInSync && !inverse))
+                pkgs[i] = "";
+        }
+    }
+
+    for (size_t i = 0; i < pkgs.size(); i++)
+        if (pkgs[i].length())
             out.push_back(pkgs[i]);
 
     return out;
@@ -541,10 +677,10 @@ string getConfigDir() {
     return getHomeConfigDir() + "/TabAUR";
 }
 
-std::vector<string> split(string_view text, char delim) {
-    string              line;
-    std::vector<string> vec;
-    std::stringstream   ss(text.data());
+vector<string> split(string_view text, char delim) {
+    string            line;
+    vector<string>    vec;
+    std::stringstream ss(text.data());
     while (std::getline(ss, line, delim)) {
         vec.push_back(line);
     }

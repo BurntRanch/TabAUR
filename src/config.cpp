@@ -1,4 +1,4 @@
-#define TOML_IMPLEMENTATION
+#define TOML_HEADER_ONLY 0
 #include "config.hpp"
 #include "ini.h"
 #include "util.hpp"
@@ -28,20 +28,20 @@ void Config::init(string configFile, string themeFile) {
     bool   newUser   = false;
 
     if (!std::filesystem::exists(configDir)) {
-        log_println(LOG_NONE, "Warning: TabAUR config folder was not found, Creating folders at {}!", configDir);
+        log_println(NONE, "Warning: TabAUR config folder was not found, Creating folders at {}!", configDir);
         std::filesystem::create_directories(configDir);
 
         newUser = true;
     }
     if (!std::filesystem::exists(configFile)) {
-        log_println(LOG_NONE, "Warning: {} not found, generating new one", configFile);
+        log_println(NONE, "Warning: {} not found, generating new one", configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         ofstream f(configFile, std::ios::trunc);
         f << AUTOCONFIG;
         f.close();
     }
     if (!std::filesystem::exists(themeFile)) {
-        log_println(LOG_NONE, "Warning: {} not found, generating new one", themeFile);
+        log_println(NONE, "Warning: {} not found, generating new one", themeFile);
         ofstream f(themeFile, std::ios::trunc);
         f << AUTOTHEME;
         f.close();
@@ -52,7 +52,7 @@ void Config::init(string configFile, string themeFile) {
 
     this->initialized = true;
     if (!std::filesystem::exists(config->cacheDir)) {
-        log_println(LOG_WARN, "TabAUR cache folder was not found, Creating folders at {}!", config->cacheDir);
+        log_println(WARN, "TabAUR cache folder was not found, Creating folders at {}!", config->cacheDir);
         std::filesystem::create_directories(config->cacheDir);
     }
 
@@ -63,7 +63,7 @@ void Config::init(string configFile, string themeFile) {
                      "Even though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\n"
                      "You should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\n"
                      "This project is in no way liable for any damage done to your system as a result of AUR packages.\n"
-                     "Thank you!\n"sv);
+                     "Thank you!\n");
 }
 
 // get initialized variable
@@ -88,7 +88,7 @@ void Config::initVars() {
     this->debug         = this->getConfigValue<bool>("general.debug", true);
     this->colors        = this->getConfigValue<bool>("general.colors", true);
     this->secretRecipe  = this->getConfigValue<bool>("secret.recipe", false);
-    fmt::disable_colors = this->colors == 0;
+    fmt::disable_colors = (!this->colors);
 
     sanitizeStr(this->sudo);
     sanitizeStr(this->editorBin);
@@ -113,7 +113,7 @@ void Config::loadConfigFile(string_view filename) {
     try {
         this->tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_println(LOG_NONE, "ERROR: Parsing config file {} failed:", filename);
+        log_println(NONE, "ERROR: Parsing config file {} failed:", filename);
         std::cerr << err << std::endl;
         exit(-1);
     }
@@ -135,7 +135,7 @@ void Config::loadThemeFile(string_view filename) {
     try {
         this->theme_tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_println(LOG_ERROR, "Parsing theme file {} failed:", filename);
+        log_println(ERROR, "Parsing theme file {} failed:", filename);
         std::cerr << err << std::endl;
         exit(-1);
     }
@@ -163,23 +163,26 @@ string Config::getThemeHexValue(const string& value, const string& fallback) {
 }
 
 void Config::initColors() {
-    color.red        = this->getThemeValue("red",        "#ff2000");
-    color.green      = this->getThemeValue("green",      "#00ff00");
-    color.blue       = this->getThemeValue("blue",       "#00aaff");
-    color.cyan       = this->getThemeValue("cyan",       "#00ffff");
-    color.yellow     = this->getThemeValue("yellow",     "#ffff00");
-    color.magenta    = this->getThemeValue("magenta",    "#ff11cc");
-    color.gray       = this->getThemeValue("gray",       "#5a5a5a");
-    color.aur        = this->getThemeValue("aur",        "#00aaff");
-    color.extra      = this->getThemeValue("extra",      "#00ff00");
-    color.core       = this->getThemeValue("core",       "#ffff00");
-    color.multilib   = this->getThemeValue("multilib",   "#00ffff");
-    color.others     = this->getThemeValue("others",     "#ff11cc");
-    color.version    = this->getThemeValue("version",    "#00ff00");
-    color.popularity = this->getThemeValue("popularity", "#00ffff");
-    color.votes      = this->getThemeValue("votes",      "#00ffff");
-    color.installed  = this->getThemeValue("installed",  "#5a5a5a");
-    color.index      = this->getThemeValue("index",      "#ff11cc");
+    color.red           = this->getThemeValue("red",           "#ff2000");
+    color.green         = this->getThemeValue("green",         "#00ff00");
+    color.blue          = this->getThemeValue("blue",          "#00aaff");
+    color.cyan          = this->getThemeValue("cyan",          "#00ffff");
+    color.yellow        = this->getThemeValue("yellow",        "#ffff00");
+    color.magenta       = this->getThemeValue("magenta",       "#ff11cc");
+    color.gray          = this->getThemeValue("gray",          "#5a5a5a");
+    color.aur           = this->getThemeValue("aur",           this->getThemeHexValue("blue", "#00aaff"));
+    color.extra         = this->getThemeValue("extra",         this->getThemeHexValue("green", "#00ff00"));
+    color.core          = this->getThemeValue("core",          this->getThemeHexValue("yellow", "#ffff00"));
+    color.multilib      = this->getThemeValue("multilib",      this->getThemeHexValue("cyan", "#00ffff"));
+    color.others        = this->getThemeValue("others",        this->getThemeHexValue("magenta", "#ff11cc"));
+    color.version       = this->getThemeValue("version",       this->getThemeHexValue("green", "#00ff00"));
+    color.last_modified = this->getThemeValue("last_modified", this->getThemeHexValue("magenta", "#ff11cc"));
+    color.outofdate     = this->getThemeValue("outofdate",     this->getThemeHexValue("red", "#ff2000"));
+    color.orphan        = this->getThemeValue("orphan",        this->getThemeHexValue("red", "#ff2000"));
+    color.popularity    = this->getThemeValue("popularity",    this->getThemeHexValue("cyan", "#00ffff"));
+    color.votes         = this->getThemeValue("votes",         this->getThemeHexValue("cyan", "#00ffff"));
+    color.installed     = this->getThemeValue("installed",     this->getThemeHexValue("gray", "#5a5a5a"));
+    color.index         = this->getThemeValue("index",         this->getThemeHexValue("magenta", "#ff11cc"));
 }
 
 bool addServers(alpm_db_t *db, const string& includeFilename, string_view repoName) {
@@ -226,7 +229,7 @@ void Config::loadPacmanConfigFile(string filename) {
 
         bool serversStatus = addServers(db, ini[section.data()]["Include"], section);
         if (!serversStatus)
-            log_println(LOG_ERROR, "Failed to open mirrors file! ({})", ini[section.data()]["Include"]);
+            log_println(ERROR, "Failed to open mirrors file! ({})", ini[section.data()]["Include"]);
 
         alpm_db_set_usage(db, ALPM_DB_USAGE_ALL);
 

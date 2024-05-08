@@ -8,7 +8,7 @@ alpm_list_smart_deleter taur_targets(nullptr, free_list_and_internals);
 
 void invalid_opt(int used, string_view opt1, string_view opt2) {
     if (used)
-        log_println(LOG_ERROR, "invalid option: '{}' and '{}' may not be used together", opt1, opt2);
+        log_println(ERROR, "invalid option: '{}' and '{}' may not be used together", opt1, opt2);
 }
 
 /** Helper function for parsing operation from command-line arguments.
@@ -108,6 +108,14 @@ int parsearg_query(int opt) {
         case 'q':
             config->quiet = true;
             break;
+        case OP_SEARCH:
+        case 's':
+            op.op_q_search = 1;
+            break;
+        case OP_INFO:
+        case 'i':
+            op.op_q_info = 1;
+            break;
         default:
             return 1;
     }
@@ -118,15 +126,18 @@ int parsearg_sync(int opt) {
     switch (opt) {
         case OP_SYSUPGRADE:
         case 'u':
-            (op.op_s_upgrade)++; 
+            op.op_s_upgrade = 1; 
             break;
         case OP_REFRESH:
         case 'y':
-            (op.op_s_sync)++; 
+            op.op_s_sync = 1; 
             break;
         case OP_SEARCH:
         case 's':
             op.op_s_search = 1; 
+            break;
+        case OP_CLEANBUILD:
+            op.op_s_cleanbuild = 1;
             break;
         default:
             return 1;

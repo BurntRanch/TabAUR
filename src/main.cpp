@@ -4,6 +4,8 @@
 #include "taur.hpp"
 #include "util.hpp"
 
+#include <limits.h>
+
 using namespace std::string_view_literals;
 #define BRANCH  "libalpm-test"
 #define VERSION "0.6.4"
@@ -61,6 +63,8 @@ void test_colors() {
         .name       = "TabAUR",
         .version    = VERSION,
         .desc       = "A customizable and lightweight AUR helper, designed to be simple but powerful.",
+        .maintainer = "o",
+        .outofdate  = 1697035356,
         .popularity = 100,
         .votes      = 34,
         .installed  = true,
@@ -69,10 +73,10 @@ void test_colors() {
 
     if (fmt::disable_colors)
         fmt::println("Colors are disabled");
-    log_println(LOG_DEBUG, "Debug color: {}", fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
-    log_println(LOG_INFO, "Info color: {}", fmt::format(BOLD_TEXT(color.cyan), "(bold) cyan"));
-    log_println(LOG_WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow), "(bold) yellow"));
-    log_println(LOG_ERROR, "Error color: {}", fmt::format(BOLD_TEXT(color.red), "(bold) red"));
+    log_println(DEBUG, "Debug color: {}", fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
+    log_println(INFO, "Info color: {}", fmt::format(BOLD_TEXT(color.cyan), "(bold) cyan"));
+    log_println(WARN, "Warning color: {}", fmt::format(BOLD_TEXT(color.yellow), "(bold) yellow"));
+    log_println(ERROR, "Error color: {}", fmt::format(BOLD_TEXT(color.red), "(bold) red"));
     fmt::println(fg(color.red), "red");
     fmt::println(fg(color.blue), "blue");
     fmt::println(fg(color.yellow), "yellow");
@@ -93,25 +97,22 @@ void test_colors() {
     fmt::println(fg(color.votes), "Votes: {} ({})", pkg.votes, getTitleFromVotes(pkg.votes));
     fmt::println(fg(color.index), "index [1]");
     fmt::println(BOLD_TEXT(color.installed), "(bold) indicator [Installed]");
+    fmt::println(BOLD_TEXT(color.orphan), "(bold) (un-maintained)");
+    fmt::println(BOLD_TEXT(color.outofdate), "(bold) (Outdated: Wed Oct 11 16:42:36 2023)");
 
     fmt::println("\nexamples package search preview:");
-    printPkgInfo(pkg, pkg.db_name, 1);
+    printPkgInfo(pkg, pkg.db_name);
 }
 
 bool execPacman(int argc, char *argv[]) {
-    log_println(LOG_DEBUG, "Passing command to pacman! (argc: {:d})", argc);
+    if (argc > _POSIX_ARG_MAX)
+        throw std::invalid_argument(std::format("argc is invalid! (argc > {})", _POSIX_ARG_MAX));
 
-    if (0 > argc || argc > 512)
-        throw std::invalid_argument("argc is invalid! (512 > argc > 0)");
+    char *args[argc + 1]; // null terminator
 
-    char *args[argc + 3]; // sudo + pacman + null terminator
-
-    args[0] = _(config->sudo.c_str());
-    args[1] = _("pacman"); // The command to run as superuser (pacman)
-    for (int i = 0; i < argc; ++i) {
-        log_println(LOG_DEBUG, "args[{}] = argv[{}] ({})", i + 2, i, argv[i]);
-        args[i + 2] = argv[i];
-    }
+    args[0] = _("pacman");
+    for (int i = 1; i < argc; ++i)
+        args[i] = argv[i];
 
     args[argc + 2] = nullptr; // null-terminate the array
 
@@ -119,34 +120,96 @@ bool execPacman(int argc, char *argv[]) {
 
     // If execvp returns, it means an error occurred
     perror("execvp");
-    return false;
+    exit(1);
 }
 
 int installPkg(alpm_list_t *pkgNames) {
-    bool           useGit   = config->useGit;
-    string_view    cacheDir = config->cacheDir;
+    bool                useGit   = config->useGit;
+    string_view         cacheDir = config->cacheDir;
 
-    bool           returnStatus = true;
+    bool                returnStatus = true;
+    bool                stat;
 
-    vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
+    vector<string>      pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
+    vector<string_view> pkgNamesVec, aurPkgNamesVec;
 
-    for (; pkgNames; pkgNames = pkgNames->next) {
-        string_view       pkgName = string_view((char *)(pkgNames->data));
-        vector<TaurPkg_t> pkgs    = backend->search(pkgName, useGit, !op.op_s_search);
+    if (op.op_s_upgrade) {
+        if (!config->aurOnly) {
+            log_println(DEBUG, "Upgrading system packages!");
+            string op_s = "-Su";
 
-        if (pkgs.empty()) {
-            log_println(LOG_WARN, "No results found!");
-            returnStatus = false;
-            continue;
+            if (op.op_s_sync)
+                op_s += 'y';
+
+            pacman_exec(op_s, pacmanPkgs); // pacmanPkgs is actually empty so it will only upgrade the packages
         }
+        log_println(DEBUG, "Upgrading AUR packages!");
+        backend->update_all_aur_pkgs(cacheDir, useGit);
+    }
 
-        // ./taur -Ss -- list only, don't install.
-        if (op.op_s_search) {
+    // move them into a vector for askUserForList
+    for (; pkgNames; pkgNames = pkgNames->next)
+        pkgNamesVec.push_back((const char *)(pkgNames->data));
+
+    if (pkgNamesVec.empty()) {
+        if (op.op_s_search)
+            log_println(WARN, "Please specify a target");
+        return false;
+    }
+
+    if (op.op_s_search) {
+        for (size_t i = 0; i < pkgNamesVec.size(); i++) {
+            vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
+
+            if (pkgs.empty()) {
+                log_println(WARN, "No results found for {}!", pkgNamesVec[i]);
+                returnStatus = false;
+                continue;
+            }
+
             for (size_t i = 0; i < pkgs.size(); i++)
                 printPkgInfo(pkgs[i], pkgs[i].db_name);
-            returnStatus = false;
-            continue;
+
+            returnStatus = true;
         }
+        return returnStatus;
+    }
+
+    aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+    vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
+
+    if (!op.op_s_cleanbuild) {
+        pkgNamesToCleanBuild = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_CLEANBUILDS);
+        if (!pkgNamesToCleanBuild.empty()) {
+            for (auto& pkg_name : pkgNamesToCleanBuild) {
+                path pkgDir = path(cacheDir) / pkg_name;
+                log_println(INFO, "Removing {}", pkgDir.c_str());
+                std::filesystem::remove_all(pkgDir);
+            }
+        }
+    }
+
+    for (auto& pkg_name : aurPkgNamesVec) {
+        path pkgDir = path(cacheDir) / pkg_name;
+        stat        = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
+        if (!stat) {
+            log_println(ERROR, "Failed to download {}", pkg_name);
+            returnStatus = false;
+        }
+    }
+
+    pkgNamesToReview = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_REVIEWS);
+    if (!pkgNamesToReview.empty()) {
+        for (auto& pkg_name : pkgNamesToReview) {
+            path pkgDir = path(cacheDir) / pkg_name;
+            taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()});
+        }
+        if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
+            return false;
+    }
+
+    for (size_t i = 0; i < pkgNamesVec.size(); i++) {
+        vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
 
         optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
@@ -160,84 +223,54 @@ int installPkg(alpm_list_t *pkgNames) {
         for (size_t i = 0; i < selectedPkgs.size(); i++) {
             TaurPkg_t   pkg = selectedPkgs[i];
 
-            string_view url = pkg.url;
+            string_view url = pkg.aur_url;
 
             if (url == "") {
-                log_println(LOG_DEBUG, "Scheduled system package {} for installation!", pkg.name);
+                log_println(DEBUG, "Scheduled system package {} for installation!", pkg.name);
                 pacmanPkgs.push_back(pkg.name);
                 continue;
             }
 
             path pkgDir = path(cacheDir) / pkg.name;
 
-            bool pkgDirExists = std::filesystem::exists(pkgDir);
-
-            // nasty ahh nested if statments
-            if (useGit && pkgDirExists && std::filesystem::exists(pkgDir / ".git")) {
-                if (askUserYorN(YES, PROMPT_YN_DIFF, pkg.name))
-                    if (taur_exec({config->git.c_str(), "-C", pkgDir.c_str(), "diff", "HEAD..origin/HEAD", "--", ".", ":(exclude).SRCINFO"}))
-                        if(!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
-                            return false;
-            } else if ((!useGit || !std::filesystem::exists(pkgDir / ".git")) && pkgDirExists) {
-                // inform the user they disabled git repo support, thus diffs are not supported.
-                if (!askUserYorN(NO, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
-                    continue;
-            }
-
-            bool stat = backend->download_pkg(url, pkgDir);
-            if (!stat) {
-                log_println(LOG_ERROR, "Failed to download {}", pkg.name);
-                returnStatus = false;
-                continue;
-            }
-
-            // it wasn't there, now it is, show the user the PKGBUILD
-            if (askUserYorN(YES, PROMPT_YN_EDIT_PKGBUILD, pkg.name)) {
-                if (!taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()}, false)) {
-                    log_println(LOG_ERROR, "Failed to run {} on {}!", config->editorBin, (pkgDir / "PKGBUILD").string());
-                    continue;
-                } else if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
-                    return false;
-            }
-
-            if (!useGit) {
-                stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->build_pkg(pkg.name, pkgDir, false);
-            } else {
-                stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-                stat = backend->build_pkg(pkg.name, pkgDir, false);
-            }
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
 
             if (!stat) {
-                log_println(LOG_ERROR, "Building your package has failed.");
+                log_println(ERROR, "Installing AUR dependencies for your package has failed.");
                 returnStatus = false;
                 continue;
             }
 
-            log_println(LOG_DEBUG, "Installing {}.", pkg.name);
-            if (!pacman_exec("-U", split(built_pkg, ' '), false)) {
-                log_println(LOG_ERROR, "Failed to install {}.", pkg.name);
+            stat = backend->build_pkg(pkg.name, pkgDir, false);
+
+            if (!stat) {
+                log_println(ERROR, "Building your package has failed.");
                 returnStatus = false;
                 continue;
             }
+
+            pkgs_to_install += built_pkg + ' ';
         }
     }
 
-    if (!config->aurOnly && (op.op_s_upgrade || !pacmanPkgs.empty())) {
-        log_printf(LOG_DEBUG, "{} system packages!\n", (op.op_s_upgrade ? "Upgrading" : "Installing"));
+    if (!pacmanPkgs.empty()) {
         string op_s = "-S";
 
         if (op.op_s_sync)
-            op_s += "y";
+            op_s += 'y';
         if (op.op_s_upgrade)
-            op_s += "u";
+            op_s += 'u';
 
         pacman_exec(op_s, pacmanPkgs);
     }
 
-    if (op.op_s_upgrade) {
-        log_println(LOG_INFO, "Upgrading AUR packages");
-        return backend->update_all_aur_pkgs(cacheDir, useGit) && returnStatus;
+    if (!pkgs_to_install.empty()) {
+        log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
+        pkgs_to_install.erase(pkgs_to_install.length() - 1);
+        if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
+            log_println(ERROR, "Failed to install {}.", fmt::join(pkgNamesVec, " "));
+            returnStatus = false;
+        }
     }
 
     return returnStatus;
@@ -264,7 +297,7 @@ bool removePkg(alpm_list_t *pkgNames) {
         if (exactMatches)
             alpm_list_free(exactMatches);
         alpm_list_free(filteredPkgNames);
-        log_println(LOG_ERROR, "Searching failed, Bailing out!");
+        log_println(ERROR, "Searching failed, Bailing out!");
         return false;
     }
 
@@ -273,45 +306,43 @@ bool removePkg(alpm_list_t *pkgNames) {
     size_t ret_length = alpm_list_count(ret.get());
 
     if (ret_length == 0) {
-        log_println(LOG_ERROR, "No packages found!");
+        log_println(ERROR, "No packages found!");
         return false;
     }
 
     if (ret_length == 1)
         return backend->remove_pkg((alpm_pkg_t *)ret->data);
 
-    fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
+    vector<string_view> pkgs;
 
-    for (size_t i = 0; i < ret_length; i++) {
-        fmt::println("[{}] {}", i, alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
-    }
+    //fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
 
-    string included;
-    std::getline(std::cin, included);
-    ctrl_d_handler();
+    for (size_t i = 0; i < ret_length; i++)
+        pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(alpm_list_nth(ret.get(), i)->data)));
 
-    vector<string> includedIndexes = split(included, ' ');
+    vector<string_view> includedPkgs = askUserForList<string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
 
     alpm_list_t   *finalPackageList      = nullptr;
     alpm_list_t   *finalPackageListStart = nullptr;
 
-    if (included == "*")
-        return backend->remove_pkgs(ret);
-
-    for (size_t i = 0; i < includedIndexes.size(); i++) {
+    for (size_t i = 0; i < includedPkgs.size(); i++) {
         try {
-            size_t includedIndex = (size_t)stoi(includedIndexes[i]);
+            auto pkg = std::find(pkgs.begin(), pkgs.end(), includedPkgs[i]);
 
-            if (includedIndex >= ret_length)
+            if (pkgs.begin() >= pkg || pkg >= pkgs.end())
                 continue;
 
-            finalPackageList = alpm_list_add(finalPackageList, alpm_list_nth(ret.get(), includedIndex)->data);
+            size_t pkgIndex = std::distance(pkgs.begin(), pkg);
+
+            alpm_list_nth(ret.get(), pkgIndex);
+
+            finalPackageList = alpm_list_add(finalPackageList, alpm_list_nth(ret.get(), pkgIndex)->data);
 
             if (finalPackageList != nullptr && finalPackageListStart == nullptr)
                 finalPackageListStart = finalPackageList;
 
         } catch (std::invalid_argument const&) {
-            log_println(LOG_WARN, "Invalid argument! Assuming all.");
+            log_println(WARN, "Invalid argument! Assuming all.");
 
             if (finalPackageListStart != nullptr)
                 alpm_list_free(finalPackageListStart);
@@ -332,41 +363,136 @@ bool updateAll() {
     return backend->update_all_aur_pkgs(config->cacheDir, config->useGit);
 }
 
-bool queryPkgs() {
-    log_println(LOG_DEBUG, "AUR Only: {}", config->aurOnly);
-    alpm_list_t         *pkg;
+bool queryPkgs(alpm_list_t *pkgNames) {
+    log_println(DEBUG, "AUR Only: {}", config->aurOnly);
 
-    vector<const char *> pkgs, pkgs_ver;
-    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config->handle)); pkg; pkg = alpm_list_next(pkg)) {
-        pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
-        pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
+    // we seperate pkgs that needs to be searched, like they'll include a description, to the ones that we just wanna query out
+    // pkgs will be used for -Qs, for then using it on printPkgInfo()
+    // pkgs_name and pkgs_ver will be used for bare operations (only -Q)
+    vector<const char *> pkgs_name, pkgs_ver;
+    vector<TaurPkg_t>    pkgs;
+    alpm_db_t           *localdb = alpm_get_localdb(config->handle);
+
+    if (op.op_q_search) {
+        if (!pkgNames) {
+            alpm_list_t *pkg;
+            for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = pkg->next) {
+                pkgs.push_back({.name    = alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)),
+                                .version = alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)),
+                                .desc    = alpm_pkg_get_desc((alpm_pkg_t *)(pkg->data)),
+                                .votes   = -1}); // push back a negative votes value so we can disable it on printPkgInfo()
+            }
+        } else {
+            alpm_list_t *result = nullptr;
+            for (alpm_list_t *i = pkgNames; i; i = i->next) {
+                alpm_list_t *ret    = nullptr;
+                alpm_list_t *i_next = i->next; // save the next value, we will overwrite it.
+
+                i->next = nullptr;
+
+                if (alpm_db_search(localdb, i, &ret) != 0)
+                    return false;
+                result = alpm_list_join(result, ret);
+
+                i->next = i_next; // put it back
+            }
+            for (; result; result = result->next) {
+                pkgs.push_back({.name    = alpm_pkg_get_name((alpm_pkg_t *)(result->data)),
+                                .version = alpm_pkg_get_version((alpm_pkg_t *)(result->data)),
+                                .desc    = alpm_pkg_get_desc((alpm_pkg_t *)(result->data)),
+                                .votes   = -1});
+            }
+        }
+
+        for (size_t i = 0; i < pkgs.size(); i++)
+            printPkgInfo(pkgs[i], "local");
+
+        return true;
+    }
+
+    if (op.op_q_info) {
+        alpm_pkg_t *pkg;
+
+        if (!pkgNames) {
+            alpm_list_t *local_pkg;
+            for (local_pkg = alpm_db_get_pkgcache(localdb); local_pkg; local_pkg = local_pkg->next) {
+                pkg = (alpm_pkg_t *)(local_pkg->data);
+                printLocalFullPkgInfo(pkg);
+            }
+        } else {
+            for (alpm_list_t *i = pkgNames; i; i = i->next) {
+                const char *strname = (const char*)i->data;
+                pkg = alpm_db_get_pkg(localdb, strname);
+
+                if (pkg == nullptr)
+                    pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
+
+                // why double check the same thing? because:
+                // the 1st is to see if pkg "foo" exists, and if not, it will search for (aliases?)
+                // this one is if no aliases has been found, print the error and continue for the next target
+                if (pkg == nullptr) {
+                    log_println(ERROR, "package \"{}\" was not found", strname);
+                    continue;
+                }
+
+                printLocalFullPkgInfo(pkg);
+            }
+        }
+
+        return true;
+    }
+
+    // just -Q, no options other than --quiet and global ones
+    if (!pkgNames) {
+        alpm_list_t *pkg;
+        for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = alpm_list_next(pkg)) {
+            pkgs_name.push_back(alpm_pkg_get_name((alpm_pkg_t *)(pkg->data)));
+            pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t *)(pkg->data)));
+        }
+    } else {
+        alpm_pkg_t *pkg;
+        for (; pkgNames; pkgNames = pkgNames->next) {
+            const char *strname = (const char *)pkgNames->data;
+            pkg = alpm_db_get_pkg(localdb, strname);
+
+            if (pkg == nullptr)
+                pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
+
+            if (pkg == nullptr) {
+                log_println(ERROR, "package \"{}\" was not found", strname);
+                continue;
+            }
+
+            pkgs_name.push_back(alpm_pkg_get_name(pkg));
+            pkgs_ver.push_back(alpm_pkg_get_version(pkg));
+        }
     }
 
     if (config->aurOnly) {
         alpm_list_t *syncdbs = alpm_get_syncdbs(config->handle);
 
         if (!syncdbs) {
-            log_println(LOG_ERROR, "Failed to get syncdbs!");
+            log_println(ERROR, "Failed to get syncdbs!");
             return false;
         }
 
         for (; syncdbs; syncdbs = syncdbs->next)
-            for (size_t i = 0; i < pkgs.size(); i++)
-                if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs[i]))
-                    pkgs[i] = NULL; // wont be printed
+            for (size_t i = 0; i < pkgs_name.size(); i++)
+                if (alpm_db_get_pkg((alpm_db_t *)(syncdbs->data), pkgs_name[i]))
+                    pkgs_name[i] = NULL; // wont be printed
     }
 
     if (config->quiet) {
-        for (size_t i = 0; i < pkgs.size(); i++) {
-            if (!pkgs[i])
+        for (size_t i = 0; i < pkgs_name.size(); i++) {
+            if (!pkgs_name[i])
                 continue;
-            fmt::println("{}", pkgs[i]);
+            fmt::println("{}", pkgs_name[i]);
         }
     } else {
-        for (size_t i = 0; i < pkgs.size(); i++) {
-            if (!pkgs[i])
+        for (size_t i = 0; i < pkgs_name.size(); i++) {
+            if (!pkgs_name[i])
                 continue;
-            fmt::print(fmt::emphasis::bold, "{} ", pkgs[i]);
+            fmt::print(BOLD, "{} ", pkgs_name[i]);
             fmt::println(BOLD_TEXT(color.green), "{}", pkgs_ver[i]);
         }
     }
@@ -381,7 +507,7 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-    const char *optstring = "DFQRSTUVahqsuryt";
+    const char *optstring = "DFQRSTUVaihqsuryt";
     static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
@@ -392,7 +518,6 @@ int parseargs(int argc, char* argv[]) {
         {"deptest",    no_argument,       0, 'T'}, /* used by makepkg */
         {"upgrade",    no_argument,       0, 'U'},
         {"version",    no_argument,       0, 'V'},
-        {"aur-only",   no_argument,       0, 'a'},
         {"help",       no_argument,       0, 'h'},
         {"test-colors",no_argument,       0, 't'},
         {"recipe",     no_argument,       0, 'r'},
@@ -400,10 +525,13 @@ int parseargs(int argc, char* argv[]) {
         {"refresh",    no_argument,       0, OP_REFRESH},
         {"sysupgrade", no_argument,       0, OP_SYSUPGRADE},
         {"search",     no_argument,       0, OP_SEARCH},
+        {"info",       no_argument,       0, OP_INFO},
+        {"cleanbuild", no_argument,       0, OP_CLEANBUILD},
         {"cachedir",   required_argument, 0, OP_CACHEDIR},
         {"colors",     required_argument, 0, OP_COLORS},
         {"config",     required_argument, 0, OP_CONFIG},
         {"theme",      required_argument, 0, OP_THEME},
+        {"aur-only",   no_argument,       0, OP_AURONLY},
         {"sudo",       required_argument, 0, OP_SUDO},
         {"use-git",    required_argument, 0, OP_USEGIT},
         {"quiet",      no_argument,       0, OP_QUIET},
@@ -419,33 +547,24 @@ int parseargs(int argc, char* argv[]) {
         else if (opt == '?')
             return 1;
         parsearg_op(opt, 0);
+    }
 
-        if (op.op == 0) {
-            log_println(LOG_ERROR, "only one operation may be used at a time");
-            return 1;
-        }
+    if (op.op == OP_PACMAN) {
+        log_println(NONE, "Please use pacman for this command (may need root too)");
+        execPacman(argc, argv);
+    }
+    if (op.op == 0) {
+        log_println(NONE, "ERROR: only one operation may be used at a time");
+        return 1;
+    }
 
-        if (op.version) {
-            fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
-            exit(0);
-        }
-        if (op.help) {
-            usage(op.op);
-            exit(1);
-        }
-
-        /* parse all other options */
-        switch (op.op) {
-            case OP_SYNC:
-                result = parsearg_sync(opt);
-                break;
-            case OP_QUERY:
-                result = parsearg_query(opt);
-                break;
-            default:
-                result = 1;
-                break;
-        }
+    if (op.version) {
+        fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
+        exit(0);
+    }
+    if (op.help) {
+        usage(op.op);
+        exit(1);
     }
 
     optind = 1;
@@ -459,8 +578,22 @@ int parseargs(int argc, char* argv[]) {
         else if (parsearg_op(opt, 1) == 0)
             continue;
 
-        if (result == 0)
+        /* parse all other options */
+        switch (op.op) {
+            case OP_SYNC:
+                result = parsearg_sync(opt);
+                break;
+            case OP_QUERY:
+                result = parsearg_query(opt);
+                break;
+            default:
+                result = 1;
+                break;
+        }
+
+        if (result == 0) {
             continue;
+        }
 
         /* fall back to global options */
         result = parsearg_global(opt);
@@ -468,12 +601,12 @@ int parseargs(int argc, char* argv[]) {
             if (result == 1) {
                 /* global option parsing failed, abort */
                 if (opt < 1000) {
-                    log_println(LOG_NONE, "Error: invalid option '-{}'", (char)opt);
+                    log_println(NONE, "ERROR: invalid option '-{}'", (char)opt);
                 } else {
-                    log_println(LOG_NONE, "Error: invalid option '--{}'", opts[option_index].name);
+                    log_println(NONE, "ERROR: invalid option '--{}'", opts[option_index].name);
                 }
             }
-            return 1;
+            return result;
         }
     }
 
@@ -491,7 +624,7 @@ int parseargs(int argc, char* argv[]) {
 
 // main
 int main(int argc, char *argv[]) {
-    config         = std::make_unique<Config>();
+    config = std::make_unique<Config>();
 
     configfile = (getConfigDir() + "/config.toml");
     themefile  = (getConfigDir() + "/theme.toml");
@@ -508,8 +641,8 @@ int main(int argc, char *argv[]) {
 
     if (op.show_recipe) {
         if (config->secretRecipe) {
-            log_println(LOG_INFO, "Secret recipe unlocked!");
-            log_println(LOG_INFO, "Loading secret recipe...");
+            log_println(INFO, "Secret recipe unlocked!");
+            log_println(INFO, "Loading secret recipe...");
             for (auto const& i : secret) {
                 fmt::println("{}", i);
                 usleep(650000); // 0.65 seconds
@@ -524,10 +657,10 @@ int main(int argc, char *argv[]) {
     backend = std::make_unique<TaurBackend>(*config);
 
     if (op.requires_root && geteuid() != 0) {
-        log_println(LOG_ERROR, "You need to be root to do this.");
+        log_println(ERROR, "You need to be root to do this.");
         return 1;
     } else if (!op.requires_root && geteuid() == 0) {
-        log_println(LOG_ERROR, "You are trying to run TabAUR as root when you don't need it.");
+        log_println(ERROR, "You are trying to run TabAUR as root when you don't need it.");
         return 1;
     }
 
@@ -535,17 +668,14 @@ int main(int argc, char *argv[]) {
         case OP_SYNC:
             return installPkg(taur_targets.get()) ? 0 : 1;
         case OP_REM:
+            log_println(WARN, "the -R operation is unstable at the moment, Please use pacman. Be careful");
             return removePkg(taur_targets.get()) ? 0 : 1;
         case OP_QUERY:
-            return (queryPkgs()) ? 0 : 1;
+            return (queryPkgs(taur_targets.get())) ? 0 : 1;
         case OP_SYSUPGRADE:
             return (updateAll()) ? 0 : 1;
-        case OP_PACMAN:
-            // we are gonna use pacman to other ops than -S,-R,-Q
-            return execPacman(argc, argv);
         default:
-            log_println(LOG_ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
-            return EXIT_SUCCESS;
+            log_println(ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
     }
 
     return EXIT_SUCCESS;

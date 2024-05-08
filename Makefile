@@ -7,7 +7,7 @@ CPPFLAGS = -ggdb -pedantic -funroll-all-loops -march=native -isystem include -Wa
 
 is_cpr_installed := $(shell ldconfig -p | grep libcpr > /dev/null && echo -n yes)
 
-all: cpr fmt $(TARGET)
+all: cpr fmt toml $(TARGET)
 
 cpr:
 # let's not build cpr everytime if it's already installed
@@ -29,11 +29,16 @@ ifeq (,$(wildcard ./src/fmt/libfmt.a))
 	make -C src/fmt
 endif
 
-$(TARGET): cpr fmt ${OBJ}
-	${CXX} $(OBJ) $(CPPFLAGS) -o $@ $(LDFLAGS)
+toml:
+ifeq (,$(wildcard ./src/toml++/toml.o))
+	make -C src/toml++
+endif
+
+$(TARGET): cpr fmt toml ${OBJ}
+	${CXX} $(OBJ) src/toml++/toml.o $(CPPFLAGS) -o $@ $(LDFLAGS)
 
 clean:
 	rm -rf taur $(OBJ) cpr/build
 #	make -C src/fmt clean
 
-.PHONY: cpr $(TARGET) clean fmt all
+.PHONY: cpr $(TARGET) clean fmt toml all

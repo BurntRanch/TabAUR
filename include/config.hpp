@@ -1,12 +1,15 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
+
 #define TOML_HEADER_ONLY 0
+#define TOML_ENABLE_FORMATTERS 0
 
 #include <alpm.h>
 #include <map>
 #include <string>
 #include <string_view>
 #include <type_traits>
+
 #include "fmt/color.h"
 #include "toml++/toml.hpp"
 
@@ -41,6 +44,9 @@ struct _color_t {
     fmt::rgb multilib;
     fmt::rgb others;
     fmt::rgb version;
+    fmt::rgb last_modified;
+    fmt::rgb outofdate;
+    fmt::rgb orphan;
     fmt::rgb popularity;
     fmt::rgb votes;
     fmt::rgb installed;
@@ -96,7 +102,7 @@ class Config {
             if (overridePos != overrides.end() && overrides[value].valueType == STR)
                 return overrides[value].stringValue;
 
-        toml::optional<T> ret = this->tbl.at_path(value).value<T>();
+        std::optional<T> ret = this->tbl.at_path(value).value<T>();
         if constexpr (toml::is_string<T>) // if we want to get a value that's a string
             return ret ? expandVar(ret.value()) : expandVar(fallback);
         else
@@ -179,6 +185,9 @@ gray = "#5a5a5a"
 #others = "#ff11cc"
 
 #version = "#00ff00"
+#last_modified = "#ff11cc"
+#outofdate = "#ff2000"
+#orphan = "#ff2000"
 #popularity = "#00ffff"
 #votes = "#00ffff"
 #installed = "#5a5a5a"
