@@ -4,8 +4,6 @@
 #include "taur.hpp"
 #include "util.hpp"
 #include "pacman.hpp"
-#include <filesystem>
-#include <iostream>
 
 /** Build the `titles` array of localized titles and pad them with spaces so
  * that they align with the longest title. Storage for strings is stack
@@ -68,6 +66,29 @@ static void make_aligned_titles(void)
 		wmemcpy(wbuf[i] + wlen[i] + padlen, title_suffix, ARRAYSIZE(title_suffix));
 		wcstombs(titles[i], wbuf[i], sizeof(wbuf[i]));
 	}
+}
+
+/** Turn a optdepends list into a text list.
+ * @param optdeps a list with items of type alpm_depend_t
+ */
+static void optdeplist_display(alpm_pkg_t *pkg, unsigned short cols = getcols())
+{
+	alpm_list_t *i, *text = NULL;
+	alpm_db_t *localdb = alpm_get_localdb(config->handle);
+	for(i = alpm_pkg_get_optdepends(pkg); i; i = alpm_list_next(i)) {
+		alpm_depend_t *optdep = (alpm_depend_t *)i->data;
+		char *depstring = alpm_dep_compute_string(optdep);
+		if(alpm_pkg_get_origin(pkg) == ALPM_PKG_FROM_LOCALDB) {
+			if(alpm_find_satisfier(alpm_db_get_pkgcache(localdb), depstring)) {
+				const char *installed = _(" [installed]");
+				depstring = (char *)realloc(depstring, strlen(depstring) + strlen(installed) + 1);
+				strcpy(depstring + strlen(depstring), installed);
+			}
+		}
+		text = alpm_list_add(text, depstring);
+	}
+	list_display_linebreak(titles[T_OPTIONAL_DEPS], text, cols);
+	FREELIST(text);
 }
 
 // https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
@@ -443,9 +464,7 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name) {
     fmt::println("    {}", pkg.desc);
 }
 
-void printFullPkgInfo(TaurPkg_t& pkg) {
-    u_short cols = getcols();
-
+void printLocalFullPkgInfo(alpm_pkg_t *pkg) {
     /* make aligned titles once only */
     static int need_alignment = 1;
     if(need_alignment) {
@@ -453,15 +472,19 @@ void printFullPkgInfo(TaurPkg_t& pkg) {
 	make_aligned_titles();
     }
 
-    string_display(titles[T_NAME], pkg.name, cols);
-    string_display(titles[T_VERSION], pkg.version, cols);
-    string_display(titles[T_DESCRIPTION], pkg.desc, cols);
-    string_display(titles[T_ARCHITECTURE], pkg.arch, cols);
-    list_display(titles[T_LICENSES], pkg.licenses_list, cols);
-    deplist_display(titles[T_DEPENDS_ON], pkg.depends_list, cols);
+    string_display(titles[T_NAME], alpm_pkg_get_name(pkg));
+    string_display(titles[T_VERSION], alpm_pkg_get_version(pkg));
+    string_display(titles[T_DESCRIPTION], alpm_pkg_get_desc(pkg));
+    string_display(titles[T_ARCHITECTURE], alpm_pkg_get_arch(pkg));
+    string_display(titles[T_URL], alpm_pkg_get_url(pkg));
+    list_display(titles[T_LICENSES], alpm_pkg_get_licenses(pkg));
+    list_display(titles[T_GROUPS], alpm_pkg_get_groups(pkg));
+    deplist_display(titles[T_PROVIDES], alpm_pkg_get_provides(pkg));
+    deplist_display(titles[T_DEPENDS_ON], alpm_pkg_get_depends(pkg));
+    optdeplist_display(pkg);
+
 
     fmt::print("\n");
-
 }
 
 // faster than makepkg --packagelist

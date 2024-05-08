@@ -3,7 +3,6 @@
 #include "taur.hpp"
 #include "config.hpp"
 #include "util.hpp"
-#include <alpm.h>
 #include <filesystem>
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}

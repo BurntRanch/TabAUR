@@ -27,7 +27,10 @@ class TaurBackend;
 
 #define BOLD                             fmt::emphasis::bold
 #define BOLD_TEXT(x)                     (fmt::emphasis::bold | fmt::fg(x))
-#define NOCOLOR       "\033[0m"
+#define NOCOLOR                          "\033[0m"
+#define AUR_URL                          "https://aur.archlinux.org"
+#define AUR_URL_GIT(x)                   fmt::format("https://aur.archlinux.org/{}.git", x)
+#define AUR_URL_TAR(x)                   fmt::format("https://aur.archlinux.org/cgit/aur.git/snapshot/{}.tar.gz", x)
 
 #define alpm_list_smart_pointer          unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
 #define make_list_smart_pointer(pointer) (unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
@@ -75,7 +78,7 @@ void                             sanitizeStr(string& str);
 bool                             is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
 bool                             commitTransactionAndRelease(bool soft = false);
 void                             printPkgInfo(TaurPkg_t& pkg, string_view db_name);
-void                             printFullPkgInfo(TaurPkg_t& pkg);
+void                             printLocalFullPkgInfo(alpm_pkg_t *pkg);
 string                           makepkg_list(string_view pkg_name, string path);
 void                             free_list_and_internals(alpm_list_t *list);
 fmt::text_style                  getColorFromDBName(string_view db_name);
@@ -269,7 +272,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
 vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false) {
     
-    string sep_str = "Type the index of each package (eg: \"0 1 2\", \"0-2\", \"*\" for all, \"n\" for none)";
+    string sep_str = "Type the index of each package (eg: \"0 1 2\", \"0-2\", \"a\" for all, \"n\" or enter for none)";
     string result_str;
 
     for (size_t i = 0; i < list.size(); i++)
@@ -305,7 +308,7 @@ vector<T> askUserForList(vector<T> &list, prompt_list pr, bool required = false)
             return {};
         }
 
-        if (result_str == "*")
+        if (result_str == "a")
             return list;
 
         vector<string> input_indices = split(result_str, ' ');

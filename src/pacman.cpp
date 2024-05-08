@@ -105,6 +105,35 @@ static size_t string_length(const char *s)
 	return len;
 }
 
+void list_display_linebreak(const char *title, const alpm_list_t *list,
+		unsigned short maxcols)
+{
+	unsigned short len = 0;
+
+	if(title) {
+		len = (unsigned short)string_length(title) + 1;
+                fmt::print(BOLD, "{}{} ", title, NOCOLOR);
+	}
+
+	if(!list) {
+		printf("%s\n", _("None"));
+	} else {
+		const alpm_list_t *i;
+		/* Print the first element */
+		indentprint((const char *)list->data, len, maxcols);
+		printf("\n");
+		/* Print the rest */
+		for(i = alpm_list_next(list); i; i = alpm_list_next(i)) {
+			size_t j;
+			for(j = 1; j <= len; j++) {
+				printf(" ");
+			}
+			indentprint((const char *)i->data, len, maxcols);
+			printf("\n");
+		}
+	}
+}
+
 /* output a string, but wrap words properly with a specified indentation
  */
 void indentprint(const char *str, unsigned short indent, unsigned short cols)

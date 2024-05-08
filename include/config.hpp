@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+
 #include "fmt/color.h"
 #include "toml++/toml.hpp"
 

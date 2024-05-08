@@ -128,6 +128,7 @@ int installPkg(alpm_list_t *pkgNames) {
     string_view    cacheDir = config->cacheDir;
 
     bool           returnStatus = true;
+    bool           stat;
 
     vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
     vector<string_view> pkgNamesVec, aurPkgNamesVec;
@@ -142,50 +143,75 @@ int installPkg(alpm_list_t *pkgNames) {
         
             pacman_exec(op_s, pacmanPkgs); // pacmanPkgs is actually empty so it will only upgrade the packages
         }
-
+        log_println(DEBUG, "Upgrading AUR packages!");
         backend->update_all_aur_pkgs(cacheDir, useGit);
     }
 
+    
     // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next)
-        pkgNamesVec.push_back((char *)(pkgNames->data));
+        pkgNamesVec.push_back((const char *)(pkgNames->data));
     
-    if (pkgNamesVec.empty())
+    if (pkgNamesVec.empty()) {
+        if (op.op_s_search)
+            log_println(WARN, "Please specify a target");
         return false;
-
-    aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
-
-    vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
-
-    if (!op.op_s_search) {
-        if (!op.op_s_cleanbuild)
-            pkgNamesToCleanBuild = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_CLEANBUILDS);
-        else
-            pkgNamesToCleanBuild = {};
-
-        pkgNamesToReview = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_REVIEWS);
     }
     
-    for (size_t i = 0; i < pkgNamesVec.size(); i++) {
-        string_view       pkgName = pkgNamesVec[i];
-        bool           cleanBuild = op.op_s_cleanbuild ? true : std::find(pkgNamesToCleanBuild.begin(), pkgNamesToCleanBuild.end(), pkgName) != pkgNamesToCleanBuild.end();
-        bool               review = std::find(pkgNamesToReview.begin(), pkgNamesToReview.end(), pkgName) != pkgNamesToReview.end();
-        vector<TaurPkg_t> pkgs    = backend->search(pkgName, useGit, !op.op_s_search);
+    if (op.op_s_search) {
+        for(size_t i = 0; i < pkgNamesVec.size(); i++) {
+            vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
 
-        if (pkgs.empty()) {
-            log_println(WARN, "No results found!");
-            returnStatus = false;
-            continue;
-        }
+            if (pkgs.empty()) {
+                log_println(WARN, "No results found for {}!", pkgNamesVec[i]);
+                returnStatus = false;
+                continue;
+            }
 
-        // ./taur -Ss -- list only, don't install.
-        if (op.op_s_search) {
             for (size_t i = 0; i < pkgs.size(); i++)
                 printPkgInfo(pkgs[i], pkgs[i].db_name);
+            
             returnStatus = true;
-            continue;
         }
+        return returnStatus;
+    }
 
+    aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+    vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
+
+    if (!op.op_s_cleanbuild) {
+        pkgNamesToCleanBuild = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_CLEANBUILDS);
+        if (!pkgNamesToCleanBuild.empty()) {
+            for(auto& pkg_name : pkgNamesToCleanBuild) {
+                path pkgDir = path(cacheDir) / pkg_name;
+                log_println(INFO, "Removing {}", pkgDir.c_str());
+                std::filesystem::remove_all(pkgDir);
+            }
+        }
+    }
+
+    for (auto& pkg_name : aurPkgNamesVec) {
+        path pkgDir = path(cacheDir) / pkg_name;
+        stat = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
+        if (!stat) {
+            log_println(ERROR, "Failed to download {}", pkg_name);
+            returnStatus = false;
+        }
+    }
+
+    pkgNamesToReview = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_REVIEWS);
+    if (!pkgNamesToReview.empty()) {
+        for (auto& pkg_name : pkgNamesToReview) {
+            path pkgDir = path(cacheDir) / pkg_name;
+            taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()});
+        }
+        if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
+            return false;
+    }
+
+    for (size_t i = 0; i < pkgNamesVec.size(); i++) {
+        vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
+        
         optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
         if (!oSelectedPkgs) {
@@ -208,44 +234,6 @@ int installPkg(alpm_list_t *pkgNames) {
 
             path pkgDir = path(cacheDir) / pkg.name;
 
-            if (cleanBuild)
-                std::filesystem::remove_all(pkgDir);
-
-            bool pkgDirExists = std::filesystem::exists(pkgDir);
-
-            // nasty ahh nested if statements
-            // if the user is using git, and the package exists, and is a git repo.
-            if (useGit && pkgDirExists && std::filesystem::exists(pkgDir / ".git")
-            // then ask the user if they want to see the diff
-             && (review || askUserYorN(YES, PROMPT_YN_DIFF, pkg.name))
-            // then show them the actual diff
-             && taur_exec({config->git.c_str(), "-C", pkgDir.c_str(), "diff", "HEAD..origin/HEAD", "--", ".", ":(exclude).SRCINFO"})
-            // they don't like what they saw? oh.
-             && !askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL)) {
-            // return false then.
-                return false;
-            } else if ((!useGit || !std::filesystem::exists(pkgDir / ".git")) && pkgDirExists) {
-                // inform the user they disabled git repo support, thus diffs are not supported.
-                if (!askUserYorN(NO, PROMPT_YN_CONTINUE_WITHOUT_DIFF, pkg.name))
-                    continue;
-            }
-
-            bool stat = backend->download_pkg(url, pkgDir);
-            if (!stat) {
-                log_println(ERROR, "Failed to download {}", pkg.name);
-                returnStatus = false;
-                continue;
-            }
-
-            // it wasn't there, now it is, show the user the PKGBUILD
-            if (review || askUserYorN(YES, PROMPT_YN_EDIT_PKGBUILD, pkg.name)) {
-                if (!taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()}, false)) {
-                    log_println(ERROR, "Failed to run {} on {}!", config->editorBin, (pkgDir / "PKGBUILD").string());
-                    continue;
-                } else if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
-                    return false;
-            }
-
             stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
 
             if (!stat) {
@@ -261,12 +249,10 @@ int installPkg(alpm_list_t *pkgNames) {
                 returnStatus = false;
                 continue;
             }
+
             pkgs_to_install += built_pkg + ' ';
         }
     }
-    
-    if (op.op_s_search) // we already searched the package and printed the infos
-        return returnStatus;
     
     if (!pkgs_to_install.empty()) {
         log_println(DEBUG, "Installing {}", fmt::join(pkgNamesVec, " "));
@@ -434,16 +420,7 @@ bool queryPkgs(alpm_list_t *pkgNames) {
             alpm_list_t *local_pkg;
             for (local_pkg = alpm_db_get_pkgcache(localdb); local_pkg; local_pkg = local_pkg->next) {
                 pkg = (alpm_pkg_t *)(local_pkg->data);
-
-                pkgs.push_back({
-                    .name = alpm_pkg_get_name(pkg),
-                    .version = alpm_pkg_get_version(pkg),
-                    .url = alpm_pkg_get_url(pkg),
-                    .desc = alpm_pkg_get_desc(pkg),
-                    .arch = alpm_pkg_get_arch(pkg),
-                    .licenses_list = alpm_pkg_get_licenses(pkg),
-                    .depends_list = alpm_pkg_get_depends(pkg)
-                });
+                printLocalFullPkgInfo(pkg);
             }
         } else {
             for (alpm_list_t *i = pkgNames; i; i = i->next) {
@@ -461,20 +438,9 @@ bool queryPkgs(alpm_list_t *pkgNames) {
                     continue;
                 }
             
-                pkgs.push_back({
-                    .name = alpm_pkg_get_name(pkg),
-                    .version = alpm_pkg_get_version(pkg),
-                    .url = alpm_pkg_get_url(pkg),
-                    .desc = alpm_pkg_get_desc(pkg),
-                    .arch = alpm_pkg_get_arch(pkg),
-                    .licenses_list = alpm_pkg_get_licenses(pkg),
-                    .depends_list = alpm_pkg_get_depends(pkg)
-                });
+                printLocalFullPkgInfo(pkg);
             }
         }
-
-        for (size_t i = 0; i < pkgs.size(); i++)
-            printFullPkgInfo(pkgs[i]);
 
         return true;
     }
