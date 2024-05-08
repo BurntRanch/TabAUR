@@ -1,6 +1,8 @@
 #ifndef CONFIG_HPP
 #define CONFIG_HPP
+
 #define TOML_HEADER_ONLY 0
+#define TOML_ENABLE_FORMATTERS 0
 
 #include <alpm.h>
 #include <map>
@@ -100,7 +102,7 @@ class Config {
             if (overridePos != overrides.end() && overrides[value].valueType == STR)
                 return overrides[value].stringValue;
 
-        toml::optional<T> ret = this->tbl.at_path(value).value<T>();
+        std::optional<T> ret = this->tbl.at_path(value).value<T>();
         if constexpr (toml::is_string<T>) // if we want to get a value that's a string
             return ret ? expandVar(ret.value()) : expandVar(fallback);
         else
