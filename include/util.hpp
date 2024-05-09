@@ -20,8 +20,16 @@ using std::string_view;
 using std::vector;
 using std::unique_ptr;
 
-// taken from pacman
-#define _(str) (char *)str
+#ifdef ENABLE_NLS
+/* here so it doesn't need to be included elsewhere */
+#include <libintl.h> 
+#include <locale.h>
+/* define _() as shortcut for gettext() */
+#define _(str) gettext(str)
+#else
+#define _(s) (char *)s
+#endif
+
 struct TaurPkg_t;
 class TaurBackend;
 
@@ -121,7 +129,7 @@ template <typename T>
 constexpr bool is_fmt_convertible_v = is_fmt_convertible<T>::value;
 
 template <typename... Args>
-void log_println(log_level log, const fmt::text_style& ts, std::string_view fmt, Args&&... args) {
+void log_println(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
     switch (log) {
         case ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: ");
@@ -137,64 +145,29 @@ void log_println(log_level log, const fmt::text_style& ts, std::string_view fmt,
                 return;
             fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
             break;
-        case NONE:
         default:
             break;
     }
-    // I don't want to add a '\n' each time i'm writing a log_printf(), I just forget it all the time
-    fmt::println(ts, fmt::runtime(fmt), std::forward<Args>(args)...);
+    fmt::println(ts, fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_println(log_level log, std::string_view fmt, Args&&... args) {
-    switch (log) {
-        case ERROR:
-            fmt::print(BOLD_TEXT(color.red), "ERROR: ");
-            break;
-        case WARN:
-            fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
-            break;
-        case INFO:
-            fmt::print(BOLD_TEXT(color.cyan), "Info: ");
-            break;
-        case DEBUG:
-            if (!config->debug)
-                return;
-            fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
-            break;
-        case NONE:
-        default:
-            break;
-    }
-    fmt::println(fmt::runtime(fmt), std::forward<Args>(args)...);
+void log_println(log_level log, fmt::runtime_format_string<> fmt, Args&&... args) {
+    log_println(log, fmt::text_style(), fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_printf(log_level log, std::string_view fmt, Args&&... args) {
-    switch (log) {
-        case ERROR:
-            fmt::print(BOLD_TEXT(color.red), "ERROR: ");
-            break;
-        case WARN:
-            fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
-            break;
-        case INFO:
-            fmt::print(BOLD_TEXT(color.cyan), "Info: ");
-            break;
-        case DEBUG:
-            if (!config->debug)
-                return;
-            fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
-            break;
-        case NONE:
-        default:
-            break;
-    }
-    fmt::print(fmt::runtime(fmt), std::forward<Args>(args)...);
+void log_println(log_level log, string_view fmt, Args&&... args) {
+    log_println(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_printf(log_level log, const fmt::text_style& ts, std::string_view fmt, Args&&... args) {
+void log_println(log_level log, const fmt::text_style ts, string_view fmt, Args&&... args) {
+    log_println(log, ts, fmt, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_printf(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
     switch (log) {
         case ERROR:
             fmt::print(BOLD_TEXT(color.red), "ERROR: ");
@@ -210,11 +183,25 @@ void log_printf(log_level log, const fmt::text_style& ts, std::string_view fmt, 
                 return;
             fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
             break;
-        case NONE:
         default:
             break;
     }
-    fmt::print(ts, fmt::runtime(fmt), std::forward<Args>(args)...);
+    fmt::print(ts, fmt, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_printf(log_level log, fmt::runtime_format_string<> fmt, Args&&... args) {
+    log_printf(log, fmt::text_style(), fmt, std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_printf(log_level log, string_view fmt, Args&&... args) {
+    log_printf(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_printf(log_level log, const fmt::text_style ts, string_view fmt, Args&&... args) {
+    log_printf(log, ts, fmt, std::forward<Args>(args)...);
 }
 
 /** Ask the user a yes or no question.

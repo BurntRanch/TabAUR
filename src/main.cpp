@@ -110,7 +110,7 @@ bool execPacman(int argc, char *argv[]) {
 
     char *args[argc + 1]; // null terminator
 
-    args[0] = _("pacman");
+    args[0] = (char*)"pacman";
     for (int i = 1; i < argc; ++i)
         args[i] = argv[i];
 
@@ -500,6 +500,23 @@ bool queryPkgs(alpm_list_t *pkgNames) {
     return true;
 }
 
+/** Sets up gettext localization. Safe to call multiple times.
+ */
+/* Inspired by the monotone function localize_monotone. */
+#if defined(ENABLE_NLS)
+static void localize(void)
+{
+	static int init = 0;
+	if(!init) {
+		setlocale(LC_ALL, "");
+		bindtextdomain("taur", "/home/toni/TabAUR/po");
+		textdomain("taur");
+		init = 1;
+	}
+}
+#endif
+
+// function taken from pacman
 int parseargs(int argc, char* argv[]) {
     // default
     op.op = OP_MAIN;
@@ -554,7 +571,7 @@ int parseargs(int argc, char* argv[]) {
         execPacman(argc, argv);
     }
     if (op.op == 0) {
-        log_println(NONE, "ERROR: only one operation may be used at a time");
+        log_println(NONE, _("ERROR: only one operation may be used at a time"));
         return 1;
     }
 
@@ -603,7 +620,7 @@ int parseargs(int argc, char* argv[]) {
                 if (opt < 1000) {
                     log_println(NONE, "ERROR: invalid option '-{}'", (char)opt);
                 } else {
-                    log_println(NONE, "ERROR: invalid option '--{}'", opts[option_index].name);
+                    log_println(NONE, _("ERROR: invalid option '--{}'"), opts[option_index].name);
                 }
             }
             return result;
@@ -625,7 +642,11 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char *argv[]) {
     config = std::make_unique<Config>();
-
+    
+#if defined(ENABLE_NLS)
+    localize();
+#endif
+    
     configfile = (getConfigDir() + "/config.toml");
     themefile  = (getConfigDir() + "/theme.toml");
 

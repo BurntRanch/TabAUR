@@ -1,0 +1,168 @@
+# Italian translations for PACKAGE package.
+# Copyright (C) 2024 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# Automatically generated, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: taur v0.6.4\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-05-09 18:05+0200\n"
+"PO-Revision-Date: 2024-05-09 18:05+0200\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ASCII\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: src/config.cpp:31
+#, c++-format
+msgid "Warning: TabAUR config folder was not found, Creating folders at {}!"
+msgstr ""
+
+#: src/config.cpp:37
+#, c++-format
+msgid "Warning: {} not found, generating new one"
+msgstr ""
+
+#: src/main.cpp:576
+msgid "ERROR: only one operation may be used at a time"
+msgstr ""
+
+#: src/main.cpp:625
+#, c++-format
+msgid "ERROR: invalid option '--{}'"
+msgstr ""
+
+#: src/main.cpp:701
+#, c++-format
+msgid "no operation specified (use {} -h for help)"
+msgstr "nessuna operation, spariti con un bel {} -h lolo"
+
+#: src/pacman.cpp:115 src/pacman.cpp:200 src/pacman.cpp:219
+#, c-format
+msgid "None"
+msgstr ""
+
+#: src/util.cpp:22
+msgid "Architecture"
+msgstr ""
+
+#: src/util.cpp:23
+msgid "Backup Files"
+msgstr ""
+
+#: src/util.cpp:24
+msgid "Build Date"
+msgstr ""
+
+#: src/util.cpp:25
+msgid "Compressed Size"
+msgstr ""
+
+#: src/util.cpp:26
+msgid "Conflicts With"
+msgstr ""
+
+#: src/util.cpp:27
+msgid "Depends On"
+msgstr ""
+
+#: src/util.cpp:28
+msgid "Description"
+msgstr ""
+
+#: src/util.cpp:29
+msgid "Download Size"
+msgstr ""
+
+#: src/util.cpp:30
+msgid "Groups"
+msgstr ""
+
+#: src/util.cpp:31
+msgid "Install Date"
+msgstr ""
+
+#: src/util.cpp:32
+msgid "Install Reason"
+msgstr ""
+
+#: src/util.cpp:33
+msgid "Install Script"
+msgstr ""
+
+#: src/util.cpp:34
+msgid "Installed Size"
+msgstr ""
+
+#: src/util.cpp:35
+msgid "Licenses"
+msgstr ""
+
+#: src/util.cpp:36
+msgid "MD5 Sum"
+msgstr ""
+
+#: src/util.cpp:37
+msgid "Name"
+msgstr ""
+
+#: src/util.cpp:38
+msgid "Optional Deps"
+msgstr ""
+
+#: src/util.cpp:39
+msgid "Optional For"
+msgstr ""
+
+#: src/util.cpp:40
+msgid "Packager"
+msgstr ""
+
+#: src/util.cpp:41
+msgid "Provides"
+msgstr ""
+
+#: src/util.cpp:42
+msgid "Replaces"
+msgstr ""
+
+#: src/util.cpp:43
+msgid "Repository"
+msgstr ""
+
+#: src/util.cpp:44
+msgid "Required By"
+msgstr ""
+
+#: src/util.cpp:45
+msgid "SHA-256 Sum"
+msgstr ""
+
+#: src/util.cpp:46
+msgid "Signatures"
+msgstr ""
+
+#: src/util.cpp:47
+msgid "URL"
+msgstr ""
+
+#: src/util.cpp:48
+msgid "Validated By"
+msgstr ""
+
+#: src/util.cpp:49
+msgid "Version"
+msgstr ""
+
+#: src/util.cpp:81
+msgid " [installed]"
+msgstr ""
+
+#: src/util.cpp:204
+#, c++-format
+msgid "ERROR: No such enviroment variable: {}"
+msgstr "ERRORE::: nessuna variante troavte, sicuro sia questa: {}?"
