@@ -132,13 +132,13 @@ template <typename... Args>
 void log_println(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
     switch (log) {
         case ERROR:
-            fmt::print(BOLD_TEXT(color.red), "ERROR: ");
+            fmt::print(BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
             break;
         case WARN:
-            fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
+            fmt::print(BOLD_TEXT(color.yellow), fmt::runtime(_("Warning: ")));
             break;
         case INFO:
-            fmt::print(BOLD_TEXT(color.cyan), "Info: ");
+            fmt::print(BOLD_TEXT(color.cyan), fmt::runtime(_("Info: ")));
             break;
         case DEBUG:
             if (!config->debug)
@@ -170,13 +170,13 @@ template <typename... Args>
 void log_printf(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
     switch (log) {
         case ERROR:
-            fmt::print(BOLD_TEXT(color.red), "ERROR: ");
+            fmt::print(BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
             break;
         case WARN:
-            fmt::print(BOLD_TEXT(color.yellow), "Warning: ");
+            fmt::print(BOLD_TEXT(color.yellow), fmt::runtime(_("Warning: ")));
             break;
         case INFO:
-            fmt::print(BOLD_TEXT(color.cyan), "Info: ");
+            fmt::print(BOLD_TEXT(color.cyan), fmt::runtime(_("Info: ")));
             break;
         case DEBUG:
             if (!config->debug)
@@ -217,24 +217,24 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
 
     switch (pr) {
         case PROMPT_YN_DIFF:
-            log_printf(INFO, BOLD, "View the diffs for {}? {}", std::forward<Args>(args)..., inputs_str);
+            log_printf(INFO, BOLD, _("View the diffs for {}? {}"), std::forward<Args>(args)..., inputs_str);
             NOCONFIRM(NO);
             break;
         case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
-            log_printf(WARN, BOLD, "With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), continue with the installation anyway? {}",
+            log_printf(WARN, BOLD, _("With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), continue with the installation anyway? {}"),
                        inputs_str);
             NOCONFIRM(YES);
             break;
         case PROMPT_YN_EDIT_PKGBUILD:
-            log_printf(INFO, BOLD, "Review PKGBUILD for {}? {}", std::forward<Args>(args)..., inputs_str);
+            log_printf(INFO, BOLD, _("Review PKGBUILD for {}? {}"), std::forward<Args>(args)..., inputs_str);
             NOCONFIRM(NO);
             break;
         case PROMPT_YN_PROCEED_INSTALL:
-            log_printf(INFO, BOLD, "Proceed with the installation? {}", inputs_str);
+            log_printf(INFO, BOLD, _("Proceed with the installation? {}"), inputs_str);
             NOCONFIRM(YES);
             break;
         case PROMPT_YN_PROCEED_TRANSACTION:
-            log_printf(INFO, BOLD, "Would you like to proceed with this transaction? {}", inputs_str);
+            log_printf(INFO, BOLD, _("Would you like to proceed with this transaction? {}"), inputs_str);
             NOCONFIRM(YES);
             break;
         default:
@@ -244,7 +244,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
     //std::cin.sync();
     // while the getline function works, and the result is not 1 character long, keep reminding the user.
     while (std::getline(std::cin, result) && (result.length() > 1))
-        log_printf(WARN, "Please provide a valid response {}", inputs_str);
+        log_printf(WARN, _("Please provide a valid response {}"), inputs_str);
 
     ctrl_d_handler();
 
@@ -266,25 +266,25 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
 vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false) {
 
-    string sep_str = "Type the index of each package (eg: \"0 1 2\", \"0-2\", \"a\" for all, \"n\" or enter for none)";
+    string sep_str = _("Type the index of each package (eg: \"0 1 2\", \"0-2\", \"a\" for all, \"n\" or enter for none)");
     string result_str;
 
     for (size_t i = 0; i < list.size(); i++)
         fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD_TEXT(fmt::color::white), "{}", list[i]));
 
-    log_println(INFO, "{}", sep_str);
+    log_println(INFO, _("{}"), sep_str);
 
     switch (pr) {
         case PROMPT_LIST_CLEANBUILDS:
-            log_printf(INFO, BOLD, "Packages to completely rebuild: ");
+            log_printf(INFO, BOLD, _("Packages to completely rebuild: "));
             NOCONFIRMREQ({});
             break;
         case PROMPT_LIST_REVIEWS:
-            log_printf(INFO, BOLD, "Packages you'd like to review: ");
+            log_printf(INFO, BOLD, _("Packages you'd like to review: "));
             NOCONFIRMREQ({});
             break;
         case PROMPT_LIST_REMOVE_PKGS:
-            log_printf(INFO, BOLD, "Packages you'd like to remove: ");
+            log_printf(INFO, BOLD, _("Packages you'd like to remove: "));
             NOCONFIRMREQ({});
             break;
         default:
@@ -314,7 +314,7 @@ vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false)
             if (input_indices[i].find('-') != string::npos) {
                 vector<string> loop_bounds = split(input_indices[i], '-');
                 if (loop_bounds.size() != 2 || !is_numerical(loop_bounds[0]) || !is_numerical(loop_bounds[1])) {
-                    log_printf(WARN, "Invalid loop range! (loop ranges look like \"0-5\"): ");
+                    log_printf(WARN, _("Invalid loop range! (loop ranges look like \"0-5\"): "));
                     breakandcontinue = true;
                     break;
                 }
@@ -323,7 +323,7 @@ vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false)
                 int higherbound = std::stoi(loop_bounds[1]);
 
                 if ((0 > lowerbound || lowerbound > list.size()) || (lowerbound > higherbound || higherbound >= list.size())) {
-                    log_printf(WARN, "Invalid loop range! (loop ranges must stay in bounds and in order): ");
+                    log_printf(WARN, _("Invalid loop range! (loop ranges must stay in bounds and in order): "));
                     breakandcontinue = true;
                     break;
                 }
@@ -343,7 +343,7 @@ vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false)
 
             int index = std::stoi(input_indices[i]);
             if (0 > index || index >= list.size()) {
-                log_println(WARN, "Invalid index! Ignoring index #{}.", input_indices[i]);
+                log_println(WARN, _("Invalid index! Ignoring index #{}."), input_indices[i]);
                 continue;
             }
             result.push_back(list[index]);
