@@ -129,7 +129,7 @@ template <typename T>
 constexpr bool is_fmt_convertible_v = is_fmt_convertible<T>::value;
 
 template <typename... Args>
-void log_println(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
+void _log_println(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
     switch (log) {
         case ERROR:
             fmt::print(BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
@@ -152,22 +152,27 @@ void log_println(log_level log, const fmt::text_style ts, fmt::runtime_format_st
 }
 
 template <typename... Args>
-void log_println(log_level log, fmt::runtime_format_string<> fmt, Args&&... args) {
-    log_println(log, fmt::text_style(), fmt, std::forward<Args>(args)...);
+void log_println(log_level log, const char *fmt, Args&&... args) {
+    _log_println(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void log_println(log_level log, string_view fmt, Args&&... args) {
-    log_println(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
+    _log_println(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void log_println(log_level log, const fmt::text_style ts, string_view fmt, Args&&... args) {
-    log_println(log, ts, fmt, std::forward<Args>(args)...);
+    _log_println(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_printf(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
+void log_println(log_level log, const fmt::text_style ts, const char *fmt, Args&&... args) {
+    _log_println(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void _log_printf(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
     switch (log) {
         case ERROR:
             fmt::print(BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
@@ -190,18 +195,23 @@ void log_printf(log_level log, const fmt::text_style ts, fmt::runtime_format_str
 }
 
 template <typename... Args>
-void log_printf(log_level log, fmt::runtime_format_string<> fmt, Args&&... args) {
-    log_printf(log, fmt::text_style(), fmt, std::forward<Args>(args)...);
+void log_printf(log_level log, const char *fmt, Args&&... args) {
+    _log_printf(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void log_printf(log_level log, string_view fmt, Args&&... args) {
-    log_printf(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
+    _log_printf(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
 void log_printf(log_level log, const fmt::text_style ts, string_view fmt, Args&&... args) {
-    log_printf(log, ts, fmt, std::forward<Args>(args)...);
+    _log_printf(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
+}
+
+template <typename... Args>
+void log_printf(log_level log, const fmt::text_style ts, const char *fmt, Args&&... args) {
+    _log_printf(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 /** Ask the user a yes or no question.

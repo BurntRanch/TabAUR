@@ -177,35 +177,37 @@ int installPkg(alpm_list_t *pkgNames) {
 
     aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
     vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
-
-    if (!op.op_s_cleanbuild) {
-        pkgNamesToCleanBuild = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_CLEANBUILDS);
-        if (!pkgNamesToCleanBuild.empty()) {
-            for (auto& pkg_name : pkgNamesToCleanBuild) {
-                path pkgDir = path(cacheDir) / pkg_name;
-                log_println(INFO, _("Removing {}"), pkgDir.c_str());
-                std::filesystem::remove_all(pkgDir);
+    
+    if (!aurPkgNamesVec.empty()) {
+        if (!op.op_s_cleanbuild) {
+            pkgNamesToCleanBuild = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_CLEANBUILDS);
+            if (!pkgNamesToCleanBuild.empty()) {
+                for (auto& pkg_name : pkgNamesToCleanBuild) {
+                    path pkgDir = path(cacheDir) / pkg_name;
+                    log_println(INFO, _("Removing {}"), pkgDir.c_str());
+                    std::filesystem::remove_all(pkgDir);
+                }
             }
         }
-    }
 
-    for (auto& pkg_name : aurPkgNamesVec) {
-        path pkgDir = path(cacheDir) / pkg_name;
-        stat        = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
-        if (!stat) {
-            log_println(ERROR, _("Failed to download {}"), pkg_name);
-            returnStatus = false;
-        }
-    }
-
-    pkgNamesToReview = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_REVIEWS);
-    if (!pkgNamesToReview.empty()) {
-        for (auto& pkg_name : pkgNamesToReview) {
+        for (auto& pkg_name : aurPkgNamesVec) {
             path pkgDir = path(cacheDir) / pkg_name;
-            taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()});
+            stat        = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
+            if (!stat) {
+                log_println(ERROR, _("Failed to download {}"), pkg_name);
+                returnStatus = false;
+            }
         }
-        if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
-            return false;
+
+        pkgNamesToReview = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_REVIEWS);
+        if (!pkgNamesToReview.empty()) {
+            for (auto& pkg_name : pkgNamesToReview) {
+                path pkgDir = path(cacheDir) / pkg_name;
+                taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()});
+            }
+            if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
+                return false;
+        }
     }
 
     for (size_t i = 0; i < pkgNamesVec.size(); i++) {
@@ -225,10 +227,24 @@ int installPkg(alpm_list_t *pkgNames) {
 
             string_view url = pkg.aur_url;
 
-            if (url == "") {
+            if (url.empty()) {
                 log_println(DEBUG, "Scheduled system package {} for installation!", pkg.name);
                 pacmanPkgs.push_back(pkg.name);
                 continue;
+            }
+
+            // install first system packages then the AUR ones
+            // but first check if url is not empty
+            // because it will then start installing system packages each loop
+            if (!pacmanPkgs.empty() && !url.empty()) {
+                string op_s = "-S";
+
+                if (op.op_s_sync)
+                    op_s += 'y';
+                if (op.op_s_upgrade)
+                    op_s += 'u';
+
+                pacman_exec(op_s, pacmanPkgs);
             }
 
             path pkgDir = path(cacheDir) / pkg.name;
@@ -253,22 +269,11 @@ int installPkg(alpm_list_t *pkgNames) {
         }
     }
 
-    if (!pacmanPkgs.empty()) {
-        string op_s = "-S";
-
-        if (op.op_s_sync)
-            op_s += 'y';
-        if (op.op_s_upgrade)
-            op_s += 'u';
-
-        pacman_exec(op_s, pacmanPkgs);
-    }
-
     if (!pkgs_to_install.empty()) {
         log_println(DEBUG, _("Installing {}"), fmt::join(pkgNamesVec, " "));
         pkgs_to_install.erase(pkgs_to_install.length() - 1);
         if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
-            log_println(ERROR, _("Failed to install {}."), fmt::join(pkgNamesVec, " "));
+            log_println(ERROR, _("Failed to install {}"), fmt::join(pkgNamesVec, " "));
             returnStatus = false;
         }
     }
