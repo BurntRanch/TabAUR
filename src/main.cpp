@@ -3,12 +3,9 @@
 #include "args.hpp"
 #include "taur.hpp"
 #include "util.hpp"
-
 #include <limits.h>
 
 using namespace std::string_view_literals;
-#define BRANCH  "libalpm-test"
-#define VERSION "0.6.4"
 
 std::unique_ptr<Config>      config;
 std::unique_ptr<TaurBackend> backend;
@@ -513,7 +510,7 @@ static void localize(void) {
     static int init = 0;
     if (!init) {
         setlocale(LC_ALL, "");
-        bindtextdomain("taur", "./mo");
+        bindtextdomain("taur", LOCALEDIR);
         textdomain("taur");
         init = 1;
     }

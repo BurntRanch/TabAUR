@@ -1,5 +1,9 @@
-taur
 *.o
 *.out
 *.so
 *.a
+*.pot
+*.mo
+
+locale/
+taur
