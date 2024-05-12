@@ -107,8 +107,8 @@ void test_colors() {
 }
 
 bool execPacman(int argc, char *argv[]) {
-    if (argc > _POSIX_ARG_MAX)
-        throw std::invalid_argument(std::format("argc is invalid! (argc > {})", _POSIX_ARG_MAX));
+    if (argc > (_POSIX_ARG_MAX - 1))
+        throw std::invalid_argument(std::format("argc is invalid! (argc > {})", _POSIX_ARG_MAX - 1));
 
     char *args[argc + 1]; // null terminator
 
