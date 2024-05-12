@@ -51,4 +51,4 @@ If you want to make a PR that fixes/adds functionality, even fix some comments t
 
 ## TODO
 
-- Replace alpm_db_search with a helper function, because the alpm_db_search function itself searches for packages that match all (instead of any) regex patterns.
+- Complete translations for ar_SA and (up to toni) it_IT

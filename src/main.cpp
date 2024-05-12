@@ -295,7 +295,7 @@ bool removePkg(alpm_list_t *pkgNames) {
             filteredPkgNames = alpm_list_add(filteredPkgNames, i->data);
     }
 
-    if (filteredPkgNames && alpm_db_search(localdb, filteredPkgNames, &searchResults) != 0) {
+    if (filteredPkgNames && util_db_search(localdb, filteredPkgNames, &searchResults) != 0) {
         if (exactMatches)
             alpm_list_free(exactMatches);
         alpm_list_free(filteredPkgNames);
@@ -386,18 +386,8 @@ bool queryPkgs(alpm_list_t *pkgNames) {
             }
         } else {
             alpm_list_t *result = nullptr;
-            for (alpm_list_t *i = pkgNames; i; i = i->next) {
-                alpm_list_t *ret    = nullptr;
-                alpm_list_t *i_next = i->next; // save the next value, we will overwrite it.
-
-                i->next = nullptr;
-
-                if (alpm_db_search(localdb, i, &ret) != 0)
-                    return false;
-                result = alpm_list_join(result, ret);
-
-                i->next = i_next; // put it back
-            }
+            util_db_search(localdb, pkgNames, &result);
+            
             for (; result; result = result->next) {
                 pkgs.push_back({.name    = alpm_pkg_get_name((alpm_pkg_t *)(result->data)),
                                 .version = alpm_pkg_get_version((alpm_pkg_t *)(result->data)),

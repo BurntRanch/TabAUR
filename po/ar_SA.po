@@ -1,0 +1,642 @@
+# Arabic translations for taur package.
+# Copyright (C) 2024 THE taur'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the taur package.
+# Automatically generated, 2024.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: taur 0.6.4\n"
+"Report-Msgid-Bugs-To: https://github.com/BurntRanch/TabAUR\n"
+"POT-Creation-Date: 2024-05-12 15:53+0300\n"
+"PO-Revision-Date: 2024-05-12 15:53+0300\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ar_SA\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ASCII\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/args.cpp:11
+#, c++-format
+msgid "invalid option: '{}' and '{}' may not be used together"
+msgstr "خيار غير صالح: لا يمكن استخدام '{}' و '{}' مع بعض."
+
+#: src/config.cpp:31
+#, c++-format
+msgid "Warning: TabAUR config folder was not found, Creating folders at {}!"
+msgstr "تحذير: مجلد اعدادات TabAUR غير موجوده, فتم صناع مجلد في {}!"
+
+#: src/config.cpp:37 src/config.cpp:44
+#, c++-format
+msgid "Warning: {} not found, generating new one"
+msgstr "تحذير: لم يكمن ايجاد {}، سيتم صناع بديل جديد"
+
+#: src/config.cpp:55
+#, c++-format
+msgid "TabAUR cache folder was not found, Creating folders at {}!"
+msgstr "لم يتم العثور على مجلد ذاكرة التخزين المؤقته, سيتم اضافة مجلد جديد في {}!"
+
+#: src/config.cpp:116
+#, c++-format
+msgid "ERROR: Parsing config file {} failed:"
+msgstr "خطأ: فشل معالجة ملف الأعدادات {}:"
+
+#: src/config.cpp:138
+#, c++-format
+msgid "Parsing theme file {} failed:"
+msgstr "فشل في معالجة ملف التلوين {}:"
+
+#: src/config.cpp:232
+#, c++-format
+msgid "Failed to open mirrors file! ({})"
+msgstr "فشل في فتح ملف خوادم المرآة! ({})"
+
+#: src/main.cpp:73
+#, c++-format
+msgid "Debug color: {}"
+msgstr "لون رسائل التصحيح: {}"
+
+#: src/main.cpp:74
+#, c++-format
+msgid "Info color: {}"
+msgstr "لون رسائل معلومات: {}"
+
+#: src/main.cpp:75
+#, c++-format
+msgid "Warning color: {}"
+msgstr "لون رسائل التحذير: {}"
+
+#: src/main.cpp:76
+#, c++-format
+msgid "Error color: {}"
+msgstr "لون رسائل الأخطاء: {}"
+
+#: src/main.cpp:135
+msgid "Upgrading system packages!"
+msgstr "يتم تطوير حوازم النظام!"
+
+#: src/main.cpp:143
+msgid "Upgrading AUR packages!"
+msgstr "يتم تطوير حوازم AUR!"
+
+#: src/main.cpp:153
+msgid "Please specify a target"
+msgstr "يرجى تحديد هدف"
+
+#: src/main.cpp:162
+#, c++-format
+msgid "No results found for {}!"
+msgstr "لا توجد نواتج ل{}!"
+
+#: src/main.cpp:184
+#, c++-format
+msgid "Removing {}"
+msgstr "ازالة {}"
+
+#: src/main.cpp:194
+#, c++-format
+msgid "Failed to download {}"
+msgstr "فشل في تنزيل {}"
+
+#: src/main.cpp:252
+msgid "Installing AUR dependencies for your package has failed."
+msgstr "لم يمكن تنزيل تبعينات AUR لحازمك."
+
+#: src/main.cpp:260
+msgid "Building your package has failed."
+msgstr "لم يمكن بناء حازمك."
+
+#: src/main.cpp:270
+#, c++-format
+msgid "Installing {}"
+msgstr "يرجى تثبيت {}"
+
+#: src/main.cpp:273
+#, c++-format
+msgid "Failed to install {}"
+msgstr "لم يمكن تثبيت {}"
+
+#: src/main.cpp:302
+msgid "Searching failed, Bailing out!"
+msgstr "فشل في البحث، سيتم الخروج."
+
+#: src/main.cpp:311
+msgid "No packages found!"
+msgstr "لم يتم العثور على اي حوازم!"
+
+#: src/main.cpp:347
+msgid "Invalid argument! Assuming all."
+msgstr ""
+
+#: src/main.cpp:426 src/main.cpp:454
+#, c++-format
+msgid "package \"{}\" was not found"
+msgstr ""
+
+#: src/main.cpp:467
+msgid "Failed to get syncdbs!"
+msgstr ""
+
+#: src/main.cpp:561
+msgid "Please use pacman for this command (may need root too)"
+msgstr ""
+
+#: src/main.cpp:565
+msgid "ERROR: only one operation may be used at a time"
+msgstr ""
+
+#: src/main.cpp:612
+#, c++-format
+msgid "ERROR: invalid option '-{}'"
+msgstr ""
+
+#: src/main.cpp:614
+#, c++-format
+msgid "ERROR: invalid option '--{}'"
+msgstr ""
+
+#: src/main.cpp:656
+msgid "Secret recipe unlocked!"
+msgstr ""
+
+#: src/main.cpp:657
+msgid "Loading secret recipe..."
+msgstr ""
+
+#: src/main.cpp:672
+msgid "You need to be root to do this."
+msgstr ""
+
+#: src/main.cpp:675
+msgid "You are trying to run TabAUR as root when you don't need it."
+msgstr ""
+
+#: src/main.cpp:683
+msgid ""
+"the -R operation is unstable at the moment, Please use pacman. Be careful"
+msgstr ""
+
+#: src/main.cpp:690
+#, c++-format
+msgid "no operation specified (use {} -h for help)"
+msgstr ""
+
+#: src/pacman.cpp:115 src/pacman.cpp:200 src/pacman.cpp:219
+#, c-format
+msgid "None"
+msgstr ""
+
+#: src/taur.cpp:173 src/taur.cpp:200
+#, c++-format
+msgid "Failed to initialize transaction ({})"
+msgstr ""
+
+#: src/taur.cpp:178
+#, c++-format
+msgid "Failed to remove package ({})"
+msgstr ""
+
+#: src/taur.cpp:207
+msgid "Couldn't find any packages!"
+msgstr ""
+
+#: src/taur.cpp:223
+msgid "Failed to prepare, commit, or release alpm transaction."
+msgstr ""
+
+#: src/taur.cpp:236
+msgid "Verifying package sources.."
+msgstr ""
+
+#: src/taur.cpp:239
+msgid "Preparing for compilation.."
+msgstr ""
+
+#: src/taur.cpp:252
+#, c++-format
+msgid "{} exists already, skipping..."
+msgstr ""
+
+#: src/taur.cpp:307
+#, c++-format
+msgid "Failed to download dependency {} of dependency {}."
+msgstr ""
+
+#: src/taur.cpp:313
+#, c++-format
+msgid "Failed to handle dependencies for dependency {} of dependency {}."
+msgstr ""
+
+#: src/taur.cpp:322
+#, c++-format
+msgid "Failed to compile dependency {} of dependency {}."
+msgstr ""
+
+#: src/taur.cpp:328
+#, c++-format
+msgid "Failed to install dependency {} of dependency {}."
+msgstr ""
+
+#: src/taur.cpp:333
+#, c++-format
+msgid "Downloading dependency {}"
+msgstr ""
+
+#: src/taur.cpp:343
+#, c++-format
+msgid "Failed to download dependency of {} (Source: {})"
+msgstr ""
+
+#: src/taur.cpp:350
+#, c++-format
+msgid "Failed to install dependency of {} ({})"
+msgstr ""
+
+#: src/taur.cpp:356
+#, c++-format
+msgid "Failed to install dependency of {} ({})."
+msgstr ""
+
+#: src/taur.cpp:368
+msgid "No AUR packages found in your system."
+msgstr ""
+
+#: src/taur.cpp:385
+#, c++-format
+msgid ""
+"Couldn't get all packages! (searched {} packages, got {}) Still trying to "
+"update the others."
+msgstr ""
+
+#: src/taur.cpp:402
+#, c++-format
+msgid "We couldn't find {} in the local pkg database, This shouldn't happen."
+msgstr ""
+
+#: src/taur.cpp:413
+#, c++-format
+msgid "Downloading {}."
+msgstr ""
+
+#: src/taur.cpp:421
+#, c++-format
+msgid "Failed to download package {}!"
+msgstr ""
+
+#: src/taur.cpp:436
+#, c++-format
+msgid ""
+"Failed to parse version information from {}'s PKGBUILD, You might be able to "
+"ignore this safely."
+msgstr ""
+
+#: src/taur.cpp:452
+#, c++-format
+msgid ""
+"pkg {} has a the same version on the AUR than in its PKGBUILD, local: {}, "
+"online: {}, PKGBUILD: {}, skipping!"
+msgstr ""
+
+#: src/taur.cpp:457
+#, c++-format
+msgid "Upgrading package {} from version {} to version {}!"
+msgstr ""
+
+#: src/taur.cpp:475
+msgid "No packages to be upgraded."
+msgstr ""
+
+#: src/taur.cpp:483
+msgid "Failed to install/upgrade packages"
+msgstr ""
+
+#: src/taur.cpp:487
+#, c++-format
+msgid "Upgraded {}/{} packages."
+msgstr ""
+
+#: src/taur.cpp:492
+#, c++-format
+msgid "Failed to upgrade: {}"
+msgstr ""
+
+#: src/taur.cpp:494
+#, c++-format
+msgid "Tip: try to run taur with \"-S {}\" (e.g \"taur -S {}\")"
+msgstr ""
+
+#: src/taur.cpp:583
+#, c++-format
+msgid "url search = {}"
+msgstr ""
+
+#: src/util.cpp:22
+msgid "Architecture"
+msgstr ""
+
+#: src/util.cpp:23
+msgid "Backup Files"
+msgstr ""
+
+#: src/util.cpp:24
+msgid "Build Date"
+msgstr ""
+
+#: src/util.cpp:25
+msgid "Compressed Size"
+msgstr ""
+
+#: src/util.cpp:26
+msgid "Conflicts With"
+msgstr ""
+
+#: src/util.cpp:27
+msgid "Depends On"
+msgstr ""
+
+#: src/util.cpp:28
+msgid "Description"
+msgstr ""
+
+#: src/util.cpp:29
+msgid "Download Size"
+msgstr ""
+
+#: src/util.cpp:30
+msgid "Groups"
+msgstr ""
+
+#: src/util.cpp:31
+msgid "Install Date"
+msgstr ""
+
+#: src/util.cpp:32
+msgid "Install Reason"
+msgstr ""
+
+#: src/util.cpp:33
+msgid "Install Script"
+msgstr ""
+
+#: src/util.cpp:34
+msgid "Installed Size"
+msgstr ""
+
+#: src/util.cpp:35
+msgid "Licenses"
+msgstr ""
+
+#: src/util.cpp:36
+msgid "MD5 Sum"
+msgstr ""
+
+#: src/util.cpp:37
+msgid "Name"
+msgstr ""
+
+#: src/util.cpp:38
+msgid "Optional Deps"
+msgstr ""
+
+#: src/util.cpp:39
+msgid "Optional For"
+msgstr ""
+
+#: src/util.cpp:40
+msgid "Packager"
+msgstr ""
+
+#: src/util.cpp:41
+msgid "Provides"
+msgstr ""
+
+#: src/util.cpp:42
+msgid "Replaces"
+msgstr ""
+
+#: src/util.cpp:43
+msgid "Repository"
+msgstr ""
+
+#: src/util.cpp:44
+msgid "Required By"
+msgstr ""
+
+#: src/util.cpp:45
+msgid "SHA-256 Sum"
+msgstr ""
+
+#: src/util.cpp:46
+msgid "Signatures"
+msgstr ""
+
+#: src/util.cpp:47
+msgid "URL"
+msgstr ""
+
+#: src/util.cpp:48
+msgid "Validated By"
+msgstr ""
+
+#: src/util.cpp:49
+msgid "Version"
+msgstr ""
+
+#: src/util.cpp:81
+msgid " [installed]"
+msgstr ""
+
+#: src/util.cpp:117
+msgid "Caught CTRL-C, Exiting!"
+msgstr ""
+
+#: src/util.cpp:147
+msgid "Changes to be made:"
+msgstr ""
+
+#: src/util.cpp:161 src/util.cpp:177
+#, c++-format
+msgid "Failed to release transaction ({})."
+msgstr ""
+
+#: src/util.cpp:163
+msgid "Cancelled transaction."
+msgstr ""
+
+#: src/util.cpp:169
+#, c++-format
+msgid "Failed to prepare transaction ({})."
+msgstr ""
+
+#: src/util.cpp:173
+#, c++-format
+msgid "Failed to commit transaction ({})."
+msgstr ""
+
+#: src/util.cpp:180
+msgid "Successfully finished transaction."
+msgstr ""
+
+#: src/util.cpp:196
+msgid "FATAL: $HOME enviroment variable is not set (how?)"
+msgstr ""
+
+#: src/util.cpp:204
+#, c++-format
+msgid "ERROR: No such enviroment variable: {}"
+msgstr ""
+
+#: src/util.cpp:236
+msgid "popen() failed!"
+msgstr ""
+
+#: src/util.cpp:259
+#, c++-format
+msgid "pipe() failed: {}"
+msgstr ""
+
+#: src/util.cpp:282 src/util.cpp:341
+#, c++-format
+msgid "Failed to execute the command: {}"
+msgstr ""
+
+#: src/util.cpp:295 src/util.cpp:332
+#, c++-format
+msgid "An error has occurred: {}"
+msgstr ""
+
+#: src/util.cpp:298 src/util.cpp:322
+#, c++-format
+msgid "fork() failed: {}"
+msgstr ""
+
+#: src/util.cpp:327
+#, c++-format
+msgid "running {}"
+msgstr ""
+
+#: src/util.cpp:546
+msgid ""
+"TabAUR has found multiple packages relating to your search query, Please "
+"pick one."
+msgstr ""
+
+#: src/util.cpp:553
+msgid "Invalid input!"
+msgstr ""
+
+#: src/util.cpp:560
+msgid "Choose a package to download: "
+msgstr ""
+
+#: src/util.cpp:586
+msgid "Exiting due to CTRL-D"
+msgstr ""
+
+#: src/util.cpp:645
+msgid "Untrustable"
+msgstr ""
+
+#: src/util.cpp:647
+msgid "Caution"
+msgstr ""
+
+#: src/util.cpp:649
+msgid "Normal"
+msgstr ""
+
+#: src/util.cpp:651
+msgid "Good"
+msgstr ""
+
+#: src/util.cpp:653
+msgid "Trustable"
+msgstr ""
+
+#: src/util.cpp:654
+msgid "Weird, report this bug."
+msgstr ""
+
+#: src/util.cpp:670 src/util.cpp:688
+msgid "Failed to find $HOME, set it to your home directory!"
+msgstr ""
+
+#: include/util.hpp:136 include/util.hpp:179
+msgid "ERROR: "
+msgstr ""
+
+#: include/util.hpp:139 include/util.hpp:182
+msgid "تحذير: "
+msgstr ""
+
+#: include/util.hpp:142 include/util.hpp:185
+msgid "Info: "
+msgstr ""
+
+#: include/util.hpp:231
+#, c++-format
+msgid "View the diffs for {}? {}"
+msgstr ""
+
+#: include/util.hpp:235
+#, c++-format
+msgid ""
+"With your current settings, viewing PKGBUILD diffs is unsupported (maybe "
+"useGit is false?), continue with the installation anyway? {}"
+msgstr ""
+
+#: include/util.hpp:240
+#, c++-format
+msgid "Review PKGBUILD for {}? {}"
+msgstr ""
+
+#: include/util.hpp:244
+#, c++-format
+msgid "Proceed with the installation? {}"
+msgstr ""
+
+#: include/util.hpp:248
+#, c++-format
+msgid "Would you like to proceed with this transaction? {}"
+msgstr ""
+
+#: include/util.hpp:258
+#, c++-format
+msgid "Please provide a valid response {}"
+msgstr ""
+
+#: include/util.hpp:280
+msgid ""
+"Type the index of each package (eg: \"0 1 2\", \"0-2\", \"a\" for all, \"n\" "
+"or enter for none)"
+msgstr ""
+
+#: include/util.hpp:286
+#, c++-format
+msgid "{}"
+msgstr ""
+
+#: include/util.hpp:290
+msgid "Packages to completely rebuild: "
+msgstr ""
+
+#: include/util.hpp:294
+msgid "Packages you'd like to review: "
+msgstr ""
+
+#: include/util.hpp:298
+msgid "Packages you'd like to remove: "
+msgstr ""
+
+#: include/util.hpp:328
+msgid "Invalid loop range! (loop ranges look like \"0-5\"): "
+msgstr ""
+
+#: include/util.hpp:337
+msgid "Invalid loop range! (loop ranges must stay in bounds and in order): "
+msgstr ""
+
+#: include/util.hpp:357
+#, c++-format
+msgid "Invalid index! Ignoring index #{}."
+msgstr ""

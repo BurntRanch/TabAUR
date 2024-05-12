@@ -510,6 +510,29 @@ string makepkg_list(string_view pkg_name, string path) {
     return ret;
 }
 
+/** Search a DB using libalpm
+ * Why? well, alpm_db_search searches for results that match ALL regex patterns, this one searches for results that match ANY regex pattern.
+*/
+bool util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret) {
+    if (!db || !needles || ret != nullptr)
+        return false;
+    
+    for (; needles; needles = needles->next) {
+        alpm_list_t *ret_needle   = nullptr;
+        alpm_list_t *needles_next = needles->next; // save the next value, we will overwrite it.
+
+        needles->next = nullptr;
+
+        if (alpm_db_search(db, needles, &ret_needle) != 0) 
+            return false;
+        *ret = alpm_list_join(*ret, ret_needle);
+
+        needles->next = needles_next; // put it back
+    }
+
+    return true;
+}
+
 /** Ask the user to select a package out of a list.
  * @param pkgs The list of packages, in a vector
  * @param backend A reference to the TaurBackend responsible for fetching any AUR packages.
