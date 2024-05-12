@@ -95,7 +95,12 @@ void test_colors() {
     fmt::println(fg(color.index), "index [1]");
     fmt::println(BOLD_TEXT(color.installed), "(bold) indicator [Installed]");
     fmt::println(BOLD_TEXT(color.orphan), "(bold) (un-maintained)");
-    fmt::println(BOLD_TEXT(color.outofdate), "(bold) (Outdated: Wed Oct 11 16:42:36 2023)");
+    char       *timestr      = std::ctime(&pkg.outofdate);
+    string_view timestr_view = timestr;
+    if (!timestr_view.empty()) {
+        timestr[timestr_view.length() - 1] = '\0'; // delete the last newline.
+        fmt::println(BOLD_TEXT(color.outofdate), "(bold) {}", timestr_view);
+    }
 
     fmt::println("\nexamples package search preview:");
     printPkgInfo(pkg, pkg.db_name);
