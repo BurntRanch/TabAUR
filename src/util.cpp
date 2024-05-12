@@ -533,6 +533,58 @@ bool util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret) {
     return true;
 }
 
+// Function to perform binary search on a vector of strings
+string_view binarySearch(const vector<string_view>& arr, const string_view& target) {
+    int left = 0, right = arr.size() - 1;
+    
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+        if (arr[mid] == target)
+            return arr[mid]; // returns the word if target is found
+        else if (arr[mid] < target)
+            left = mid + 1;
+        else
+            right = mid - 1;
+    }
+
+    return "";
+}
+
+bool update_aur_cache() {
+    path file_path = config->cacheDir + "/packages.aur";
+    std::ofstream out(file_path, std::ios::binary);
+    if (!out.is_open())
+        return false;
+
+    struct stat file_stat;
+    if (stat(file_path.c_str(), &file_stat) != 0) {
+        log_println(ERROR, "Unable to get {} metadata", file_path.c_str());
+        return false;
+    }
+    
+    auto _current_time = std::chrono::system_clock::now();
+    auto _timeoutDuration = std::chrono::hours(24 * 5);
+    
+    auto timeout = std::chrono::duration_cast<std::chrono::seconds>(_timeoutDuration).count();
+    std::time_t now_time_t = std::chrono::system_clock::to_time_t(_current_time);
+
+    if (file_stat.st_mtim.tv_sec < now_time_t - timeout) {
+        cpr::Response r = cpr::Get(cpr::Url{AUR_URL"/packages.gz"});
+        log_println(INFO, "Refreshing {}", file_path.c_str());
+        
+        if (r.status_code == 200) {
+            out << r.text;
+            out.close();
+        } else {
+            log_println(ERROR, "Failed to download {} with status code: {}", r.url.str(), r.status_code);
+            out.close();
+            return false;
+        }
+    }
+     
+    return true;
+}
+
 /** Ask the user to select a package out of a list.
  * @param pkgs The list of packages, in a vector
  * @param backend A reference to the TaurBackend responsible for fetching any AUR packages.
@@ -661,7 +713,7 @@ string getTitleFromVotes(float votes) {
 */
 string getHomeCacheDir() {
     char *dir = getenv("XDG_CACHE_HOME");
-    if (dir != NULL && std::filesystem::exists(string(dir))) {
+    if (dir != NULL && dir[0] != '\0' && std::filesystem::exists(dir)) {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     } else {
@@ -679,7 +731,7 @@ string getHomeCacheDir() {
 */
 string getHomeConfigDir() {
     char *dir = getenv("XDG_CONFIG_HOME");
-    if (dir != NULL && std::filesystem::exists(string(dir))) {
+    if (dir != NULL && dir[0] != '\0' && std::filesystem::exists(dir)) {
         string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     } else {
