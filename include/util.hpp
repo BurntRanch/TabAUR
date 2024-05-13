@@ -112,7 +112,8 @@ bool                             makepkg_exec(string_view cmd, bool exitOnFailur
 bool                             pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure = true, bool root = true);
 bool                             util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret);
 std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
-string_view binarySearch(const vector<string_view>& arr, const string_view& target);
+string binarySearch(const vector<string>& arr, const string& target);
+vector<string> load_aur_list();
 bool update_aur_cache();
 
 template <typename T>

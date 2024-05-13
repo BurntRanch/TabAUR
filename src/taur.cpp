@@ -254,15 +254,19 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
     return true;
 }
 
-// I don't know but I feel this is shitty
+// I don't know but I feel this is shitty, atleast it works great
 bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> const& localPkgs, bool useGit) {
     log_println(DEBUG, "pkg.name = {}", pkg.name);
     log_println(DEBUG, "pkg.totaldepends = {}", pkg.totaldepends);
+    vector<string> aur_list = load_aur_list();
 
     for (size_t i = 0; i < pkg.totaldepends.size(); i++) {
-
-        optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg.totaldepends[i], useGit);
-
+        string pkg_depend = binarySearch(aur_list, pkg.totaldepends[i]);
+        
+        if (pkg_depend.empty())
+            continue;
+        
+        optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg_depend, useGit);
         if (!oDepend)
             continue;
 
@@ -281,8 +285,13 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
         }
 
         for (size_t i = 0; i < depend.totaldepends.size(); i++) {
-            optional<TaurPkg_t> oSubDepend = this->fetch_pkg(depend.totaldepends[i], useGit);
-            if (!oSubDepend)
+            string sub_pkg_depend = binarySearch(aur_list, depend.totaldepends[i]);
+        
+            if (sub_pkg_depend.empty())
+                continue;
+        
+            optional<TaurPkg_t> oSubDepend = this->fetch_pkg(sub_pkg_depend, useGit);
+            if (!oDepend)
                 continue;
 
             TaurPkg_t subDepend = oSubDepend.value();

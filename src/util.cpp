@@ -534,7 +534,7 @@ bool util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret) {
 }
 
 // Function to perform binary search on a vector of strings
-string_view binarySearch(const vector<string_view>& arr, const string_view& target) {
+string binarySearch(const vector<string>& arr, const string& target) {
     int left = 0, right = arr.size() - 1;
     
     while (left <= right) {
@@ -550,15 +550,32 @@ string_view binarySearch(const vector<string_view>& arr, const string_view& targ
     return "";
 }
 
+vector<string> load_aur_list() {
+    path file_path = config->cacheDir + "/packages.aur";
+    std::ifstream infile(file_path);
+    if (!infile.good()) {
+        log_println(ERROR, "Failed to open {}", file_path.c_str());
+        exit(1);
+    }
+
+    vector<string>    aur_list;
+    string            pkg;
+    
+    while (infile >> pkg)
+        aur_list.push_back(pkg);
+
+    return aur_list;
+}
+
 bool update_aur_cache() {
     path file_path = config->cacheDir + "/packages.aur";
-    std::ofstream out(file_path, std::ios::binary);
-    if (!out.is_open())
+    std::ofstream outfile(file_path, std::ios::binary);
+    if (!outfile.good()) 
         return false;
 
     struct stat file_stat;
     if (stat(file_path.c_str(), &file_stat) != 0) {
-        log_println(ERROR, "Unable to get {} metadata", file_path.c_str());
+        log_println(ERROR, "Unable to get {} metadata: {}", file_path.c_str(), errno);
         return false;
     }
     
@@ -573,11 +590,11 @@ bool update_aur_cache() {
         log_println(INFO, "Refreshing {}", file_path.c_str());
         
         if (r.status_code == 200) {
-            out << r.text;
-            out.close();
+            outfile << r.text;
+            outfile.close();
         } else {
             log_println(ERROR, "Failed to download {} with status code: {}", r.url.str(), r.status_code);
-            out.close();
+            outfile.close();
             return false;
         }
     }
