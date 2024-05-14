@@ -56,7 +56,7 @@ class TaurBackend {
     bool                download_tar(string_view url, path out_path);
     bool                download_git(string_view url, path out_path);
     bool                download_pkg(string_view url, path out_path);
-    optional<TaurPkg_t> fetch_pkg(string pkg, bool returnGit);
+    optional<TaurPkg_t> fetch_pkg(string_view pkg, bool returnGit);
     vector<TaurPkg_t>   fetch_pkgs(vector<string> const& pkgs, bool returnGit);
     bool                remove_pkgs(alpm_list_smart_pointer& pkgs);
     bool                remove_pkg(alpm_pkg_t *pkgs, bool ownTransaction = true);

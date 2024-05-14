@@ -534,7 +534,7 @@ bool util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret) {
 }
 
 // Function to perform binary search on a vector of strings
-string binarySearch(const vector<string>& arr, const string& target) {
+string_view binarySearch(const vector<string>& arr, string_view target) {
     int left = 0, right = arr.size() - 1;
     
     while (left <= right) {
@@ -551,7 +551,7 @@ string binarySearch(const vector<string>& arr, const string& target) {
 }
 
 vector<string> load_aur_list() {
-    path file_path = config->cacheDir + "/packages.aur";
+    path file_path = config->cacheDir / "packages.aur";
     std::ifstream infile(file_path);
     if (!infile.good()) {
         log_println(ERROR, "Failed to open {}", file_path.c_str());
@@ -568,14 +568,14 @@ vector<string> load_aur_list() {
 }
 
 bool update_aur_cache() {
-    path file_path = config->cacheDir + "/packages.aur";
+    path file_path = config->cacheDir / "packages.aur";
     std::ofstream outfile(file_path, std::ios::binary);
     if (!outfile.good()) 
         return false;
 
     struct stat file_stat;
     if (stat(file_path.c_str(), &file_stat) != 0) {
-        log_println(ERROR, "Unable to get {} metadata: {}", file_path.c_str(), errno);
+        log_println(ERROR, "Unable to get {} metadata: {}", file_path.c_str(), errno);  // TODO: translate
         return false;
     }
     
@@ -587,14 +587,12 @@ bool update_aur_cache() {
 
     if (file_stat.st_mtim.tv_sec < now_time_t - timeout) {
         cpr::Response r = cpr::Get(cpr::Url{AUR_URL"/packages.gz"});
-        log_println(INFO, "Refreshing {}", file_path.c_str());
+        log_println(INFO, "Refreshing {}", file_path.c_str());  // TODO: translate..
         
         if (r.status_code == 200) {
             outfile << r.text;
-            outfile.close();
         } else {
-            log_println(ERROR, "Failed to download {} with status code: {}", r.url.str(), r.status_code);
-            outfile.close();
+            log_println(ERROR, "Failed to download {} with status code: {}", r.url.str(), r.status_code); // TODO: translation?
             return false;
         }
     }
@@ -737,6 +735,7 @@ string getHomeCacheDir() {
         char *home = getenv("HOME");
         if (home == nullptr)
             throw std::invalid_argument(_("Failed to find $HOME, set it to your home directory!"));
+        
         return string(home) + "/.cache";
     }
 }
@@ -755,6 +754,7 @@ string getHomeConfigDir() {
         char *home = getenv("HOME");
         if (home == nullptr)
             throw std::invalid_argument(_("Failed to find $HOME, set it to your home directory!"));
+
         return string(home) + "/.config";
     }
 }
@@ -767,6 +767,16 @@ string getHomeConfigDir() {
  */
 string getConfigDir() {
     return getHomeConfigDir() + "/TabAUR";
+}
+
+/*
+ * Get the TabAUR cache directory 
+ * where we'll have all AUR packages downloaded here
+ * from Config::getHomeCacheDir()
+ * @return TabAUR's cache directory
+ */
+string getCacheDir() {
+    return getHomeCacheDir() + "/TabAUR";
 }
 
 vector<string> split(string_view text, char delim) {

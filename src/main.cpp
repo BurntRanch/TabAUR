@@ -127,7 +127,7 @@ bool execPacman(int argc, char *argv[]) {
 
 int installPkg(alpm_list_t *pkgNames) {
     bool                useGit   = config->useGit;
-    string_view         cacheDir = config->cacheDir;
+    path                cacheDir = config->cacheDir;
 
     bool                returnStatus = true;
     bool                stat;
@@ -178,7 +178,7 @@ int installPkg(alpm_list_t *pkgNames) {
     }
 
     if (!update_aur_cache())
-        log_println(ERROR, "Failed to get informations about {}", config->cacheDir + "/packages.aur");
+        log_println(ERROR, "Failed to get informations about {}", (config->cacheDir / "packages.aur").string());   // TODO: Translate
     
     aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
     vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
@@ -641,18 +641,19 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char *argv[]) {
     config = std::make_unique<Config>();
+    string configDir = string(getConfigDir());
 
 #if defined(ENABLE_NLS)
     localize();
 #endif
 
-    configfile = (getConfigDir() + "/config.toml");
-    themefile  = (getConfigDir() + "/theme.toml");
+    configfile = (configDir + "/config.toml");
+    themefile  = (configDir + "/theme.toml");
 
     if (parseargs(argc, argv))
         return 1;
 
-    config->init(configfile, themefile);
+    config->init(configfile, themefile, configDir);
 
     if (op.test_colors) {
         test_colors();
@@ -688,7 +689,7 @@ int main(int argc, char *argv[]) {
         case OP_SYNC:
             return installPkg(taur_targets.get()) ? 0 : 1;
         case OP_REM:
-            log_println(WARN, _("the -R operation is unstable at the moment, Please use pacman. Be careful"));
+            log_println(WARN, _("Watch out when using the -R operation in TabAUR, it has been tested pretty well, but you should always watch out for any errors, Please use pacman or be careful"));
             return removePkg(taur_targets.get()) ? 0 : 1;
         case OP_QUERY:
             return (queryPkgs(taur_targets.get())) ? 0 : 1;

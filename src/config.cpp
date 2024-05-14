@@ -21,10 +21,10 @@ Config::~Config() {
 }
 
 // initialize Config, can only be ran once for each Config instance.
-void Config::init(string configFile, string themeFile) {
+void Config::init(string &configFile, string &themeFile, string_view configDir) {
     if (this->initialized)
         return;
-    string configDir = getConfigDir();
+    
     bool   newUser   = false;
 
     if (!std::filesystem::exists(configDir)) {
@@ -52,12 +52,12 @@ void Config::init(string configFile, string themeFile) {
 
     this->initialized = true;
     if (!std::filesystem::exists(config->cacheDir)) {
-        log_println(WARN, _("TabAUR cache folder was not found, Creating folders at {}!"), config->cacheDir);
+        log_println(WARN, _("TabAUR cache folder was not found, Creating folders at {}!"), config->cacheDir.string());
         std::filesystem::create_directories(config->cacheDir);
     }
 
     if (newUser)
-        // ye i'm sorry for if it's too wide
+        // ye i'm sorry if it's too wide
         fmt::println(fg(color.blue),
                      "I see you're a new user, Welcome!\n"
                      "Even though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\n"
@@ -76,7 +76,7 @@ bool Config::isInitialized() {
 * and sanitize them (never trust user's input)
 */
 void Config::initVars() {
-    this->cacheDir      = this->getConfigValue<string>("general.cacheDir", getHomeCacheDir() + "/TabAUR");
+    this->cacheDir      = path(this->getConfigValue<string>("general.cacheDir", string(getHomeCacheDir()) + "/TabAUR"));
     this->pmConfig      = this->getConfigValue<string>("pacman.ConfigFile", "/etc/pacman.conf");
     this->makepkgConf   = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
     this->makepkgBin    = this->getConfigValue<string>("bins.makepkg", "makepkg");
@@ -94,7 +94,6 @@ void Config::initVars() {
     sanitizeStr(this->editorBin);
     sanitizeStr(this->makepkgBin);
     sanitizeStr(this->makepkgConf);
-    sanitizeStr(this->cacheDir);
     sanitizeStr(this->git);
 
     char *no_color = getenv("NO_COLOR");

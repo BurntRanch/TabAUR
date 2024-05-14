@@ -9,12 +9,14 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <filesystem>
 
 #include "fmt/color.h"
 #include "toml++/toml.hpp"
 
 using std::string;
 using std::string_view;
+using std::filesystem::path;
 
 // so we don't need to include util.hpp for getConfigValue()
 string expandVar(string& str);
@@ -59,7 +61,7 @@ class Config {
     alpm_list_t   *repos  = nullptr;
     string         makepkgBin;
     string         editorBin;
-    string         cacheDir;
+    path           cacheDir;
     string         pmConfig;
     string         sudo;
     string         git;
@@ -77,7 +79,7 @@ class Config {
     Config();
     ~Config();
 
-    void init(string configFile, string themeFile);
+    void init(string &configFile, string &themeFile, string_view configDir);
     void initVars();
     void initColors();
 
