@@ -178,7 +178,7 @@ int installPkg(alpm_list_t *pkgNames) {
     }
 
     if (!update_aur_cache())
-        log_println(ERROR, "Failed to get informations about {}", (config->cacheDir / "packages.aur").string());   // TODO: Translate
+        log_println(ERROR, "Failed to get informations about {}", (config->cacheDir / "packages.aur").string());   
     
     aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
     vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
