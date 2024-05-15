@@ -28,7 +28,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Packages
-      run: pacman -Syu gcc git base base-devel pkgconf sudo fakeroot cmake make curl --noconfirm --needed
+      run: pacman -Syu git base base-devel cmake curl --noconfirm --needed
 
     - name: Get submodules
       uses: actions/checkout@v4
@@ -39,7 +39,7 @@ jobs:
       run: make clean
 
     - name: Compile
-      run: make CPPFLAGS="-O3 -mtune=generic -funroll-all-loops -march=native -isystem include -std=c++20"
+      run: make DEBUG=0
 
     - name: Build release
       run: tar --zstd -cf tabaur.tar.zst taur
