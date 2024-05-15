@@ -5,7 +5,7 @@ VARS  	  	?= -DENABLE_NLS=1
 DEBUG 		?= 1
 
 VERSION    	 = 0.6.4
-BRANCH     	 = libalpm-test
+BRANCH     	 = main
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
 LDFLAGS   	:= -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
