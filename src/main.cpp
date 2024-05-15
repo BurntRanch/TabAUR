@@ -145,7 +145,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     if (op.op_s_search) {
         for (size_t i = 0; i < pkgNamesVec.size(); i++) {
-            vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, op.op_s_search);
+            vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
 
             if (pkgs.empty()) {
                 log_println(WARN, _("No results found for {}!"), pkgNamesVec[i]);
