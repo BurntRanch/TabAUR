@@ -14,9 +14,10 @@ fmt: format.cc os.cc
 	$(CXX) $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -c os.cc -o os.cc.o
 	ar qc libfmt.a os.cc.o format.cc.o
 	ranlib libfmt.a
+	mv -f libfmt.a ../../$(BUILDDIR)/libfmt.a
 	#$(CXX) -fPIC -O3 -DNDEBUG -shared -Wl,-soname,libfmt.so.10 -o libfmt.so format.cc.o os.cc.o
 
 clean:
-	rm -f *.o *.so *.a
+	rm -f *.o *.so *.a ../../$(BUILDDIR)/fmt/.*a
 
 .PHONY: clean all fmt

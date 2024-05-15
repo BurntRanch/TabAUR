@@ -6,9 +6,9 @@ CPPFLAGS = -I../../include -std=c++20
 all: $(TARGET)
 
 $(TARGET):
-	${CXX} $(SRC) $(CPPFLAGS) -c -o $@
+	${CXX} $(SRC) $(CPPFLAGS) -c -o ../../$(BUILDDIR)/$@
 
 clean:
-	rm -rf $(TARGET)
+	rm -rf ../../$(BUILDDIR)/toml++/$(TARGET)
 
 .PHONY: $(TARGET) clean all
