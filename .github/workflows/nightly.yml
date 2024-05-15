@@ -40,7 +40,7 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Install Packages
-      run: pacman -Syu git base base-devel cmake curl --noconfirm --needed
+      run: pacman -Syu git base-devel cmake curl --noconfirm --needed
 
     - name: Get submodules
       uses: actions/checkout@v4
@@ -54,7 +54,7 @@ jobs:
       run: make DEBUG=0
 
     - name: Build release
-      run: tar --zstd -cf tabaur.tar.zst taur
+      run: tar --zstd -cf tabaur.tar.zst build/release/taur
 
     - name: Upload to github artifacts
       uses: actions/upload-artifact@v4
