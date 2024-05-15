@@ -2,7 +2,7 @@ CXX       	?= g++
 PREFIX	  	?= /usr
 LOCALEDIR 	?= $(PREFIX)/share/locale
 VARS  	  	?= -DENABLE_NLS=1
-DEBUG 		?= 1
+DEBUG 		?= 0
 
 VERSION    	 = 0.6.4
 BRANCH     	 = main
