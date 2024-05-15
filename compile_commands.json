@@ -1,0 +1,200 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-ggdb",
+      "-pedantic",
+      "-Wall",
+      "-funroll-all-loops",
+      "-mtune=generic",
+      "-march=native",
+      "-isystem",
+      "include",
+      "-std=c++20",
+      "-DENABLE_NLS=1",
+      "-DVERSION=\"0.6.4\"",
+      "-DBRANCH=\"libalpm-test\"",
+      "-DLOCALEDIR=\"/usr/share/locale\"",
+      "-c",
+      "-o",
+      "src/args.o",
+      "src/args.cpp"
+    ],
+    "directory": "/home/toni/TabAUR",
+    "file": "/home/toni/TabAUR/src/args.cpp",
+    "output": "/home/toni/TabAUR/src/args.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-ggdb",
+      "-pedantic",
+      "-Wall",
+      "-funroll-all-loops",
+      "-mtune=generic",
+      "-march=native",
+      "-isystem",
+      "include",
+      "-std=c++20",
+      "-DENABLE_NLS=1",
+      "-DVERSION=\"0.6.4\"",
+      "-DBRANCH=\"libalpm-test\"",
+      "-DLOCALEDIR=\"/usr/share/locale\"",
+      "-c",
+      "-o",
+      "src/main.o",
+      "src/main.cpp"
+    ],
+    "directory": "/home/toni/TabAUR",
+    "file": "/home/toni/TabAUR/src/main.cpp",
+    "output": "/home/toni/TabAUR/src/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-ggdb",
+      "-pedantic",
+      "-Wall",
+      "-funroll-all-loops",
+      "-mtune=generic",
+      "-march=native",
+      "-isystem",
+      "include",
+      "-std=c++20",
+      "-DENABLE_NLS=1",
+      "-DVERSION=\"0.6.4\"",
+      "-DBRANCH=\"libalpm-test\"",
+      "-DLOCALEDIR=\"/usr/share/locale\"",
+      "-c",
+      "-o",
+      "src/pacman.o",
+      "src/pacman.cpp"
+    ],
+    "directory": "/home/toni/TabAUR",
+    "file": "/home/toni/TabAUR/src/pacman.cpp",
+    "output": "/home/toni/TabAUR/src/pacman.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-ggdb",
+      "-pedantic",
+      "-Wall",
+      "-funroll-all-loops",
+      "-mtune=generic",
+      "-march=native",
+      "-isystem",
+      "include",
+      "-std=c++20",
+      "-DENABLE_NLS=1",
+      "-DVERSION=\"0.6.4\"",
+      "-DBRANCH=\"libalpm-test\"",
+      "-DLOCALEDIR=\"/usr/share/locale\"",
+      "-c",
+      "-o",
+      "src/config.o",
+      "src/config.cpp"
+    ],
+    "directory": "/home/toni/TabAUR",
+    "file": "/home/toni/TabAUR/src/config.cpp",
+    "output": "/home/toni/TabAUR/src/config.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-ggdb",
+      "-pedantic",
+      "-Wall",
+      "-funroll-all-loops",
+      "-mtune=generic",
+      "-march=native",
+      "-isystem",
+      "include",
+      "-std=c++20",
+      "-DENABLE_NLS=1",
+      "-DVERSION=\"0.6.4\"",
+      "-DBRANCH=\"libalpm-test\"",
+      "-DLOCALEDIR=\"/usr/share/locale\"",
+      "-c",
+      "-o",
+      "src/taur.o",
+      "src/taur.cpp"
+    ],
+    "directory": "/home/toni/TabAUR",
+    "file": "/home/toni/TabAUR/src/taur.cpp",
+    "output": "/home/toni/TabAUR/src/taur.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-ggdb",
+      "-pedantic",
+      "-Wall",
+      "-funroll-all-loops",
+      "-mtune=generic",
+      "-march=native",
+      "-isystem",
+      "include",
+      "-std=c++20",
+      "-DENABLE_NLS=1",
+      "-DVERSION=\"0.6.4\"",
+      "-DBRANCH=\"libalpm-test\"",
+      "-DLOCALEDIR=\"/usr/share/locale\"",
+      "-c",
+      "-o",
+      "src/util.o",
+      "src/util.cpp"
+    ],
+    "directory": "/home/toni/TabAUR",
+    "file": "/home/toni/TabAUR/src/util.cpp",
+    "output": "/home/toni/TabAUR/src/util.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-I../../include",
+      "-std=c++20",
+      "-c",
+      "-o",
+      "../../build/debug/toml++/toml.o",
+      "toml.cpp"
+    ],
+    "directory": "/home/toni/TabAUR/src/toml++",
+    "file": "/home/toni/TabAUR/src/toml++/toml.cpp",
+    "output": "/home/toni/TabAUR/build/debug/toml++/toml.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-I../../include",
+      "-O3",
+      "-DNDEBUG",
+      "-fvisibility=hidden",
+      "-fvisibility-inlines-hidden",
+      "-c",
+      "-o",
+      "format.cc.o",
+      "format.cc"
+    ],
+    "directory": "/home/toni/TabAUR/src/fmt",
+    "file": "/home/toni/TabAUR/src/fmt/format.cc",
+    "output": "/home/toni/TabAUR/src/fmt/format.cc.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-I../../include",
+      "-O3",
+      "-DNDEBUG",
+      "-fvisibility=hidden",
+      "-fvisibility-inlines-hidden",
+      "-c",
+      "-o",
+      "os.cc.o",
+      "os.cc"
+    ],
+    "directory": "/home/toni/TabAUR/src/fmt",
+    "file": "/home/toni/TabAUR/src/fmt/os.cc",
+    "output": "/home/toni/TabAUR/src/fmt/os.cc.o"
+  }
+]
