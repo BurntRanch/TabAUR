@@ -627,7 +627,7 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char *argv[]) {
     config = std::make_unique<Config>();
-    string configDir = string(getConfigDir());
+    string configDir = getConfigDir();
 
 #if defined(ENABLE_NLS)
     localize();
