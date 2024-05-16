@@ -514,7 +514,7 @@ string makepkg_list(string_view pkg_name, string path) {
  * Why? well, alpm_db_search searches for results that match ALL regex patterns, this one searches for results that match ANY regex pattern.
 */
 bool util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret) {
-    if (!db || !needles || ret != nullptr)
+    if (!db || !needles || *ret != nullptr)
         return false;
     
     for (; needles; needles = needles->next) {

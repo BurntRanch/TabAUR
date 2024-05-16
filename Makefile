@@ -18,7 +18,7 @@ ifeq ($(DEBUG), 1)
 	CXXFLAGS := -ggdb -pedantic -Wall $(CXXFLAGS)
 else
 	BUILDDIR  = build/release
-	CXXFLAGS := -O3 $(CXXFLAGS)
+	CXXFLAGS := -O2 $(CXXFLAGS)
 endif
 
 LDFLAGS  := -L./$(BUILDDIR)/fmt -L./$(BUILDDIR)/cpr $(LDFLAGS)
