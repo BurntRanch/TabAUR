@@ -1,4 +1,0 @@
-[submodule "cpr"]
-	path = cpr
-	url = https://github.com/libcpr/cpr.git
-	ignore = dirty
