@@ -25,7 +25,10 @@ LDFLAGS  := -L./$(BUILDDIR)/fmt -L./$(BUILDDIR)/cpr $(LDFLAGS)
 
 is_cpr_installed = $(shell ldconfig -p | grep libcpr > /dev/null && echo -n yes)
 
-all: cpr fmt toml taur
+all: mkbuilddir cpr fmt toml taur
+
+mkbuilddir: $(BUILDDIR)
+	mkdir -p $(BUILDDIR)
 
 cpr:
 ifneq ($(is_cpr_installed), yes)
@@ -57,7 +60,6 @@ locale:
 	scripts/make_mo.sh locale/
 
 taur: cpr fmt toml $(OBJ)
-	mkdir -p $(BUILDDIR)
 	$(CXX) $(OBJ) $(BUILDDIR)/toml++/toml.o -o $(BUILDDIR)/taur $(LDFLAGS)
 
 clean:

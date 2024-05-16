@@ -138,11 +138,12 @@ int installPkg(alpm_list_t *pkgNames) {
         pkgNamesVec.push_back((const char *)(pkgNames->data));
 
     if (pkgNamesVec.empty()) {
-        if (op.op_s_search)
+        if (op.op_s_search) {
             log_println(WARN, _("Please specify a target"));
-        return false;
+            return false;
+        }
     }
-
+    
     if (op.op_s_search) {
         for (size_t i = 0; i < pkgNamesVec.size(); i++) {
             vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
@@ -205,23 +206,20 @@ int installPkg(alpm_list_t *pkgNames) {
                 return false;
         }
     }
-
-    // install first system packages then the AUR ones
-    // but first check if url is not empty
-    // because it will then start installing system packages each loop
-    if (!pacmanPkgs.empty()) {
-        string op_s = "-S";
-
-        if (op.op_s_sync)
-            op_s += 'y';
-        if (op.op_s_upgrade)
-            op_s += 'u';
-
-        pacman_exec(op_s, pacmanPkgs);
-    }
     
     if (op.op_s_upgrade) {
-        log_println(DEBUG, _("Upgrading AUR packages!"));
+        if (!config->aurOnly) {
+            log_println(INFO, _("Upgrading system packages!"));
+            string op_s = "-S";
+
+            if (op.op_s_sync)
+                op_s += 'y';
+
+            op_s += 'u';
+
+            pacman_exec(op_s, pacmanPkgs);
+        }
+        log_println(INFO, _("Upgrading AUR packages!"));
         backend->update_all_aur_pkgs(cacheDir, useGit);
     }
 
