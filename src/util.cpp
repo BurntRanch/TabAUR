@@ -595,11 +595,11 @@ bool update_aur_cache(bool recursiveCall) {
     struct stat file_stat;
     if (stat(file_path.c_str(), &file_stat) != 0) {
         if (errno == ENOENT && !recursiveCall) { // file not found, download THEN try again once more.
-            log_println(INFO, "File {} not found, attempting download.", file_path);
+            log_println(INFO, "File {} not found, attempting download.", file_path.string());
             return download_aur_cache(file_path) && update_aur_cache(true);
         }
 
-        log_println(ERROR, "Unable to get {} metadata: {}", file_path, errno);
+        log_println(ERROR, "Unable to get {} metadata: {}", file_path.string(), errno);
 
         return false;
     }
@@ -611,7 +611,7 @@ bool update_aur_cache(bool recursiveCall) {
     std::time_t now_time_t = std::chrono::system_clock::to_time_t(_current_time);
 
     if (file_stat.st_mtim.tv_sec < now_time_t - timeout) {
-        log_println(INFO, "Refreshing {}", file_path);
+        log_println(INFO, "Refreshing {}", file_path.string());
         download_aur_cache(file_path);
     }
      

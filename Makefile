@@ -57,7 +57,7 @@ locale:
 	scripts/make_mo.sh locale/
 
 taur: cpr fmt toml $(OBJ)
-        mkdir -p $(BUILDDIR)
+	mkdir -p $(BUILDDIR)
 	$(CXX) $(OBJ) $(BUILDDIR)/toml++/toml.o -o $(BUILDDIR)/taur $(LDFLAGS)
 
 clean:
