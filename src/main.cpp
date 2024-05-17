@@ -132,6 +132,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     vector<string_view> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
     vector<string_view> pkgNamesVec;
+    vector<string_view> pkgsToCleanBuild, pkgsToReview;
 
     // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next)
@@ -165,6 +166,17 @@ int installPkg(alpm_list_t *pkgNames) {
     if (!update_aur_cache())
         log_println(ERROR, "Failed to get information about {}", (config->cacheDir / "packages.aur").string());   // TODO: translate
 
+    // this feels horrible despite being 100% correct and probably not problematic.
+    // it just feels like we should ask for every package.
+    vector<string_view> AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+
+    if (!op.op_s_cleanbuild && !AURPkgs.empty())
+        pkgsToCleanBuild = askUserForList<string_view>(AURPkgs, PROMPT_LIST_CLEANBUILDS);
+
+    if (!config->noconfirm && !AURPkgs.empty())
+        pkgsToReview = askUserForList<string_view>(AURPkgs, PROMPT_LIST_REVIEWS);
+
+    
     for (size_t i = 0; i < pkgNamesVec.size(); i++) {
         vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
 
@@ -186,10 +198,8 @@ int installPkg(alpm_list_t *pkgNames) {
             }
 
             path pkgDir = path(cacheDir) / pkg.name;
-            bool cleanBuild = false, review = false;
-
-            if (!op.op_s_cleanbuild)
-                cleanBuild = askUserYorN(false, PROMPT_YN_CLEANBUILD, pkg.name);
+            bool cleanBuild = op.op_s_cleanbuild ? false : std::find(pkgsToCleanBuild.begin(), pkgsToCleanBuild.end(), pkg.name) != pkgsToCleanBuild.end();
+            bool review = config->noconfirm ? false : std::find(pkgsToReview.begin(), pkgsToReview.end(), pkg.name) != pkgsToReview.end();
 
             if (cleanBuild) {
                 log_println(INFO, _("Removing {}"), pkgDir.c_str());
@@ -203,7 +213,6 @@ int installPkg(alpm_list_t *pkgNames) {
                 continue;
             }
 
-            review = askUserYorN(true, PROMPT_YN_EDIT_PKGBUILD, pkg.name);
             if (review) {
                 taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()});
 
