@@ -115,7 +115,7 @@ bool                             util_db_search(alpm_db_t *db, alpm_list_t *need
 std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 string_view                      binarySearch(const vector<string>& arr, string_view target);
 vector<string>                   load_aur_list();
-bool                             update_aur_cache();
+bool                             update_aur_cache(bool recursiveCall = false);
 
 template <typename T>
 struct is_fmt_convertible {

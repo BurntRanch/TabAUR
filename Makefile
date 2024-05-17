@@ -4,7 +4,7 @@ LOCALEDIR 	?= $(PREFIX)/share/locale
 VARS  	  	?= -DENABLE_NLS=1
 DEBUG 		?= 0
 
-VERSION    	 = 0.6.4
+VERSION    	 = 0.6.6
 BRANCH     	 = main
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
@@ -18,7 +18,7 @@ ifeq ($(DEBUG), 1)
 	CXXFLAGS := -ggdb -pedantic -Wall $(CXXFLAGS)
 else
 	BUILDDIR  = build/release
-	CXXFLAGS := -O3 $(CXXFLAGS)
+	CXXFLAGS := -O2 $(CXXFLAGS)
 endif
 
 LDFLAGS  := -L./$(BUILDDIR)/fmt -L./$(BUILDDIR)/cpr $(LDFLAGS)

@@ -56,13 +56,17 @@ void usage(int op) {
 }
 
 void test_colors() {
+    std::time_t current_time = std::time(nullptr);
+    string timestr = std::ctime(&current_time);
+    timestr.erase(timestr.length() - 1);
+
     TaurPkg_t pkg = {
         .name       = "TabAUR",
         .version    = VERSION,
         .desc       = "A customizable and lightweight AUR helper, designed to be simple but powerful.",
-        .maintainer = "o",
-        .outofdate  = 1697035356,
-        .popularity = 100,
+        .maintainer = "\1",
+        .outofdate  = current_time,
+        .popularity = 'R', // if you know, you know :P
         .votes      = 34,
         .installed  = true,
         .db_name    = "aur",
@@ -94,13 +98,8 @@ void test_colors() {
     fmt::println(fg(color.votes), "Votes: {} ({})", pkg.votes, getTitleFromVotes(pkg.votes));
     fmt::println(fg(color.index), "index [1]");
     fmt::println(BOLD_TEXT(color.installed), "(bold) indicator [Installed]");
-    fmt::println(BOLD_TEXT(color.orphan), "(bold) (un-maintained)");
-    char       *timestr      = std::ctime(&pkg.outofdate);
-    string_view timestr_view = timestr;
-    if (!timestr_view.empty()) {
-        timestr[timestr_view.length() - 1] = '\0'; // delete the last newline.
-        fmt::println(BOLD_TEXT(color.outofdate), "(bold) {}", timestr_view);
-    }
+    fmt::println(BOLD_TEXT(color.orphan), "(bold) (un-maintained)");   
+    fmt::println(BOLD_TEXT(color.outofdate), "(bold) (Outdated: {})", timestr);
 
     fmt::println("\nexamples package search preview:");
     printPkgInfo(pkg, pkg.db_name);
@@ -126,39 +125,25 @@ bool execPacman(int argc, char *argv[]) {
 }
 
 int installPkg(alpm_list_t *pkgNames) {
-    bool                useGit   = config->useGit;
-    path                cacheDir = config->cacheDir;
+    bool  useGit   = config->useGit;
+    path  cacheDir = config->cacheDir;
 
-    bool                returnStatus = true;
-    bool                stat;
+    bool  returnStatus = true, stat;
 
-    vector<string>      pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
+    vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
     vector<string_view> pkgNamesVec, aurPkgNamesVec;
-
-    if (op.op_s_upgrade) {
-        if (!config->aurOnly) {
-            log_println(DEBUG, _("Upgrading system packages!"));
-            string op_s = "-Su";
-
-            if (op.op_s_sync)
-                op_s += 'y';
-
-            pacman_exec(op_s, pacmanPkgs); // pacmanPkgs is actually empty so it will only upgrade the packages
-        }
-        log_println(DEBUG, _("Upgrading AUR packages!"));
-        backend->update_all_aur_pkgs(cacheDir, useGit);
-    }
 
     // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next)
         pkgNamesVec.push_back((const char *)(pkgNames->data));
 
     if (pkgNamesVec.empty()) {
-        if (op.op_s_search)
+        if (op.op_s_search) {
             log_println(WARN, _("Please specify a target"));
-        return false;
+            return false;
+        }
     }
-
+    
     if (op.op_s_search) {
         for (size_t i = 0; i < pkgNamesVec.size(); i++) {
             vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
@@ -178,9 +163,16 @@ int installPkg(alpm_list_t *pkgNames) {
     }
 
     if (!update_aur_cache())
-        log_println(ERROR, "Failed to get informations about {}", (config->cacheDir / "packages.aur").string());   
+        log_println(ERROR, "Failed to get information about {}", (config->cacheDir / "packages.aur").string());   // TODO: translate
     
     aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+    
+    for (auto& pkg : pkgNamesVec) {
+        // check if pkg is not in aurPkgNamesVec
+        if (std::find(aurPkgNamesVec.begin(), aurPkgNamesVec.end(), pkg) == aurPkgNamesVec.end())
+            pacmanPkgs.push_back(pkg.data());
+    }
+
     vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
     
     if (!aurPkgNamesVec.empty()) {
@@ -214,64 +206,56 @@ int installPkg(alpm_list_t *pkgNames) {
                 return false;
         }
     }
+    
+    if (op.op_s_upgrade) {
+        if (!config->aurOnly) {
+            log_println(INFO, _("Upgrading system packages!"));
+            string op_s = "-S";
 
-    for (size_t i = 0; i < pkgNamesVec.size(); i++) {
-        vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
+            if (op.op_s_sync)
+                op_s += 'y';
 
-        optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
+            op_s += 'u';
 
-        if (!oSelectedPkgs) {
+            pacman_exec(op_s, pacmanPkgs);
+        }
+        log_println(INFO, _("Upgrading AUR packages!"));
+        backend->update_all_aur_pkgs(cacheDir, useGit);
+    }
+
+    for (size_t i = 0; i < aurPkgNamesVec.size(); i++) {
+        vector<TaurPkg_t> pkgs    = backend->search(aurPkgNamesVec[i], useGit, !op.op_s_search);
+
+        optional<vector<TaurPkg_t>> oSelectedPkg = askUserForPkg(pkgs, *backend, useGit);
+
+        if (!oSelectedPkg) {
             returnStatus = false;
             continue;
         }
 
-        vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
+        vector<TaurPkg_t> selectedPkg = oSelectedPkg.value();
 
-        for (size_t i = 0; i < selectedPkgs.size(); i++) {
-            TaurPkg_t   pkg = selectedPkgs[i];
+        TaurPkg_t   pkg = selectedPkg[0];
 
-            string_view url = pkg.aur_url;
+        path pkgDir = path(cacheDir) / pkg.name;
 
-            if (url.empty()) {
-                log_println(DEBUG, "Scheduled system package {} for installation!", pkg.name);
-                pacmanPkgs.push_back(pkg.name);
-                continue;
-            }
+        stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
 
-            // install first system packages then the AUR ones
-            // but first check if url is not empty
-            // because it will then start installing system packages each loop
-            if (!pacmanPkgs.empty() && !url.empty()) {
-                string op_s = "-S";
-
-                if (op.op_s_sync)
-                    op_s += 'y';
-                if (op.op_s_upgrade)
-                    op_s += 'u';
-
-                pacman_exec(op_s, pacmanPkgs);
-            }
-
-            path pkgDir = path(cacheDir) / pkg.name;
-
-            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-
-            if (!stat) {
-                log_println(ERROR, _("Installing AUR dependencies for your package has failed."));
-                returnStatus = false;
-                continue;
-            }
-
-            stat = backend->build_pkg(pkg.name, pkgDir, false);
-
-            if (!stat) {
-                log_println(ERROR, _("Building your package has failed."));
-                returnStatus = false;
-                continue;
-            }
-
-            pkgs_to_install += built_pkg + ' ';
+        if (!stat) {
+            log_println(ERROR, _("Installing AUR dependencies for your package has failed."));
+            returnStatus = false;
+            continue;
         }
+
+        stat = backend->build_pkg(pkg.name, pkgDir, false);
+
+        if (!stat) {
+            log_println(ERROR, _("Building your package has failed."));
+            returnStatus = false;
+            continue;
+        }
+
+        pkgs_to_install += built_pkg + ' ';
     }
 
     if (!pkgs_to_install.empty()) {
@@ -523,7 +507,7 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-    const char *optstring = "DFQRSTUVaihqsuryt";
+    const char *optstring = "DFQRSTUVaihqsurytns";
     static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
@@ -553,6 +537,8 @@ int parseargs(int argc, char* argv[]) {
         {"quiet",      no_argument,       0, OP_QUIET},
         {"debug",      no_argument,       0, OP_DEBUG},
         {"noconfirm",  no_argument,       0, OP_NOCONFIRM},
+        {"nosave",     no_argument,       0, OP_NOSAVE},
+        {"recursive",  no_argument,       0, OP_RECURSIVE},
         {0,0,0,0}
     };
 
@@ -602,6 +588,9 @@ int parseargs(int argc, char* argv[]) {
             case OP_QUERY:
                 result = parsearg_query(opt);
                 break;
+            case OP_REM:
+                result = parsearg_remove(opt);
+                break;
             default:
                 result = 1;
                 break;
@@ -641,7 +630,7 @@ int parseargs(int argc, char* argv[]) {
 // main
 int main(int argc, char *argv[]) {
     config = std::make_unique<Config>();
-    string configDir = string(getConfigDir());
+    string configDir = getConfigDir();
 
 #if defined(ENABLE_NLS)
     localize();
