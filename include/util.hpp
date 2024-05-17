@@ -63,6 +63,7 @@ enum prompt_yn {
     PROMPT_YN_EDIT_PKGBUILD,
     PROMPT_YN_PROCEED_INSTALL,
     PROMPT_YN_PROCEED_TRANSACTION,
+    PROMPT_YN_CLEANBUILD,
 };
 enum prompt_list {
     PROMPT_LIST_CLEANBUILDS,
@@ -101,7 +102,7 @@ fmt::text_style                  getColorFromDBName(string_view db_name);
 vector<alpm_pkg_t *>             filterAURPkgs(vector<alpm_pkg_t *> pkgs, alpm_list_t *syncdbs, bool inverse);
 vector<string_view>              filterAURPkgsNames(vector<string_view> pkgs, alpm_list_t *syncdbs, bool inverse);
 string                           shell_exec(string_view cmd);
-vector<string>                   split(string_view text, char delim);
+vector<string_view>              split(string_view text, char delim);
 fmt::rgb                         hexStringToColor(string_view hexstr);
 void                             ctrl_d_handler();
 string                           getTitleFromVotes(float votes);
@@ -110,7 +111,7 @@ string                           getHomeConfigDir();
 string                           getConfigDir();
 string                           getCacheDir();
 bool                             makepkg_exec(string_view cmd, bool exitOnFailure = true);
-bool                             pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure = true, bool root = true);
+bool                             pacman_exec(string_view op, vector<string_view> const& args, bool exitOnFailure = true, bool root = true);
 bool                             util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret);
 std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 string_view                      binarySearch(const vector<string>& arr, string_view target);
@@ -252,6 +253,10 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
             log_printf(INFO, BOLD, _("Would you like to proceed with this transaction? {}"), inputs_str);
             NOCONFIRM(YES);
             break;
+        case PROMPT_YN_CLEANBUILD:
+            log_printf(INFO, BOLD, "Would you like to cleanbuild {}? {}", std::forward<Args>(args)..., inputs_str);
+            NOCONFIRM(NO);
+            break;
         default:
             return def;
     }
@@ -320,22 +325,22 @@ vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false)
         if (result_str == "a")
             return list;
 
-        vector<string> input_indices = split(result_str, ' ');
+        vector<string_view> input_indices = split(result_str, ' ');
 
         int added_elements = 0;
         bool breakandcontinue = false;
         for (size_t i = 0; i < input_indices.size() && !breakandcontinue; i++) {
             // 1-5 means 1 through 5
             if (input_indices[i].find('-') != string::npos) {
-                vector<string> loop_bounds = split(input_indices[i], '-');
+                vector<string_view> loop_bounds = split(input_indices[i], '-');
                 if (loop_bounds.size() != 2 || !is_numerical(loop_bounds[0]) || !is_numerical(loop_bounds[1])) {
                     log_printf(WARN, _("Invalid loop range! (loop ranges look like \"0-5\"): "));
                     breakandcontinue = true;
                     break;
                 }
 
-                int lowerbound  = std::stoi(loop_bounds[0]);
-                int higherbound = std::stoi(loop_bounds[1]);
+                int lowerbound  = std::atoi(loop_bounds[0].data());
+                int higherbound = std::atoi(loop_bounds[1].data());
 
                 if ((0 > lowerbound || lowerbound > list.size()) || (lowerbound > higherbound || higherbound >= list.size())) {
                     log_printf(WARN, _("Invalid loop range! (loop ranges must stay in bounds and in order): "));
@@ -356,7 +361,7 @@ vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false)
                 continue;
             }
 
-            int index = std::stoi(input_indices[i]);
+            int index = std::atoi(input_indices[i].data());
             if (0 > index || index >= list.size()) {
                 log_println(WARN, _("Invalid index! Ignoring index #{}."), input_indices[i]);
                 continue;

@@ -365,7 +365,7 @@ bool makepkg_exec(string_view cmd, bool exitOnFailure) {
     ccmd.push_back(config->makepkgConf.c_str());
 
     for (auto& str : split(cmd, ' '))
-        ccmd.push_back(str.c_str());
+        ccmd.push_back(str.data());
 
     return taur_exec(ccmd, exitOnFailure);
 }
@@ -378,7 +378,7 @@ bool makepkg_exec(string_view cmd, bool exitOnFailure) {
  * @param root If pacman should be executed as root (Default true)
  * @return true if the command successed, else false 
  */
-bool pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure, bool root) {
+bool pacman_exec(string_view op, vector<string_view> const& args, bool exitOnFailure, bool root) {
     vector<const char *> ccmd;
 
     if (root)
@@ -399,7 +399,7 @@ bool pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure,
     ccmd.push_back("--");
 
     for (auto& str : args)
-        ccmd.push_back(str.c_str());
+        ccmd.push_back(str.data());
 
     return taur_exec(ccmd, exitOnFailure);
 }
@@ -646,13 +646,13 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
             std::getline(std::cin, input);
         } while (!is_numerical(input, true));
 
-        vector<string>    indices = split(input, ' ');
+        vector<string_view>    indices = split(input, ' ');
 
         vector<TaurPkg_t> output;
         output.reserve(indices.size());
 
         for (size_t i = 0; i < indices.size(); i++) {
-            size_t selected = std::stoi(indices[i]);
+            size_t selected = std::atoi(indices[i].data());
 
             if (selected >= pkgs.size())
                 continue;
@@ -797,9 +797,9 @@ string getCacheDir() {
     return getHomeCacheDir() + "/TabAUR";
 }
 
-vector<string> split(string_view text, char delim) {
+vector<string_view> split(string_view text, char delim) {
     string            line;
-    vector<string>    vec;
+    vector<string_view>    vec;
     std::stringstream ss(text.data());
     while (std::getline(ss, line, delim)) {
         vec.push_back(line);
