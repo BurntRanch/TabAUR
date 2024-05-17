@@ -31,6 +31,8 @@ enum {
     OP_NOCONFIRM,
     OP_QUIET,
     OP_TEST_COLORS,
+    OP_RECURSIVE,
+    OP_NOSAVE,
 };
 
 struct Operation_t {
@@ -59,4 +61,5 @@ void invalid_opt();
 int  parsearg_global(int opt);
 int  parsearg_query(int opt);
 int  parsearg_sync(int opt);
+int  parsearg_remove(int opt);
 #endif

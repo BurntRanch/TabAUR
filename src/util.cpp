@@ -567,12 +567,40 @@ vector<string> load_aur_list() {
     return aur_list;
 }
 
-bool update_aur_cache() {
+bool download_aur_cache(path file_path) {
+    cpr::Response r = cpr::Get(cpr::Url{AUR_URL"/packages.gz"});
+    
+    if (r.status_code == 200) {
+        std::ofstream outfile(file_path, std::ios::trunc);
+        if (!outfile.is_open()) {
+            log_println(ERROR, "Failed to open/write {}", file_path.c_str());
+            return false;
+        }
+        outfile << r.text;
+    } else {
+        log_println(ERROR, "Failed to download {} with status code: {}", r.url.str(), r.status_code); 
+        return false;
+    }
+
+    return true;
+}
+
+// recursiveCall indicates whether the function is calling itself.
+// This function will automatically try again after downloading the file, if not already present.
+// Do not call this with true unless you do not want this behavior.
+// It is, by default, false.
+bool update_aur_cache(bool recursiveCall) {
     path file_path = config->cacheDir / "packages.aur";
     
     struct stat file_stat;
     if (stat(file_path.c_str(), &file_stat) != 0) {
-        log_println(ERROR, "Unable to get {} metadata: {}", file_path.c_str(), errno);  
+        if (errno == ENOENT && !recursiveCall) { // file not found, download THEN try again once more.
+            log_println(INFO, "File {} not found, attempting download.", file_path);
+            return download_aur_cache(file_path) && update_aur_cache(true);
+        }
+
+        log_println(ERROR, "Unable to get {} metadata: {}", file_path, errno);
+
         return false;
     }
     
@@ -583,20 +611,8 @@ bool update_aur_cache() {
     std::time_t now_time_t = std::chrono::system_clock::to_time_t(_current_time);
 
     if (file_stat.st_mtim.tv_sec < now_time_t - timeout) {
-        log_println(INFO, "Refreshing {}", file_path.c_str());
-        cpr::Response r = cpr::Get(cpr::Url{AUR_URL"/packages.gz"});
-        
-        if (r.status_code == 200) {
-            std::ofstream outfile(file_path, std::ios::trunc);
-            if (!outfile.is_open()) {
-                log_println(ERROR, "Failed to open/write {}", file_path.c_str());
-                return false;
-            }
-            outfile << r.text;
-        } else {
-            log_println(ERROR, "Failed to download {} with status code: {}", r.url.str(), r.status_code); 
-            return false;
-        }
+        log_println(INFO, "Refreshing {}", file_path);
+        download_aur_cache(file_path);
     }
      
     return true;

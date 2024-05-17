@@ -163,7 +163,7 @@ int installPkg(alpm_list_t *pkgNames) {
     }
 
     if (!update_aur_cache())
-        log_println(ERROR, "Failed to get informations about {}", (config->cacheDir / "packages.aur").string());   
+        log_println(ERROR, "Failed to get information about {}", (config->cacheDir / "packages.aur").string());   // TODO: translate
     
     aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
     
@@ -507,7 +507,7 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
-    const char *optstring = "DFQRSTUVaihqsuryt";
+    const char *optstring = "DFQRSTUVaihqsurytns";
     static const struct option opts[] =
     {
         {"database",   no_argument,       0, 'D'},
@@ -537,6 +537,8 @@ int parseargs(int argc, char* argv[]) {
         {"quiet",      no_argument,       0, OP_QUIET},
         {"debug",      no_argument,       0, OP_DEBUG},
         {"noconfirm",  no_argument,       0, OP_NOCONFIRM},
+        {"nosave",     no_argument,       0, OP_NOSAVE},
+        {"recursive",  no_argument,       0, OP_RECURSIVE},
         {0,0,0,0}
     };
 
@@ -585,6 +587,9 @@ int parseargs(int argc, char* argv[]) {
                 break;
             case OP_QUERY:
                 result = parsearg_query(opt);
+                break;
+            case OP_REM:
+                result = parsearg_remove(opt);
                 break;
             default:
                 result = 1;

@@ -3,6 +3,7 @@
 #include "args.hpp"
 #include "util.hpp"
 #include "config.hpp"
+#include <alpm.h>
 
 alpm_list_smart_deleter taur_targets(nullptr, free_list_and_internals);
 
@@ -138,6 +139,25 @@ int parsearg_sync(int opt) {
             break;
         case OP_CLEANBUILD:
             op.op_s_cleanbuild = 1;
+            break;
+        default:
+            return 1;
+    }
+    return 0;
+}
+
+int parsearg_remove(int opt) {
+    switch (opt) {
+        case OP_NOSAVE:
+        case 'n':
+            config->flags |= ALPM_TRANS_FLAG_NOSAVE;
+            break;
+        case OP_RECURSIVE:
+        case 's':
+            if (config->flags & ALPM_TRANS_FLAG_RECURSE)
+                config->flags |= ALPM_TRANS_FLAG_RECURSEALL;
+            else
+                config->flags |= ALPM_TRANS_FLAG_RECURSE;
             break;
         default:
             return 1;

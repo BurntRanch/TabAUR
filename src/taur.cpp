@@ -169,7 +169,7 @@ bool TaurBackend::remove_pkg(alpm_pkg_t *pkg, bool ownTransaction) {
     if (!pkg)
         return false;
 
-    if (ownTransaction && alpm_trans_init(this->config.handle, 0)) {
+    if (ownTransaction && alpm_trans_init(this->config.handle, this->config.flags)) {
         log_println(ERROR, _("Failed to initialize transaction ({})"), alpm_strerror(alpm_errno(this->config.handle)));
         return false;
     }
@@ -196,7 +196,7 @@ bool TaurBackend::remove_pkgs(alpm_list_smart_pointer& pkgs) {
     if (!pkgs)
         return false;
 
-    if (alpm_trans_init(this->config.handle, 0)) {
+    if (alpm_trans_init(this->config.handle, this->config.flags)) {
         log_println(ERROR, _("Failed to initialize transaction ({})"), alpm_strerror(alpm_errno(this->config.handle)));
         return false;
     }

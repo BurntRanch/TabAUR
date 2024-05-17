@@ -73,6 +73,8 @@ class Config {
     bool           debug;
     bool           quiet;
     bool           noconfirm;
+    // alpm transaction flags
+    int            flags;
 
     std::map<string, strOrBool> overrides;
 
