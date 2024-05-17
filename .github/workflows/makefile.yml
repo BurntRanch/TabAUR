@@ -31,4 +31,4 @@ jobs:
       run: make
 
     - name: Test taur
-      run: ./build/debug/taur -t
+      run: ./build/release/taur -t
