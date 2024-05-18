@@ -262,7 +262,7 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
 bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPkg_t> const& localPkgs, bool useGit) {
     log_println(DEBUG, "pkg.name = {}", pkg.name);
     log_println(DEBUG, "pkg.totaldepends = {}", pkg.totaldepends);
-    vector<string_view> aur_list = load_aur_list();
+    vector<string> aur_list = load_aur_list();
 
     for (size_t i = 0; i < pkg.totaldepends.size(); i++) {
         string_view pkg_depend = binarySearch(aur_list, pkg.totaldepends[i]);

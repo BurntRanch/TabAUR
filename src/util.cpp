@@ -534,7 +534,7 @@ bool util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret) {
 }
 
 // Function to perform binary search on a vector of strings
-string_view binarySearch(const vector<string_view>& arr, string_view target) {
+string_view binarySearch(const vector<string>& arr, string_view target) {
     int left = 0, right = arr.size() - 1;
     
     while (left <= right) {
@@ -550,7 +550,7 @@ string_view binarySearch(const vector<string_view>& arr, string_view target) {
     return "";
 }
 
-vector<string_view> load_aur_list() {
+vector<string> load_aur_list() {
     path file_path = config->cacheDir / "packages.aur";
     std::ifstream infile(file_path);
     if (!infile.good()) {
@@ -558,8 +558,8 @@ vector<string_view> load_aur_list() {
         exit(1);
     }
 
-    vector<string_view>   aur_list;
-    string                pkg;
+    vector<string>    aur_list;
+    string            pkg;
     
     while (infile >> pkg)
         aur_list.push_back(pkg);
