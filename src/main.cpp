@@ -130,7 +130,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     bool  returnStatus = true, stat;
 
-    vector<string_view> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
+    vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
     vector<string_view> pkgNamesVec;
     vector<string_view> pkgsToCleanBuild, pkgsToReview;
 
