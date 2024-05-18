@@ -2,10 +2,10 @@ CXX       	?= g++
 PREFIX	  	?= /usr
 LOCALEDIR 	?= $(PREFIX)/share/locale
 VARS  	  	?= -DENABLE_NLS=1
-DEBUG 		?= 0
+DEBUG 		?= 1
 
 VERSION    	 = 0.6.6
-BRANCH     	 = main
+BRANCH     	 = libalpm-test
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
 LDFLAGS   	:= -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
@@ -59,6 +59,10 @@ locale:
 taur: cpr fmt toml $(OBJ)
 	mkdir -p $(BUILDDIR)
 	$(CXX) $(OBJ) $(BUILDDIR)/toml++/toml.o -o $(BUILDDIR)/taur $(LDFLAGS)
+
+dist: taur locale
+	rm -f ./taur && cp -f $(BUILDDIR)/taur ./taur
+	bsdtar --zstd -cf TabAUR-v$(VERSION).tar.zst taur LICENSE README.md locale/
 
 clean:
 	rm -rf $(BUILDDIR)/taur $(OBJ) cpr/build

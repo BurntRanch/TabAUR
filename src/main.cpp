@@ -131,7 +131,8 @@ int installPkg(alpm_list_t *pkgNames) {
     bool  returnStatus = true, stat;
 
     vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
-    vector<string_view> pkgNamesVec, aurPkgNamesVec;
+    vector<string_view> pkgNamesVec;
+    vector<string_view> pkgsToCleanBuild, pkgsToReview;
 
     // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next)
@@ -164,67 +165,20 @@ int installPkg(alpm_list_t *pkgNames) {
 
     if (!update_aur_cache())
         log_println(ERROR, "Failed to get information about {}", (config->cacheDir / "packages.aur").string());   // TODO: translate
+
+    // this feels horrible despite being 100% correct and probably not problematic.
+    // it just feels like we should ask for every package.
+    vector<string_view> AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+
+    if (!op.op_s_cleanbuild && !AURPkgs.empty())
+        pkgsToCleanBuild = askUserForList<string_view>(AURPkgs, PROMPT_LIST_CLEANBUILDS);
+
+    if (!config->noconfirm && !AURPkgs.empty())
+        pkgsToReview = askUserForList<string_view>(AURPkgs, PROMPT_LIST_REVIEWS);
+
     
-    aurPkgNamesVec = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
-    
-    for (auto& pkg : pkgNamesVec) {
-        // check if pkg is not in aurPkgNamesVec
-        if (std::find(aurPkgNamesVec.begin(), aurPkgNamesVec.end(), pkg) == aurPkgNamesVec.end())
-            pacmanPkgs.push_back(pkg.data());
-    }
-
-    vector<string_view> pkgNamesToCleanBuild, pkgNamesToReview;
-    
-    if (!aurPkgNamesVec.empty()) {
-        if (!op.op_s_cleanbuild) {
-            pkgNamesToCleanBuild = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_CLEANBUILDS);
-            if (!pkgNamesToCleanBuild.empty()) {
-                for (auto& pkg_name : pkgNamesToCleanBuild) {
-                    path pkgDir = path(cacheDir) / pkg_name;
-                    log_println(INFO, _("Removing {}"), pkgDir.c_str());
-                    std::filesystem::remove_all(pkgDir);
-                }
-            }
-        }
-
-        for (auto& pkg_name : aurPkgNamesVec) {
-            path pkgDir = path(cacheDir) / pkg_name;
-            stat        = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
-            if (!stat) {
-                log_println(ERROR, _("Failed to download {}"), pkg_name);
-                returnStatus = false;
-            }
-        }
-
-        pkgNamesToReview = askUserForList<string_view>(aurPkgNamesVec, PROMPT_LIST_REVIEWS);
-        if (!pkgNamesToReview.empty()) {
-            for (auto& pkg_name : pkgNamesToReview) {
-                path pkgDir = path(cacheDir) / pkg_name;
-                taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()});
-            }
-            if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
-                return false;
-        }
-    }
-    
-    if (op.op_s_upgrade) {
-        if (!config->aurOnly) {
-            log_println(INFO, _("Upgrading system packages!"));
-            string op_s = "-S";
-
-            if (op.op_s_sync)
-                op_s += 'y';
-
-            op_s += 'u';
-
-            pacman_exec(op_s, pacmanPkgs);
-        }
-        log_println(INFO, _("Upgrading AUR packages!"));
-        backend->update_all_aur_pkgs(cacheDir, useGit);
-    }
-
-    for (size_t i = 0; i < aurPkgNamesVec.size(); i++) {
-        vector<TaurPkg_t> pkgs    = backend->search(aurPkgNamesVec[i], useGit, !op.op_s_search);
+    for (size_t i = 0; i < pkgNamesVec.size(); i++) {
+        vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
 
         optional<vector<TaurPkg_t>> oSelectedPkg = askUserForPkg(pkgs, *backend, useGit);
 
@@ -235,27 +189,55 @@ int installPkg(alpm_list_t *pkgNames) {
 
         vector<TaurPkg_t> selectedPkg = oSelectedPkg.value();
 
-        TaurPkg_t   pkg = selectedPkg[0];
+        for (size_t i = 0; i < selectedPkg.size(); i++) {
+            TaurPkg_t   pkg = selectedPkg[i];
 
-        path pkgDir = path(cacheDir) / pkg.name;
+            if (pkg.db_name != "aur") {
+                pacmanPkgs.push_back(pkg.name);
+                continue;
+            }
 
-        stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+            path pkgDir = path(cacheDir) / pkg.name;
+            bool cleanBuild = op.op_s_cleanbuild ? false : std::find(pkgsToCleanBuild.begin(), pkgsToCleanBuild.end(), pkg.name) != pkgsToCleanBuild.end();
+            bool review = config->noconfirm ? false : std::find(pkgsToReview.begin(), pkgsToReview.end(), pkg.name) != pkgsToReview.end();
 
-        if (!stat) {
-            log_println(ERROR, _("Installing AUR dependencies for your package has failed."));
-            returnStatus = false;
-            continue;
+            if (cleanBuild) {
+                log_println(INFO, _("Removing {}"), pkgDir.c_str());
+                std::filesystem::remove_all(pkgDir);
+            }
+
+            stat = useGit ? backend->download_git(AUR_URL_GIT(pkg.name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg.name), pkgDir);
+            if (!stat) {
+                log_println(ERROR, _("Failed to download {}"), pkg.name);
+                returnStatus = false;
+                continue;
+            }
+
+            if (review) {
+                taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()});
+
+                if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
+                    return false;
+            }
+
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+
+            if (!stat) {
+                log_println(ERROR, _("Installing AUR dependencies for your package has failed."));
+                returnStatus = false;
+                continue;
+            }
+
+            stat = backend->build_pkg(pkg.name, pkgDir, false);
+
+            if (!stat) {
+                log_println(ERROR, _("Building your package has failed."));
+                returnStatus = false;
+                continue;
+            }
+
+            pkgs_to_install += built_pkg + ' ';
         }
-
-        stat = backend->build_pkg(pkg.name, pkgDir, false);
-
-        if (!stat) {
-            log_println(ERROR, _("Building your package has failed."));
-            returnStatus = false;
-            continue;
-        }
-
-        pkgs_to_install += built_pkg + ' ';
     }
 
     if (!pkgs_to_install.empty()) {
@@ -265,6 +247,28 @@ int installPkg(alpm_list_t *pkgNames) {
             log_println(ERROR, _("Failed to install {}"), fmt::join(pkgNamesVec, " "));
             returnStatus = false;
         }
+    }
+    
+    if (!config->aurOnly && (op.op_s_upgrade || !pacmanPkgs.empty())) {
+        if (op.op_s_upgrade)
+            log_println(INFO, _("Upgrading system packages!"));
+        else
+            log_println(INFO, "Installing system packages!");
+
+        string op_s = "-S";
+
+        if (op.op_s_sync)
+            op_s += 'y';
+
+        if (op.op_s_upgrade)
+            op_s += 'u';
+
+        pacman_exec(op_s, pacmanPkgs);
+    }
+
+    if (op.op_s_upgrade) {
+        log_println(INFO, _("Upgrading AUR packages!"));
+        backend->update_all_aur_pkgs(cacheDir, useGit);
     }
 
     return returnStatus;

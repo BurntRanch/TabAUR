@@ -63,6 +63,7 @@ enum prompt_yn {
     PROMPT_YN_EDIT_PKGBUILD,
     PROMPT_YN_PROCEED_INSTALL,
     PROMPT_YN_PROCEED_TRANSACTION,
+    PROMPT_YN_CLEANBUILD,
 };
 enum prompt_list {
     PROMPT_LIST_CLEANBUILDS,
@@ -251,6 +252,10 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
         case PROMPT_YN_PROCEED_TRANSACTION:
             log_printf(INFO, BOLD, _("Would you like to proceed with this transaction? {}"), inputs_str);
             NOCONFIRM(YES);
+            break;
+        case PROMPT_YN_CLEANBUILD:
+            log_printf(INFO, BOLD, "Would you like to cleanbuild {}? {}", std::forward<Args>(args)..., inputs_str);
+            NOCONFIRM(NO);
             break;
         default:
             return def;
