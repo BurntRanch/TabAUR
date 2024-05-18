@@ -4,8 +4,8 @@ LOCALEDIR 	?= $(PREFIX)/share/locale
 VARS  	  	?= -DENABLE_NLS=1
 DEBUG 		?= 1
 
-VERSION    	 = 0.6.4
-BRANCH     	 = libalpm-test
+VERSION    	 = 0.6.7
+BRANCH     	 = main
 SRC              = $(sort $(wildcard *.cpp))
 OBJ              = $(SRC:.cpp=)
 LDFLAGS   	:= -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
