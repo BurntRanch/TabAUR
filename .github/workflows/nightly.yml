@@ -54,13 +54,13 @@ jobs:
       run: make DEBUG=0
 
     - name: Build release
-      run: make dist DEBUG=0
+      run: make dist DEBUG=0 && mv ./TabAUR-*.tar.zst ./tabaur.tar.zst
 
     - name: Upload to github artifacts
       uses: actions/upload-artifact@v4
       with:
         name: tabaur
-        path: ./TabAUR-${{ needs.get-version.outputs.version }}.tar.zst
+        path: ./tabaur.tar.zst
 
   release:
     name: Create GitHub Release
