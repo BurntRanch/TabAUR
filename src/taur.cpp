@@ -62,36 +62,40 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false) {
     vector<string> makedepends, depends, totaldepends, licenses;
 
     // yes, it will get depends and makedepends even one doesn't have it
-    if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray() 
-        && pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()
-        && pkgJson.HasMember("License") && pkgJson["License"].IsArray()) 
+    if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray())
     {
-
         const rapidjson::Value& dependsArray     = pkgJson["Depends"].GetArray();
-        const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
-        const rapidjson::Value& licensesArray    = pkgJson["License"].GetArray();
 
         depends.reserve(dependsArray.Size());
-        makedepends.reserve(makeDependsArray.Size());
-        totaldepends.reserve(dependsArray.Size());
-        licenses.reserve(licensesArray.Size());
-
-        for (size_t i = 0; i < licensesArray.Size(); ++i)
-            licenses.push_back(licensesArray[i].GetString());
 
         for (size_t i = 0; i < dependsArray.Size(); i++)
             depends.push_back(dependsArray[i].GetString());
 
-        for (size_t i = 0; i < makeDependsArray.Size(); i++)
+        totaldepends.insert(totaldepends.end(), depends.begin(), depends.end());
+        //for (size_t i = 0; i < makeDependsArray.Size(); i++) {
+        //    // make sure it isn't in the depends list
+        //    if (std::find(totaldepends.begin(), totaldepends.end(), makeDependsArray[i].GetString()) != totaldepends.end())
+        //        continue;
+        //    totaldepends.push_back(makeDependsArray[i].GetString());
+        //}
+    }
+    if (pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray()) {
+        const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
+
+        makedepends.reserve(makeDependsArray.Size());
+
+        for (size_t i = 0; i < makeDependsArray.Size(); ++i)
             makedepends.push_back(makeDependsArray[i].GetString());
 
-        totaldepends = depends;
-        for (size_t i = 0; i < makeDependsArray.Size(); i++) {
-            // make sure it isn't in the depends list
-            if (std::find(totaldepends.begin(), totaldepends.end(), makeDependsArray[i].GetString()) != totaldepends.end())
-                continue;
-            totaldepends.push_back(makeDependsArray[i].GetString());
-        }
+        totaldepends.insert(totaldepends.end(), makedepends.begin(), makedepends.end());
+    }
+    if (pkgJson.HasMember("License") && pkgJson["License"].IsArray()) {
+        const rapidjson::Value& licensesArray    = pkgJson["License"].GetArray();
+
+        licenses.reserve(licensesArray.Size());
+
+        for (size_t i = 0; i < licensesArray.Size(); ++i)
+            licenses.push_back(licensesArray[i].GetString());
     }
 
     TaurPkg_t out = {
