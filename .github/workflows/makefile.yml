@@ -28,7 +28,7 @@ jobs:
       run: make clean
 
     - name: Compile
-      run: make
+      run: make DEBUG=0
 
     - name: Test taur
       run: ./build/release/taur -t

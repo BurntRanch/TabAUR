@@ -60,6 +60,10 @@ taur: cpr fmt toml $(OBJ)
 	mkdir -p $(BUILDDIR)
 	$(CXX) $(OBJ) $(BUILDDIR)/toml++/toml.o -o $(BUILDDIR)/taur $(LDFLAGS)
 
+dist: taur locale
+	rm -f ./taur && cp -f $(BUILDDIR)/taur ./taur
+	bsdtar --zstd -cf TabAUR-v$(VERSION).tar.zst taur LICENSE README.md locale/
+
 clean:
 	rm -rf $(BUILDDIR)/taur $(OBJ) cpr/build
 #	make -C src/fmt clean
