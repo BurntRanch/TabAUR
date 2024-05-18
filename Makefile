@@ -4,7 +4,7 @@ LOCALEDIR 	?= $(PREFIX)/share/locale
 VARS  	  	?= -DENABLE_NLS=1
 DEBUG 		?= 1
 
-VERSION    	 = 0.6.6
+VERSION    	 = 0.6.7
 BRANCH     	 = libalpm-test
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
