@@ -5,7 +5,7 @@
 [![forthebadge](https://forthebadge.com/images/badges/works-on-my-machine.svg)](https://forthebadge.com)
 
 # TabAUR
-An AUR Helper that has support for downloading AUR Repositories with tarballs or git. Also it's fast as pacman
+An AUR Helper with support for downloading AUR Repositories with tarballs or git, TabAUR aims to be a fast, lightweight, capable, and safe front-end for pacman, that supports and even *helps* you with AUR stuff!
 
 > [!NOTE]
 > #### TabAUR has decided to become public in **April 27 2024** since we agreeed that is almost in a good beta shape.
