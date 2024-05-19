@@ -1,3 +1,7 @@
+> [!WARNING]
+> This is a legacy build of TabAUR, it is not as fast and is no longer maintained.
+> Do not use this version.
+
 # TabAUR
 
 TabAUR is an AUR Helper that actually makes releases and it's written in C++, It supports downloading AUR Repositories with tarballs or git
