@@ -72,4 +72,7 @@ install: taur locale
 	install $(BUILDDIR)/taur -Dm 755 -v $(DESTDIR)$(PREFIX)/bin/taur
 	find locale -type f -exec install -Dm 755 "{}" "$(DESTDIR)$(PREFIX)/share/{}" \;
 
+test:
+	make -C tests
+
 .PHONY: cpr taur clean fmt toml locale install all

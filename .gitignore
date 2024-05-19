@@ -3,6 +3,8 @@
 *.so
 *.a
 *.mo
+tests/test*
+!tests/*.cpp
 
 locale/
 taur

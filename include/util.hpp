@@ -92,7 +92,7 @@ bool                             taur_read_exec(vector<const char *> cmd, string
 void                             interruptHandler(int);
 bool                             taur_exec(vector<const char *> cmd, bool exitOnFailure = true);
 void                             sanitizeStr(string& str);
-bool                             is_package_from_syncdb(alpm_pkg_t *pkg, alpm_list_t *syncdbs);
+bool                             is_package_from_syncdb(const char *name, alpm_list_t *syncdbs);
 bool                             commitTransactionAndRelease(bool soft = false);
 void                             printPkgInfo(TaurPkg_t& pkg, string_view db_name);
 void                             printLocalFullPkgInfo(alpm_pkg_t *pkg);

@@ -193,7 +193,7 @@ string expandVar(string& str) {
         if (env == nullptr)
             die(_("FATAL: $HOME enviroment variable is not set (how?)"));
         
-        str.replace(0, 1, string(env)); // replace ~ with the $HOME value
+        str.replace(0, 1, env); // replace ~ with the $HOME value
     } else if (str[0] == '$') {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
