@@ -105,22 +105,19 @@ void test_colors() {
     printPkgInfo(pkg, pkg.db_name);
 }
 
-bool execPacman(int argc, char *argv[]) {
+void execPacman(int argc, char *argv[]) {
     if (argc > (_POSIX_ARG_MAX - 1))
         die(_("argc is invalid! (argc > {})"), _POSIX_ARG_MAX - 1);
 
-    char *args[argc + 1]; // null terminator
+    vector <const char *> args;
 
-    args[0] = (char *)"pacman";
+    args.push_back("pacman");
     for (int i = 1; i < argc; ++i)
-        args[i] = argv[i];
+        args.push_back(argv[i]);
+    args.push_back(nullptr);
 
-    args[argc + 1] = nullptr; // null-terminate the array
-
-    execvp(args[0], args);
-
-    // If execvp returns, it means an error occurred
-    perror("execvp");
+    if (execvp(args[0], const_cast<char *const *>(args.data())) == -1)
+        perror("execvp");
     exit(1);
 }
 
