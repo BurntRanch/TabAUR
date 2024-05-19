@@ -138,7 +138,7 @@ template <typename... Args>
 void _log_println(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
     switch (log) {
         case ERROR:
-            fmt::print(BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
+            fmt::print(stderr, BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
             break;
         case WARN:
             fmt::print(BOLD_TEXT(color.yellow), fmt::runtime(_("Warning: ")));
@@ -178,10 +178,16 @@ void log_println(log_level log, const fmt::text_style ts, const char *fmt, Args&
 }
 
 template <typename... Args>
+void die(const char *fmt, Args&&... args) {
+    _log_println(ERROR, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
+    std::exit(1);
+}
+
+template <typename... Args>
 void _log_printf(log_level log, const fmt::text_style ts, fmt::runtime_format_string<> fmt, Args&&... args) {
     switch (log) {
         case ERROR:
-            fmt::print(BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
+            fmt::print(stderr, BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
             break;
         case WARN:
             fmt::print(BOLD_TEXT(color.yellow), fmt::runtime(_("Warning: ")));

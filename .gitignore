@@ -2,7 +2,6 @@
 *.out
 *.so
 *.a
-*.pot
 *.mo
 
 locale/

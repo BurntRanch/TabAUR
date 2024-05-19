@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: taur 0.6.7\n"
 "Report-Msgid-Bugs-To: https://github.com/BurntRanch/TabAUR\n"
-"POT-Creation-Date: 2024-05-18 19:22+0200\n"
+"POT-Creation-Date: 2024-05-19 11:44+0200\n"
 "PO-Revision-Date: 2024-05-12 15:53+0300\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -22,13 +22,13 @@ msgid "invalid option: '{}' and '{}' may not be used together"
 msgstr "خيار غير صالح: لا يمكن استخدام '{}' و '{}' مع بعض."
 
 #: src/config.cpp:31
-#, c++-format
-msgid "Warning: TabAUR config folder was not found, Creating folders at {}!"
+#, fuzzy, c++-format
+msgid "TabAUR config folder was not found, Creating folders at {}!"
 msgstr "تحذير: مجلد اعدادات TabAUR غير موجوده, فتم صناع مجلد في {}!"
 
 #: src/config.cpp:37 src/config.cpp:44
-#, c++-format
-msgid "Warning: {} not found, generating new one"
+#, fuzzy, c++-format
+msgid "{} not found, generating new one"
 msgstr "تحذير: لم يكمن ايجاد {}، سيتم صناع بديل جديد"
 
 #: src/config.cpp:55
@@ -37,10 +37,27 @@ msgid "TabAUR cache folder was not found, Creating folders at {}!"
 msgstr ""
 "لم يتم العثور على مجلد ذاكرة التخزين المؤقته, سيتم اضافة مجلد جديد في {}!"
 
+#: src/config.cpp:62
+msgid ""
+"I see you're a new user, Welcome!\n"
+"Even though the AUR is very convenient, it could contain packages that are "
+"unmoderated and could be unsafe.\n"
+"You should always read the sources, popularity, and votes to judge by "
+"yourself whether the package is trustable.\n"
+"This project is in no way liable for any damage done to your system as a "
+"result of AUR packages.\n"
+"Thank you!\n"
+msgstr ""
+
 #: src/config.cpp:115
-#, c++-format
-msgid "ERROR: Parsing config file {} failed:"
+#, fuzzy, c++-format
+msgid "Parsing config file {} failed:"
 msgstr "خطأ: فشل معالجة ملف الأعدادات {}:"
+
+#: src/config.cpp:125
+#, c++-format
+msgid "Failed to get an alpm handle! Error: {}"
+msgstr ""
 
 #: src/config.cpp:137
 #, c++-format
@@ -72,6 +89,11 @@ msgstr "لون رسائل التحذير: {}"
 msgid "Error color: {}"
 msgstr "لون رسائل الأخطاء: {}"
 
+#: src/main.cpp:110
+#, c++-format
+msgid "argc is invalid! (argc > {})"
+msgstr ""
+
 #: src/main.cpp:143
 msgid "Please specify a target"
 msgstr "يرجى تحديد هدف"
@@ -80,6 +102,11 @@ msgstr "يرجى تحديد هدف"
 #, c++-format
 msgid "No results found for {}!"
 msgstr "لا توجد نواتج ل{}!"
+
+#: src/main.cpp:167
+#, fuzzy, c++-format
+msgid "Failed to get information about {}"
+msgstr "لم يمكن تثبيت {}"
 
 #: src/main.cpp:205
 #, c++-format
@@ -113,6 +140,11 @@ msgstr "لم يمكن تثبيت {}"
 msgid "Upgrading system packages!"
 msgstr "يتم تطوير حوازم النظام!"
 
+#: src/main.cpp:256
+#, fuzzy
+msgid "Installing system packages!"
+msgstr "يتم تطوير حوازم النظام!"
+
 #: src/main.cpp:270
 msgid "Upgrading AUR packages!"
 msgstr "يتم تطوير حوازم AUR!"
@@ -143,17 +175,17 @@ msgid "Please use pacman for this command (may need root too)"
 msgstr ""
 
 #: src/main.cpp:563
-msgid "ERROR: only one operation may be used at a time"
+msgid "only one operation may be used at a time"
 msgstr ""
 
 #: src/main.cpp:613
 #, c++-format
-msgid "ERROR: invalid option '-{}'"
+msgid "invalid option '-{:c}'"
 msgstr ""
 
 #: src/main.cpp:615
 #, c++-format
-msgid "ERROR: invalid option '--{}'"
+msgid "invalid option '--{}'"
 msgstr ""
 
 #: src/main.cpp:658
@@ -453,194 +485,224 @@ msgstr ""
 msgid "Caught CTRL-C, Exiting!"
 msgstr ""
 
-#: src/util.cpp:147
+#: src/util.cpp:145
 msgid "Changes to be made:"
 msgstr ""
 
-#: src/util.cpp:161 src/util.cpp:177
+#: src/util.cpp:159 src/util.cpp:175
 #, c++-format
 msgid "Failed to release transaction ({})."
 msgstr ""
 
-#: src/util.cpp:163
+#: src/util.cpp:161
 msgid "Cancelled transaction."
 msgstr ""
 
-#: src/util.cpp:169
+#: src/util.cpp:167
 #, c++-format
 msgid "Failed to prepare transaction ({})."
 msgstr ""
 
-#: src/util.cpp:173
+#: src/util.cpp:171
 #, c++-format
 msgid "Failed to commit transaction ({})."
 msgstr ""
 
-#: src/util.cpp:180
+#: src/util.cpp:178
 msgid "Successfully finished transaction."
 msgstr ""
 
-#: src/util.cpp:196
+#: src/util.cpp:194
 msgid "FATAL: $HOME enviroment variable is not set (how?)"
 msgstr ""
 
-#: src/util.cpp:204
+#: src/util.cpp:201
 #, c++-format
-msgid "ERROR: No such enviroment variable: {}"
+msgid "No such enviroment variable: {}"
 msgstr ""
 
-#: src/util.cpp:236
+#: src/util.cpp:232
 msgid "popen() failed!"
 msgstr ""
 
-#: src/util.cpp:259
+#: src/util.cpp:255
 #, c++-format
 msgid "pipe() failed: {}"
 msgstr ""
 
-#: src/util.cpp:282 src/util.cpp:341
+#: src/util.cpp:276 src/util.cpp:329
 #, c++-format
 msgid "Failed to execute the command: {}"
 msgstr ""
 
-#: src/util.cpp:295 src/util.cpp:332
+#: src/util.cpp:289 src/util.cpp:321
 #, c++-format
 msgid "An error has occurred: {}"
 msgstr ""
 
-#: src/util.cpp:298 src/util.cpp:322
+#: src/util.cpp:293 src/util.cpp:312
 #, c++-format
 msgid "fork() failed: {}"
 msgstr ""
 
-#: src/util.cpp:327
+#: src/util.cpp:316
 #, c++-format
 msgid "running {}"
 msgstr ""
 
-#: src/util.cpp:631
+#: src/util.cpp:545
+#, fuzzy, c++-format
+msgid "Failed to open {}"
+msgstr "فشل في تنزيل {}"
+
+#: src/util.cpp:562
+#, fuzzy, c++-format
+msgid "Failed to open/write {}"
+msgstr "فشل في فتح ملف خوادم المرآة! ({})"
+
+#: src/util.cpp:567
+#, fuzzy, c++-format
+msgid "Failed to download {} with status code: {}"
+msgstr "فشل في تنزيل {}"
+
+#: src/util.cpp:584
+#, fuzzy, c++-format
+msgid "File {} not found, attempting download."
+msgstr "تحذير: لم يكمن ايجاد {}، سيتم صناع بديل جديد"
+
+#: src/util.cpp:588
+#, c++-format
+msgid "Unable to get {} metadata: {}"
+msgstr ""
+
+#: src/util.cpp:600
+#, fuzzy, c++-format
+msgid "Refreshing {}"
+msgstr "ازالة {}"
+
+#: src/util.cpp:617
 msgid ""
 "TabAUR has found multiple packages relating to your search query, Please "
 "pick one."
 msgstr ""
 
-#: src/util.cpp:638
+#: src/util.cpp:624
 msgid "Invalid input!"
 msgstr ""
 
-#: src/util.cpp:645
+#: src/util.cpp:631
 msgid "Choose a package to download: "
 msgstr ""
 
-#: src/util.cpp:671
-msgid "Exiting due to CTRL-D"
+#: src/util.cpp:657
+msgid "Exiting due to CTRL-D or EOF"
 msgstr ""
 
-#: src/util.cpp:730
+#: src/util.cpp:715
 msgid "Untrustable"
 msgstr ""
 
-#: src/util.cpp:732
+#: src/util.cpp:717
 msgid "Caution"
 msgstr ""
 
-#: src/util.cpp:734
+#: src/util.cpp:719
 msgid "Normal"
 msgstr ""
 
-#: src/util.cpp:736
+#: src/util.cpp:721
 msgid "Good"
 msgstr ""
 
-#: src/util.cpp:738
+#: src/util.cpp:723
 msgid "Trustable"
 msgstr ""
 
-#: src/util.cpp:739
+#: src/util.cpp:724
 msgid "Weird, report this bug."
 msgstr ""
 
-#: src/util.cpp:755 src/util.cpp:774
+#: src/util.cpp:740 src/util.cpp:759
 msgid "Failed to find $HOME, set it to your home directory!"
 msgstr ""
 
-#: include/util.hpp:141 include/util.hpp:184
+#: include/util.hpp:141 include/util.hpp:190
 msgid "ERROR: "
 msgstr ""
 
-#: include/util.hpp:144 include/util.hpp:187
+#: include/util.hpp:144 include/util.hpp:193
 #, fuzzy
 msgid "Warning: "
 msgstr "لون رسائل التحذير: {}"
 
-#: include/util.hpp:147 include/util.hpp:190
+#: include/util.hpp:147 include/util.hpp:196
 msgid "Info: "
 msgstr ""
 
-#: include/util.hpp:236
+#: include/util.hpp:242
 #, c++-format
 msgid "View the diffs for {}? {}"
 msgstr ""
 
-#: include/util.hpp:240
+#: include/util.hpp:246
 #, c++-format
 msgid ""
 "With your current settings, viewing PKGBUILD diffs is unsupported (maybe "
 "useGit is false?), continue with the installation anyway? {}"
 msgstr ""
 
-#: include/util.hpp:245
+#: include/util.hpp:251
 #, c++-format
 msgid "Review PKGBUILD for {}? {}"
 msgstr ""
 
-#: include/util.hpp:249
+#: include/util.hpp:255
 #, c++-format
 msgid "Proceed with the installation? {}"
 msgstr ""
 
-#: include/util.hpp:253
+#: include/util.hpp:259
 #, c++-format
 msgid "Would you like to proceed with this transaction? {}"
 msgstr ""
 
-#: include/util.hpp:267
+#: include/util.hpp:273
 #, c++-format
 msgid "Please provide a valid response {}"
 msgstr ""
 
-#: include/util.hpp:289
+#: include/util.hpp:295
 msgid ""
 "Type the index of each package (eg: \"0 1 2\", \"0-2\", \"a\" for all, \"n\" "
 "or enter for none)"
 msgstr ""
 
-#: include/util.hpp:295
+#: include/util.hpp:301
 #, c++-format
 msgid "{}"
 msgstr ""
 
-#: include/util.hpp:299
+#: include/util.hpp:305
 msgid "Packages to completely rebuild: "
 msgstr ""
 
-#: include/util.hpp:303
+#: include/util.hpp:309
 msgid "Packages you'd like to review: "
 msgstr ""
 
-#: include/util.hpp:307
+#: include/util.hpp:313
 msgid "Packages you'd like to remove: "
 msgstr ""
 
-#: include/util.hpp:337
+#: include/util.hpp:343
 msgid "Invalid loop range! (loop ranges look like \"0-5\"): "
 msgstr ""
 
-#: include/util.hpp:346
+#: include/util.hpp:352
 msgid "Invalid loop range! (loop ranges must stay in bounds and in order): "
 msgstr ""
 
-#: include/util.hpp:366
+#: include/util.hpp:372
 #, c++-format
 msgid "Invalid index! Ignoring index #{}."
 msgstr ""
