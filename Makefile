@@ -2,28 +2,27 @@ CXX       	?= g++
 PREFIX	  	?= /usr
 LOCALEDIR 	?= $(PREFIX)/share/locale
 VARS  	  	?= -DENABLE_NLS=1
+
 DEBUG 		?= 1
+# https://stackoverflow.com/a/1079861
+# WAY easier way to build debug and release builds
+ifeq ($(DEBUG), 1)
+        BUILDDIR  = build/debug
+        CXXFLAGS := -ggdb -pedantic -Wall $(DEBUG_CXXFLAGS) $(CXXFLAGS)
+else
+        BUILDDIR  = build/release
+        CXXFLAGS := -O2 $(CXXFLAGS)
+endif
 
 VERSION    	 = 0.6.7
 BRANCH     	 = libalpm-test
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
-LDFLAGS   	:= -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
-CXXFLAGS  	:= -funroll-all-loops -mtune=generic -march=native -isystem include -std=c++20 $(VARS) -DVERSION=\"$(VERSION)\" -DBRANCH=\"$(BRANCH)\" -DLOCALEDIR=\"$(LOCALEDIR)\"
+LDFLAGS   	+= -L./$(BUILDDIR)/fmt -L./$(BUILDDIR)/cpr -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
+CXXFLAGS  	?= -mtune=generic -march=native
+CXXFLAGS	+= -funroll-all-loops -isystem include -std=c++20 $(VARS) -DVERSION=\"$(VERSION)\" -DBRANCH=\"$(BRANCH)\" -DLOCALEDIR=\"$(LOCALEDIR)\"
 
-# https://stackoverflow.com/a/1079861
-# WAY easier way to build debug and release builds
-ifeq ($(DEBUG), 1)
-	BUILDDIR  = build/debug
-	CXXFLAGS := -ggdb -pedantic -Wall $(CXXFLAGS)
-else
-	BUILDDIR  = build/release
-	CXXFLAGS := -O2 $(CXXFLAGS)
-endif
-
-LDFLAGS  := -L./$(BUILDDIR)/fmt -L./$(BUILDDIR)/cpr $(LDFLAGS)
-
-is_cpr_installed = $(shell ldconfig -p | grep libcpr > /dev/null && echo -n yes)
+is_cpr_installed = $(shell ldconfig -p | grep libcpr > /dev/null || test -d $(BUILDDIR)/cpr && echo -n yes)
 
 all: cpr fmt toml taur
 
@@ -61,12 +60,19 @@ taur: cpr fmt toml $(OBJ)
 	$(CXX) $(OBJ) $(BUILDDIR)/toml++/toml.o -o $(BUILDDIR)/taur $(LDFLAGS)
 
 dist: taur locale
-	rm -f ./taur && cp -f $(BUILDDIR)/taur ./taur
-	bsdtar --zstd -cf TabAUR-v$(VERSION).tar.zst taur LICENSE README.md locale/
+	bsdtar --zstd -cf TabAUR-v$(VERSION).tar.zst LICENSE README.md locale/ -C $(BUILDDIR) taur
 
 clean:
 	rm -rf $(BUILDDIR)/taur $(OBJ) cpr/build
-#	make -C src/fmt clean
+
+distclean:
+	rm -rf $(BUILDDIR) $(OBJ) cpr/build
+	find . -type f -name "*.tar.zst" -exec rm -rf "{}" \;
+	find . -type f -name "*.o" -exec rm -rf "{}" \;
+	find . -type f -name "*.a" -exec rm -rf "{}" \;
+	make -C src/toml++/ clean
+	make -C src/fmt/ clean
+	make -C tests/ clean
 
 install: taur locale
 	install $(BUILDDIR)/taur -Dm 755 -v $(DESTDIR)$(PREFIX)/bin/taur
