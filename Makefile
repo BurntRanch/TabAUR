@@ -18,7 +18,8 @@ VERSION    	 = 0.6.7
 BRANCH     	 = libalpm-test
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
-LDFLAGS   	+= -L./$(BUILDDIR)/fmt -L./$(BUILDDIR)/cpr -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
+CURL_LIBS	?= -lcurl -lnghttp3 -lnghttp2 -lidn2 -lssh2 -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz # pkg-config --static --libs libcurl (but fixed)
+LDFLAGS   	+= -L./$(BUILDDIR)/fmt -L./$(BUILDDIR)/cpr -lcpr -lalpm -lfmt $(CURL_LIBS)
 CXXFLAGS  	?= -mtune=generic -march=native
 CXXFLAGS	+= -funroll-all-loops -isystem include -std=c++20 $(VARS) -DVERSION=\"$(VERSION)\" -DBRANCH=\"$(BRANCH)\" -DLOCALEDIR=\"$(LOCALEDIR)\"
 
@@ -66,12 +67,10 @@ clean:
 	rm -rf $(BUILDDIR)/taur $(OBJ) cpr/build
 
 distclean:
-	rm -rf $(BUILDDIR) $(OBJ) cpr/build
+	rm -rf $(BUILDDIR) ./tests/$(BUILDDIR) $(OBJ) cpr/build
 	find . -type f -name "*.tar.zst" -exec rm -rf "{}" \;
 	find . -type f -name "*.o" -exec rm -rf "{}" \;
 	find . -type f -name "*.a" -exec rm -rf "{}" \;
-	make -C src/toml++/ clean
-	make -C src/fmt/ clean
 	make -C tests/ clean
 
 install: taur locale
