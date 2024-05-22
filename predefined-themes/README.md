@@ -7,7 +7,7 @@ This is a directory containing themes that you can setup in no time!
 ## Themes
 
 File names should be self-explanatory.
-Open a Pull Request for introducing your own color palette and share it with the community if you want.
+Open a PR if you want to share your own color palette!
 
 ## Test before installation
 If you want to preview some colors without having to moving and renaming it, you can download the theme flavour and just test it with `taur -t --theme /path/to/file.toml`
