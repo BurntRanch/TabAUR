@@ -4,8 +4,8 @@
 [![customize](https://img.shields.io/badge/customize-your_colors-blue?color=5544ff&style=for-the-badge)](https://github.com/BurntRanch/TabAUR/tree/main/predefined-themes)\
 [![forthebadge](https://forthebadge.com/images/badges/works-on-my-machine.svg)](https://forthebadge.com)
 
-# TabAUR
-An AUR Helper with support for downloading AUR Repositories with tarballs or git, TabAUR aims to be a fast, lightweight, capable, and safe front-end for pacman, that supports and even *helps* you with AUR stuff!
+An AUR Helper with support for downloading AUR packages with either tarballs or git.\
+TabAUR aims to be a fast, lightweight, capable, and safe front-end for pacman, that supports and even *helps* you with AUR stuff!
 
 > [!NOTE]
 > #### TabAUR has decided to become public in **April 27 2024** since we agreeed that is almost in a good beta shape.
@@ -13,7 +13,7 @@ An AUR Helper with support for downloading AUR Repositories with tarballs or git
 
 ## Some features:
 - [Customizable colors](https://github.com/BurntRanch/TabAUR/tree/main/predefined-themes)
-- Fast with near/same perfomances as pacman
+- Fast with near/same perfomances as pacman (for searching and querying)
 - Doesn't leak memory when running -h, unlike 2 popular AUR helpers lol
 - Support for using AUR packages' either tarballs or git repos
 - Currently less than 2mb without -O2
@@ -25,19 +25,16 @@ An AUR Helper with support for downloading AUR Repositories with tarballs or git
 git clone https://aur.archlinux.org/tabaur-bin.git && cd tabaur-bin
 makepkg -si
 ```
-
 ### Release (compile from source)
 ```bash
 git clone https://aur.archlinux.org/tabaur.git && cd tabaur
 makepkg -si
 ```
-
 ### Development
 ```bash
 git clone https://aur.archlinux.org/tabaur-git.git && cd tabaur-git
 makepkg -si
 ```
-
 ### Development (manually)
 ```bash
 git clone --depth=1 https://github.com/BurntRanch/TabAUR && cd TabAUR
@@ -48,9 +45,15 @@ Can your average C++/Rust/(any non-interpreted language) project compile that ea
 
 # Dependencies
 - pacman (no shot)
-- curl (optional)
+- curl
 
-## Pull requests
+## Optional Dependencies
+- sudo: privilege escalation
+- opendoas: privilege escalation
+- git: for using AUR packages git repos
+- tar: for using AUR packages tarballs (.tar.gz)
+
+# Pull requests
 If you want to make a PR that fixes/adds functionality, even fix some comments typos, feel free to do so! :)\
 **Be free to test and try out TabAUR**
 

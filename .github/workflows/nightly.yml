@@ -5,9 +5,9 @@ on:
     - cron: 0 0 * * *
   push:
     tags: "*"
-    branches: [ "libalpm-test", "dev", "main" ]
+    branches: [ "dev", "main" ]
   pull_request:
-    branches: [ "libalpm-test", "dev", "main" ]
+    branches: [ "dev", "main" ]
 
 jobs:
   get-version:

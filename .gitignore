@@ -2,8 +2,9 @@
 *.out
 *.so
 *.a
-*.pot
 *.mo
+tests/test*
+!tests/*.cpp
 
 locale/
 taur

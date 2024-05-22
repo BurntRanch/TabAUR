@@ -50,7 +50,7 @@ void usage(int op) {
     --cachedir  <dir>    set an alternate package cache location
     --colors    <1,0>    colorize the output
     --debug     <1,0>    show debug messages
-    --sudo      <path>   choose which binary to use for privilage-escalation
+    --sudo      <path>   choose which binary to use for privilege-escalation
     --noconfirm          do not ask for any confirmation (passed to both makepkg and pacman)
     )"sv);
 }
@@ -105,22 +105,19 @@ void test_colors() {
     printPkgInfo(pkg, pkg.db_name);
 }
 
-bool execPacman(int argc, char *argv[]) {
+void execPacman(int argc, char *argv[]) {
     if (argc > (_POSIX_ARG_MAX - 1))
-        throw std::invalid_argument(std::format("argc is invalid! (argc > {})", _POSIX_ARG_MAX - 1));
+        die(_("argc is invalid! (argc > {})"), _POSIX_ARG_MAX - 1);
 
-    char *args[argc + 1]; // null terminator
+    vector <const char *> args;
 
-    args[0] = (char *)"pacman";
+    args.push_back("pacman");
     for (int i = 1; i < argc; ++i)
-        args[i] = argv[i];
+        args.push_back(argv[i]);
+    args.push_back(nullptr);
 
-    args[argc + 2] = nullptr; // null-terminate the array
-
-    execvp(args[0], args);
-
-    // If execvp returns, it means an error occurred
-    perror("execvp");
+    if (execvp(args[0], const_cast<char *const *>(args.data())) == -1)
+        perror("execvp");
     exit(1);
 }
 
@@ -164,7 +161,7 @@ int installPkg(alpm_list_t *pkgNames) {
     }
 
     if (!update_aur_cache())
-        log_println(ERROR, "Failed to get information about {}", (config->cacheDir / "packages.aur").string());   // TODO: translate
+        log_println(ERROR, _("Failed to get information about {}"), (config->cacheDir / "packages.aur").string());   
 
     // this feels horrible despite being 100% correct and probably not problematic.
     // it just feels like we should ask for every package.
@@ -214,7 +211,21 @@ int installPkg(alpm_list_t *pkgNames) {
             }
 
             if (review) {
-                taur_exec({config->editorBin.c_str(), (pkgDir / "PKGBUILD").c_str()});
+                // cmd is just a workaround for making possible
+                // that editor can have flags, e.g nano --modernbindings
+                // instead of creating another config variable
+                // This is really ugly 
+                // because u can't convert std::vector<std::string> to std::vector<const char*>
+                vector<string> _cmd;
+                vector<const char *> cmd;
+                for (auto& str : config->editor)
+                    _cmd.push_back(str);
+                _cmd.push_back((pkgDir / "PKGBUILD").string());
+
+                for (auto& str : _cmd)
+                    cmd.push_back(str.c_str());
+
+                taur_exec(cmd);
 
                 if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
                     return false;
@@ -253,7 +264,7 @@ int installPkg(alpm_list_t *pkgNames) {
         if (op.op_s_upgrade)
             log_println(INFO, _("Upgrading system packages!"));
         else
-            log_println(INFO, "Installing system packages!");
+            log_println(INFO, _("Installing system packages!"));
 
         string op_s = "-S";
 
@@ -560,7 +571,7 @@ int parseargs(int argc, char* argv[]) {
         execPacman(argc, argv);
     }
     if (op.op == 0) {
-        log_println(NONE, _("ERROR: only one operation may be used at a time"));
+        log_println(ERROR, _("only one operation may be used at a time"));
         return 1;
     }
 
@@ -610,9 +621,9 @@ int parseargs(int argc, char* argv[]) {
             if (result == 1) {
                 /* global option parsing failed, abort */
                 if (opt < 1000) {
-                    log_println(NONE, _("ERROR: invalid option '-{}'"), (char)opt);
+                    log_println(ERROR, _("invalid option '-{:c}'"), opt);
                 } else {
-                    log_println(NONE, _("ERROR: invalid option '--{}'"), opts[option_index].name);
+                    log_println(ERROR, _("invalid option '--{}'"), opts[option_index].name);
                 }
             }
             return result;

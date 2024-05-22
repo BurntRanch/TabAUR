@@ -2,12 +2,16 @@ CXX       	?= g++
 PREFIX	  	?= /usr
 LOCALEDIR 	?= $(PREFIX)/share/locale
 VARS  	  	?= -DENABLE_NLS=1
-DEBUG 		?= 1
+DEBUG 		?= 0
+
+SRC_DIR = ../src
+TEST_DIR = .
 
 VERSION    	 = 0.6.7
 BRANCH     	 = main
-SRC              = $(sort $(wildcard *.cpp))
-OBJ              = $(SRC:.cpp=)
+SRC 		 = $(filter-out $(SRC_DIR)/main.cpp, $(wildcard $(SRC_DIR)/*.cpp))
+OBJ 		 = $(patsubst $(SRC_DIR)/%.cpp, $(BUILDDIR)/%.o, $(SRC))
+TESTS 		 = $(patsubst $(SRC_DIR)/%.cpp, $(TEST_DIR)/test_%, $(SRC))
 LDFLAGS   	:= -lcpr -lalpm -lfmt -lidn2 -lssh2 -lcurl -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz
 CXXFLAGS  	:= -funroll-all-loops -mtune=generic -march=native -I../include -std=c++20 $(VARS) -DVERSION=\"$(VERSION)\" -DBRANCH=\"$(BRANCH)\" -DLOCALEDIR=\"$(LOCALEDIR)\"
 
@@ -53,18 +57,23 @@ locale:
 	../scripts/make_mo.sh locale/
 
 catch2:
-ifeq ($(wildcard $(BUILDDIR)/catch2/catch.o),)
+#ifeq ($(wildcard $(BUILDDIR)/catch2/catch.o),)
+ifneq ($(shell test -e $(BUILDDIR)/catch2/catch.o && echo -n yes), yes)
 	mkdir -p $(BUILDDIR)/catch2
 	$(CXX) $(CXXFLAGS) catch2/catch_amalgamated.cpp -c -o $(BUILDDIR)/catch2/catch.o
 endif
 
-$(OBJ): $(BUILDDIR)/bin/% : $(SRC)
-	mkdir -p $(BUILDDIR)/bin
-	$(CXX) $(CXXFLAGS) $(BUILDDIR)/catch2/catch.o $@.cpp -o $(BUILDDIR)/bin/$@ $(LDFLAGS)
+$(BUILDDIR)/%.o: $(SRC_DIR)/%.cpp
+	mkdir -p $(BUILDDIR)
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-bin: catch2 cpr fmt toml $(OBJ)
+$(TEST_DIR)/test_%: $(BUILDDIR)/catch2/catch.o $(OBJ) $(TEST_DIR)/test_%.cpp
+	mkdir -p $(TEST_DIR)
+	$(CXX) $(CXXFLAGS) $(BUILDDIR)/toml++/toml.o $^ -o $@ $(LDFLAGS)
+
+bin: $(TESTS)
 
 clean:
-	rm -rf $(BUILDDIR)/bin ../cpr/build
+	rm -rf $(TESTS) $(BUILDDIR)/*.o ../cpr/build
 
-.PHONY: cpr clean fmt toml locale bin all
+.PHONY: cpr clean catch2 fmt toml locale bin all

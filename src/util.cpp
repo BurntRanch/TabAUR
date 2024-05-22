@@ -114,9 +114,7 @@ void sanitizeStr(string& str) {
  * Used only in main() for signal()
  */
 void interruptHandler(int) {
-    log_println(WARN, _("Caught CTRL-C, Exiting!"));
-
-    std::exit(-1);
+    die(_("Caught CTRL-C, Exiting!"));
 }
 
 /** Function to check if a package is from a synchronization database
@@ -192,19 +190,17 @@ string expandVar(string& str) {
     const char *env;
     if (str[0] == '~') {
         env = getenv("HOME");
-        if (env == nullptr) {
-            log_println(NONE, _("FATAL: $HOME enviroment variable is not set (how?)"));
-            exit(-1);
-        }
-        str.replace(0, 1, string(env)); // replace ~ with the $HOME value
+        if (env == nullptr)
+            die(_("FATAL: $HOME enviroment variable is not set (how?)"));
+        
+        str.replace(0, 1, env); // replace ~ with the $HOME value
     } else if (str[0] == '$') {
         str.erase(0, 1); // erase from str[0] to str[1]
         env = getenv(str.c_str());
-        if (env == nullptr) {
-            log_println(NONE, _("ERROR: No such enviroment variable: {}"), str);
-            exit(-1);
-        }
-        str = string(env);
+        if (env == nullptr)
+            die(_("No such enviroment variable: {}"), str);
+        
+        str = env;
     }
 
     return str;
@@ -233,7 +229,7 @@ string shell_exec(string_view cmd) {
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.data(), "r"), pclose);
 
     if (!pipe)
-        throw std::runtime_error(_("popen() failed!"));
+        die(_("popen() failed!"));
 
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr)
         result += buffer.data();
@@ -255,10 +251,8 @@ bool is_numerical(string_view s, bool allowSpace) {
 bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure) {
     int pipeout[2];
 
-    if (pipe(pipeout) < 0) {
-        log_println(ERROR, _("pipe() failed: {}"), strerror(errno));
-        exit(127);
-    }
+    if (pipe(pipeout) < 0)
+        die(_("pipe() failed: {}"), strerror(errno));
 
     int pid = fork();
 
@@ -285,22 +279,18 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
         }
     } else if (pid == 0) {
         if (dup2(pipeout[1], STDOUT_FILENO) == -1)
-            exit(127);
+            exit(1);
 
         close(pipeout[0]);
         close(pipeout[1]);
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
-        log_println(ERROR, _("An error has occurred: {}"), strerror(errno));
-        exit(127);
+        die(_("An error has occurred: {}"), strerror(errno));
     } else {
-        log_println(ERROR, _("fork() failed: {}"), strerror(errno));
-
         close(pipeout[0]);
         close(pipeout[1]);
-
-        exit(127);
+        die(_("fork() failed: {}"), strerror(errno));
     }
 
     close(pipeout[0]);
@@ -311,7 +301,7 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
 
 /** Executes commands with execvp() and keep the program running without existing
  * @param cmd The command to execute 
- * @param exitOnFailure Whether to call exit(-1) on command failure.
+ * @param exitOnFailure Whether to call exit(1) on command failure.
  * @return true if the command successed, else false 
  */
 bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
@@ -319,8 +309,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
     int pid = fork();
 
     if (pid < 0) {
-        log_println(ERROR, _("fork() failed: {}"), strerror(errno));
-        exit(-1);
+        die(_("fork() failed: {}"), strerror(errno));
     }
 
     if (pid == 0) {
@@ -329,8 +318,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
         // execvp() returns instead of exiting when failed
-        log_println(ERROR, _("An error has occurred: {}"), strerror(errno));
-        exit(-1);
+        die(_("An error has occurred: {}: {}"), cmd[0], strerror(errno));
     } else if (pid > 0) { // we wait for the command to finish then start executing the rest
         int status;
         waitpid(pid, &status, 0); // Wait for the child to finish
@@ -340,7 +328,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
         else {
             log_println(ERROR, _("Failed to execute the command: {}"), fmt::join(cmd, " "));
             if (exitOnFailure)
-                exit(-1);
+                exit(1);
         }
     }
 
@@ -349,7 +337,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
 
 /** Convinient way to executes makepkg commands with taur_exec() and keep the program running without existing
  * @param cmd The command to execute 
- * @param exitOnFailure Whether to call exit(-1) on command failure.
+ * @param exitOnFailure Whether to call exit(1) on command failure.
  * @return true if the command successed, else false 
  */
 bool makepkg_exec(string_view cmd, bool exitOnFailure) {
@@ -374,7 +362,7 @@ bool makepkg_exec(string_view cmd, bool exitOnFailure) {
  * Note: execPacman() in main.cpp and this are different functions
  * @param op The pacman operation (can and must be like -Syu)
  * @param args The packages to be installed
- * @param exitOnFailure Whether to call exit(-1) on command failure. (Default true)
+ * @param exitOnFailure Whether to call exit(1) on command failure. (Default true)
  * @param root If pacman should be executed as root (Default true)
  * @return true if the command successed, else false 
  */
@@ -553,10 +541,8 @@ string_view binarySearch(const vector<string>& arr, string_view target) {
 vector<string> load_aur_list() {
     path file_path = config->cacheDir / "packages.aur";
     std::ifstream infile(file_path);
-    if (!infile.good()) {
-        log_println(ERROR, "Failed to open {}", file_path.c_str());
-        exit(1);
-    }
+    if (!infile.good())
+        die(_("Failed to open {}"), file_path.c_str());
 
     vector<string>    aur_list;
     string            pkg;
@@ -573,12 +559,12 @@ bool download_aur_cache(path file_path) {
     if (r.status_code == 200) {
         std::ofstream outfile(file_path, std::ios::trunc);
         if (!outfile.is_open()) {
-            log_println(ERROR, "Failed to open/write {}", file_path.c_str());
+            log_println(ERROR, _("Failed to open/write {}"), file_path.c_str());
             return false;
         }
         outfile << r.text;
     } else {
-        log_println(ERROR, "Failed to download {} with status code: {}", r.url.str(), r.status_code); 
+        log_println(ERROR, _("Failed to download {} with status code: {}"), r.url.str(), r.status_code); 
         return false;
     }
 
@@ -595,11 +581,11 @@ bool update_aur_cache(bool recursiveCall) {
     struct stat file_stat;
     if (stat(file_path.c_str(), &file_stat) != 0) {
         if (errno == ENOENT && !recursiveCall) { // file not found, download THEN try again once more.
-            log_println(INFO, "File {} not found, attempting download.", file_path.string());
+            log_println(INFO, _("File {} not found, attempting download."), file_path.string());
             return download_aur_cache(file_path) && update_aur_cache(true);
         }
 
-        log_println(ERROR, "Unable to get {} metadata: {}", file_path.string(), errno);
+        log_println(ERROR, _("Unable to get {} metadata: {}"), file_path.string(), errno);
 
         return false;
     }
@@ -611,7 +597,7 @@ bool update_aur_cache(bool recursiveCall) {
     std::time_t now_time_t = std::chrono::system_clock::to_time_t(_current_time);
 
     if (file_stat.st_mtim.tv_sec < now_time_t - timeout) {
-        log_println(INFO, "Refreshing {}", file_path.string());
+        log_println(INFO, _("Refreshing {}"), file_path.string());
         download_aur_cache(file_path);
     }
      
@@ -642,7 +628,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
                 printPkgInfo(pkgs[i], pkgs[i].db_name);
             }
 
-            fmt::print(fmt::runtime(_("Choose a package to download: ")));
+            log_printf(NONE, _("Choose a package to download: "));
             std::getline(std::cin, input);
         } while (!is_numerical(input, true));
 
@@ -668,8 +654,7 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
 
 void ctrl_d_handler() {
     if (std::cin.eof()) {
-        log_println(WARN, _("Exiting due to CTRL-D"));
-        exit(-1);
+        die(_("Exiting due to CTRL-D or EOF"));
     }
 }
 
@@ -752,7 +737,7 @@ string getHomeCacheDir() {
     } else {
         char *home = getenv("HOME");
         if (home == nullptr)
-            throw std::invalid_argument(_("Failed to find $HOME, set it to your home directory!"));
+            die(_("Failed to find $HOME, set it to your home directory!"));
         
         return string(home) + "/.cache";
     }
@@ -771,7 +756,7 @@ string getHomeConfigDir() {
     } else {
         char *home = getenv("HOME");
         if (home == nullptr)
-            throw std::invalid_argument(_("Failed to find $HOME, set it to your home directory!"));
+            die(_("Failed to find $HOME, set it to your home directory!"));
 
         return string(home) + "/.config";
     }

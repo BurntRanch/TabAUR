@@ -28,20 +28,20 @@ void Config::init(string &configFile, string &themeFile, string_view configDir) 
     bool   newUser   = false;
 
     if (!std::filesystem::exists(configDir)) {
-        log_println(NONE, _("Warning: TabAUR config folder was not found, Creating folders at {}!"), configDir);
+        log_println(WARN, _("TabAUR config folder was not found, Creating folders at {}!"), configDir);
         std::filesystem::create_directories(configDir);
 
         newUser = true;
     }
     if (!std::filesystem::exists(configFile)) {
-        log_println(NONE, _("Warning: {} not found, generating new one"), configFile);
+        log_println(WARN, _("{} not found, generating new one"), configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
         ofstream f(configFile, std::ios::trunc);
         f << AUTOCONFIG;
         f.close();
     }
     if (!std::filesystem::exists(themeFile)) {
-        log_println(NONE, _("Warning: {} not found, generating new one"), themeFile);
+        log_println(WARN, _("{} not found, generating new one"), themeFile);
         ofstream f(themeFile, std::ios::trunc);
         f << AUTOTHEME;
         f.close();
@@ -58,12 +58,12 @@ void Config::init(string &configFile, string &themeFile, string_view configDir) 
 
     if (newUser)
         // ye i'm sorry if it's too wide
-        fmt::println(fg(color.blue),
-                     "I see you're a new user, Welcome!\n"
+        log_println(NONE, fg(color.blue),
+                     _("I see you're a new user, Welcome!\n"
                      "Even though the AUR is very convenient, it could contain packages that are unmoderated and could be unsafe.\n"
                      "You should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\n"
                      "This project is in no way liable for any damage done to your system as a result of AUR packages.\n"
-                     "Thank you!\n");
+                     "Thank you!\n"));
 }
 
 // get initialized variable
@@ -82,7 +82,6 @@ void Config::initVars() {
     this->makepkgBin    = this->getConfigValue<string>("bins.makepkg", "makepkg");
     this->git           = this->getConfigValue<string>("bins.git", "git");
     this->sudo          = this->getConfigValue<string>("general.sudo", "sudo");
-    this->editorBin     = this->getConfigValue<string>("general.editor", "nano");
     this->useGit        = this->getConfigValue<bool>("general.useGit", true);
     this->aurOnly       = this->getConfigValue<bool>("general.aurOnly", false);
     this->debug         = this->getConfigValue<bool>("general.debug", true);
@@ -91,10 +90,14 @@ void Config::initVars() {
     fmt::disable_colors = (!this->colors);
 
     sanitizeStr(this->sudo);
-    sanitizeStr(this->editorBin);
     sanitizeStr(this->makepkgBin);
     sanitizeStr(this->makepkgConf);
     sanitizeStr(this->git);
+    
+    for (auto& str : split(this->getConfigValue<string>("general.editor", "nano"), ' ')) {
+        sanitizeStr(str);
+        this->editor.push_back(str);
+    }
 
     char *no_color = getenv("NO_COLOR");
     if (no_color != NULL && no_color[0] != '\0') {
@@ -112,7 +115,7 @@ void Config::loadConfigFile(string_view filename) {
     try {
         this->tbl = toml::parse_file(filename);
     } catch (const toml::parse_error& err) {
-        log_println(NONE, _("ERROR: Parsing config file {} failed:"), filename);
+        log_println(ERROR, _("Parsing config file {} failed:"), filename);
         std::cerr << err << std::endl;
         exit(-1);
     }
@@ -122,7 +125,7 @@ void Config::loadConfigFile(string_view filename) {
     this->handle = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(), this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
 
     if (!(this->handle))
-        throw std::invalid_argument("Failed to get an alpm handle! Error: " + string(alpm_strerror(err)));
+        die(_("Failed to get an alpm handle! Error: {}"), alpm_strerror(err));
 
     this->loadPacmanConfigFile(this->getConfigValue("pacman.ConfigFile", "/etc/pacman.conf"));
 }

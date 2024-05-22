@@ -15,6 +15,7 @@
 #include "toml++/toml.hpp"
 
 using std::string;
+using std::vector;
 using std::string_view;
 using std::filesystem::path;
 
@@ -60,7 +61,7 @@ class Config {
     alpm_handle_t *handle = nullptr;
     alpm_list_t   *repos  = nullptr;
     string         makepkgBin;
-    string         editorBin;
+    vector<string> editor;
     path           cacheDir;
     string         pmConfig;
     string         sudo;
@@ -138,6 +139,7 @@ inline const constexpr string_view AUTOCONFIG = R"#([general]
 #sudo = "sudo"
 
 # Default editor for opening PKGBUILDs
+# It can include flags, e.g nano --modernbindings
 #editor = "nano"
 
 # Optional pretty prints, because some terminals don't suport them.
