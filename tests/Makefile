@@ -8,7 +8,7 @@ SRC_DIR = ../src
 TEST_DIR = .
 
 VERSION    	 = 0.6.7
-BRANCH     	 = libalpm-test
+BRANCH     	 = dev
 SRC 		 = $(filter-out $(SRC_DIR)/main.cpp, $(wildcard $(SRC_DIR)/*.cpp))
 OBJ 		 = $(patsubst $(SRC_DIR)/%.cpp, $(BUILDDIR)/%.o, $(SRC))
 TESTS 		 = $(patsubst $(SRC_DIR)/%.cpp, $(TEST_DIR)/test_%, $(SRC))

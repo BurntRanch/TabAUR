@@ -418,7 +418,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
     }
 
     if (pid == 0) {
-        log_println(DEBUG, _("running {}"), fmt::join(cmd, " "));
+        log_println(DEBUG, "running {}", cmd);
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
