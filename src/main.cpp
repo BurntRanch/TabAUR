@@ -144,7 +144,7 @@ int installPkg(alpm_list_t *pkgNames) {
     
     if (op.op_s_search) {
         for (size_t i = 0; i < pkgNamesVec.size(); i++) {
-            vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
+            vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, config->aurOnly, false);
 
             if (pkgs.empty()) {
                 log_println(WARN, _("No results found for {}!"), pkgNamesVec[i]);
@@ -175,7 +175,7 @@ int installPkg(alpm_list_t *pkgNames) {
 
     
     for (size_t i = 0; i < pkgNamesVec.size(); i++) {
-        vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, !op.op_s_search);
+        vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, config->aurOnly, true);
 
         optional<vector<TaurPkg_t>> oSelectedPkg = askUserForPkg(pkgs, *backend, useGit);
 
@@ -210,7 +210,7 @@ int installPkg(alpm_list_t *pkgNames) {
                 continue;
             }
 
-            if (review) {
+            if (review || askUserYorN(YES, PROMPT_YN_EDIT_PKGBUILD, pkg.name)) {
                 // cmd is just a workaround for making possible
                 // that editor can have flags, e.g nano --modernbindings
                 // instead of creating another config variable

@@ -52,7 +52,7 @@ class TaurBackend {
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and look it up later.
     vector<TaurPkg_t>   getPkgFromJson(rapidjson::Document& doc, bool useGit);
     vector<TaurPkg_t>   search_pac(string_view query);
-    vector<TaurPkg_t>   search(string_view query, bool useGit, bool checkExactMatch = true);
+    vector<TaurPkg_t>   search(string_view query, bool useGit, bool aurOnly, bool checkExactMatch = true);
     bool                download_tar(string_view url, path out_path);
     bool                download_git(string_view url, path out_path);
     bool                download_pkg(string_view url, path out_path);

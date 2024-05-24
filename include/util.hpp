@@ -110,7 +110,7 @@ string                           getHomeCacheDir();
 string                           getHomeConfigDir();
 string                           getConfigDir();
 string                           getCacheDir();
-bool                             makepkg_exec(string_view cmd, bool exitOnFailure = true);
+bool                             makepkg_exec(vector<string> const& args, bool exitOnFailure = true);
 bool                             pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure = true, bool root = true);
 bool                             util_db_search(alpm_db_t *db, alpm_list_t *needles, alpm_list_t **ret);
 std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
