@@ -44,8 +44,9 @@ sudo make install
 Can your average C++/Rust/(any non-interpreted language) project compile that easy in many ways? I don't think so :P
 
 # Dependencies
-- pacman (no shot)
-- curl
+- pacman
+
+"that's it?" yes. just pacman. and it's dependencies ofc, which includes curl
 
 ## Optional Dependencies
 - sudo: privilege escalation
