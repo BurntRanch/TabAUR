@@ -1,3 +1,23 @@
+/*
+ *
+ *  Copyright (c) 2006-2022 Pacman Development Team <pacman-dev@lists.archlinux.org>
+ *  Copyright (c) 2002-2006 by Judd Vinet <jvinet@zeroflux.org>
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#include <alpm.h>
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
 #include "util.hpp"
@@ -70,6 +90,7 @@ static void make_aligned_titles(void) {
 /** Turn a optdepends list into a text list.
  * @param optdeps a list with items of type alpm_depend_t
  */
+// taken from pacman
 static void optdeplist_display(alpm_pkg_t *pkg, unsigned short cols = getcols()) {
     alpm_list_t *i, *text = NULL;
     alpm_db_t   *localdb = alpm_get_localdb(config->handle);
@@ -137,9 +158,9 @@ bool commitTransactionAndRelease(bool soft) {
 
     alpm_list_t   *addPkgs    = alpm_trans_get_add(handle);
     alpm_list_t   *removePkgs = alpm_trans_get_remove(handle);
-    alpm_list_t   *combined   = alpm_list_join(addPkgs, removePkgs);
+    alpm_list_t   *data       = nullptr;
 
-    if (soft && !combined)
+    if (soft && !addPkgs && !removePkgs)
         return true;
 
     log_println(INFO, _("Changes to be made:"));
@@ -162,13 +183,117 @@ bool commitTransactionAndRelease(bool soft) {
         return soft;
     }
 
-    bool prepareStatus = alpm_trans_prepare(handle, &combined) == 0;
-    if (!prepareStatus)
-        log_println(ERROR, _("Failed to prepare transaction ({})."), alpm_strerror(alpm_errno(handle)));
+    bool prepareStatus = alpm_trans_prepare(handle, &data) == 0;
+    if (!prepareStatus) {
+        alpm_errno_t err = alpm_errno(handle);
+        log_println(ERROR, _("Failed to prepare transaction ({})."), alpm_strerror(err));
+        /* TODO: we can use the errno and (data) to list off more precise information about the error. */
+        alpm_pkg_t *pkg = nullptr;
+        switch (err) {
+        case ALPM_ERR_PKG_INVALID_ARCH:
+            for (alpm_list_t *i = data; i; i = i->next) {
+                string_view pkgName = (char *)(i->data);
+                log_println(ERROR, "This package ({}) is built on an invalid architecture.", pkgName);
+                free(i->data);
+            }
+            break;
+        case ALPM_ERR_UNSATISFIED_DEPS:
+            for (alpm_list_t *i = data; i; i = i->next) {
+                alpm_depmissing_t *missing_dep = (alpm_depmissing_t *)i->data;
 
-    bool commitStatus = alpm_trans_commit(handle, &combined) == 0;
-    if (!commitStatus)
-        log_println(ERROR, _("Failed to commit transaction ({})."), alpm_strerror(alpm_errno(handle)));
+                char *depstring = alpm_dep_compute_string(missing_dep->depend);
+                if (missing_dep->causingpkg == NULL) {
+                    log_println(ERROR, "Package {} depends on '{}', which can't be satisfied.",
+                        missing_dep->target,
+                        depstring
+                    );
+                } else if ((pkg = alpm_pkg_find(addPkgs, missing_dep->causingpkg))) {
+                    /* we're trying to upgrade a package that breaks another dependency. */
+                    log_println(ERROR, "Upgrading package {} (version {}) breaks dependency '{}' for {}",
+                        alpm_pkg_get_name(pkg), alpm_pkg_get_version(pkg),
+                        depstring, missing_dep->target);
+                } else {
+                    /* we're trying to remove a package that breaks another dependency. */
+                    log_println(ERROR, "Removing package {} breaks dependency '{}' for {}.",
+                        missing_dep->causingpkg, depstring, missing_dep->target
+                    );
+                }
+                free(depstring);
+
+                alpm_depmissing_free(missing_dep);
+            }
+            break;
+        case ALPM_ERR_CONFLICTING_DEPS:
+            for (alpm_list_t *i = data; i; i = i->next) {
+                alpm_conflict_t *conflict = (alpm_conflict_t *)i->data;
+                if (conflict->reason->mod == ALPM_DEP_MOD_ANY) {
+                    log_println(ERROR, "Packages {} (version {}) and {} (version {}) conflict eachother.",
+                        alpm_pkg_get_name(conflict->package1),
+                        alpm_pkg_get_version(conflict->package1),
+                        alpm_pkg_get_name(conflict->package2),
+                        alpm_pkg_get_version(conflict->package2)
+                    );
+                } else {
+                    char *reason = alpm_dep_compute_string(conflict->reason);
+                    log_println(ERROR, "Packages {} (version {}) and {} (version {}) conflict eachother. ({})",
+                        alpm_pkg_get_name(conflict->package1),
+                        alpm_pkg_get_version(conflict->package1),
+                        alpm_pkg_get_name(conflict->package2),
+                        alpm_pkg_get_version(conflict->package2),
+                        reason
+                    );
+                    free(reason);
+                }
+                alpm_conflict_free(conflict);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    bool commitStatus = alpm_trans_commit(handle, &data) == 0;
+    if (!commitStatus) {
+        alpm_errno_t err = alpm_errno(handle);
+        log_println(ERROR, _("Failed to commit transaction ({})."), alpm_strerror(err));
+        /* similarly. */
+        switch (err) {
+            case ALPM_ERR_FILE_CONFLICTS:
+                for (alpm_list_t *i = 0; i; i = i->next) {
+                    alpm_fileconflict_t *fileConflict = (alpm_fileconflict_t *)i->data;
+                    switch (fileConflict->type) {
+                        /* Two packages are trying to install the same file. */
+                        case ALPM_FILECONFLICT_TARGET:
+                            log_println(ERROR, "Packages {} and {} are trying to install the same file!",
+                                fileConflict->target, fileConflict->ctarget
+                            );
+                        /* A package is trying to overwrite a file (maybe installed by another package) */
+                        case ALPM_FILECONFLICT_FILESYSTEM:
+                            if (fileConflict->ctarget)
+                                log_println(ERROR, "Package {} is trying to install a file ({}) that is owned by {}!",
+                                    fileConflict->target, fileConflict->file, fileConflict->ctarget
+                                );
+                            else
+                                log_println(ERROR, "Package {} is trying to install a file ({}) that already exists!",
+                                    fileConflict->target, fileConflict->file
+                                );
+                    }
+                    alpm_fileconflict_free(fileConflict);
+                }
+            case ALPM_ERR_PKG_INVALID:
+            // We don't have to catch this as ALPM_ERR_PKG_INVALID_SIG also applies.
+            case ALPM_ERR_PKG_INVALID_CHECKSUM:
+            case ALPM_ERR_PKG_INVALID_SIG:
+                for (alpm_list_t *i = data; i; i = i->next) {
+                    string_view name = (char *)i->data;
+                    log_println(ERROR, "Package {} is corrupt or invalid!", name);
+                    free(i->data);
+                }
+                break;
+            default:
+                break;
+        }
+    }
 
     bool releaseStatus = alpm_trans_release(handle) == 0;
     if (!releaseStatus)
@@ -313,7 +438,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
     }
 
     if (pid == 0) {
-        log_println(DEBUG, _("running {}"), fmt::join(cmd, " "));
+        log_println(DEBUG, "running {}", cmd);
         cmd.push_back(nullptr);
         execvp(cmd[0], const_cast<char *const *>(cmd.data()));
 
@@ -340,7 +465,7 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
  * @param exitOnFailure Whether to call exit(1) on command failure.
  * @return true if the command successed, else false 
  */
-bool makepkg_exec(string_view cmd, bool exitOnFailure) {
+bool makepkg_exec(vector<string> const& args, bool exitOnFailure) {
     vector<const char *> ccmd = {config->makepkgBin.c_str()};
 
     if (config->noconfirm)
@@ -352,7 +477,7 @@ bool makepkg_exec(string_view cmd, bool exitOnFailure) {
     ccmd.push_back("--config");
     ccmd.push_back(config->makepkgConf.c_str());
 
-    for (auto& str : split(cmd, ' '))
+    for (auto& str : args)
         ccmd.push_back(str.c_str());
 
     return taur_exec(ccmd, exitOnFailure);
@@ -476,9 +601,9 @@ void printLocalFullPkgInfo(alpm_pkg_t *pkg) {
 string makepkg_list(string_view pkg_name, string path) {
     string ret;
 
-    string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2");
-    string pkgrel      = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2");
-    string epoch       = shell_exec("grep 'epoch=' "  + path + "/PKGBUILD | cut -d= -f2");
+    string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1");
+    string pkgrel      = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1");
+    string epoch       = shell_exec("grep 'epoch=' "  + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1");
 
     if (!pkgrel.empty() && pkgrel[0] != '\0')
         versionInfo += '-' + pkgrel;

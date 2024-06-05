@@ -142,8 +142,8 @@ vector<TaurPkg_t> TaurBackend::fetch_pkgs(vector<string> const& pkgs, bool retur
 
     string urlStr = "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=" + pkgs[0];
 
-    for (auto const& pkg : pkgs)
-        urlStr += ("&arg%5B%5D=" + pkg);
+    for (size_t i = 1; i < pkgs.size(); i++)
+        urlStr += ("&arg%5B%5D=" + pkgs[i]);
 
     log_println(DEBUG, "info url = {}", urlStr);
 
@@ -238,10 +238,10 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
 
     if (!alreadyprepared) {
         log_println(INFO, _("Verifying package sources.."));
-        makepkg_exec("--verifysource --skippgpcheck -f -Cc");
+        makepkg_exec({"--verifysource", "--skippgpcheck", "-f", "-Cc"});
 
         log_println(INFO, _("Preparing for compilation.."));
-        makepkg_exec("--nobuild --skippgpcheck -fs -C --ignorearch");
+        makepkg_exec({"--nobuild", "--skippgpcheck", "-fs", "-C", "--ignorearch"});
     }
 
     built_pkg = makepkg_list(pkg_name.data(), extracted_path);
@@ -251,7 +251,7 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
         /*log_println(INFO, _("Compiling {} in 3 seconds, you can cancel at this point if you can't compile."), pkg_name);
         sleep(3);*/
 
-        return makepkg_exec("-f --noconfirm --noextract --noprepare --nocheck --holdver --ignorearch -c", false);
+        return makepkg_exec({"-f", "--noconfirm", "--noextract", "--noprepare", "--nocheck", "--holdver", "--ignorearch", "-c"}, false);
     } else
         log_println(INFO, _("{} exists already, skipping..."), built_pkg);
 
@@ -392,7 +392,6 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
     int               updatedPkgs        = 0;
     int               attemptedDownloads = 0;
-    bool              alrprepared        = false;
 
     if (onlinePkgs.size() != pkgs.size())
         log_println(WARN, _("Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others."), pkgs.size(), onlinePkgs.size());
@@ -400,6 +399,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
         size_t pkgIndex;
         bool   found = false;
+        bool   alrprepared = false;
 
         for (pkgIndex = 0; pkgIndex < pkgs.size(); pkgIndex++) {
             if (pkgs[pkgIndex].name == onlinePkgs[i].name) {
@@ -439,8 +439,8 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         if (hasEnding(pkgs[pkgIndex].name, "-git")) {
             alrprepared = true;
             std::filesystem::current_path(pkgDir);
-            makepkg_exec("--verifysource -fA");
-            makepkg_exec("--nobuild -dfA");
+            makepkg_exec({"--verifysource", "-fA"});
+            makepkg_exec({"--nobuild", "-dfA"});
         }
 
         string versionInfo = shell_exec("grep 'pkgver=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
@@ -473,12 +473,14 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
         this->handle_aur_depends(onlinePkgs[i], pkgDir, this->get_all_local_pkgs(true), useGit);
         bool installSuccess = this->build_pkg(pkgs[pkgIndex].name, pkgDir, alrprepared);
-        alrprepared         = false;
 
         if (installSuccess) {
             pkgs_to_install += built_pkg + ' ';
             log_println(DEBUG, "pkgs_to_install = {}", pkgs_to_install);
             updatedPkgs++;
+
+            // prevent duplicated entries
+            pkgs.erase(pkgs.begin() + pkgIndex);
         } else {
             pkgs_failed_to_build += pkgs[pkgIndex].name + ' ';
             log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
@@ -589,7 +591,7 @@ vector<TaurPkg_t> TaurBackend::search_pac(string_view query) {
 
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-vector<TaurPkg_t> TaurBackend::search(string_view query, bool useGit, bool checkExactMatch) {
+vector<TaurPkg_t> TaurBackend::search(string_view query, bool useGit, bool aurOnly, bool checkExactMatch) {
     if (query.empty())
         return vector<TaurPkg_t>();
     // link to AUR API. Took search pattern from yay
@@ -603,10 +605,15 @@ vector<TaurPkg_t> TaurBackend::search(string_view query, bool useGit, bool check
     json_response.Parse(raw_text_response.data());
 
     vector<TaurPkg_t> aurPkgs;
-    vector<TaurPkg_t> pacPkgs = this->search_pac(query);
+    vector<TaurPkg_t> pacPkgs;
 
     if (json_response["resultcount"].GetInt() > 0)
         aurPkgs = this->getPkgFromJson(json_response, useGit);
+    if (string_view(json_response["type"].GetString(), json_response["type"].GetStringLength()) == "error")
+        log_println(ERROR, "AUR Search error: {}", json_response["error"].GetString());
+
+    if (!aurOnly)
+        pacPkgs = this->search_pac(query);
 
     size_t            count = aurPkgs.size() + pacPkgs.size();
 
