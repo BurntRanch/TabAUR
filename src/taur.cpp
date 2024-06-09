@@ -251,7 +251,7 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
         /*log_println(INFO, _("Compiling {} in 3 seconds, you can cancel at this point if you can't compile."), pkg_name);
         sleep(3);*/
 
-        return makepkg_exec({"-f", "--noconfirm", "--noextract", "--noprepare", "--nocheck", "--holdver", "--ignorearch", "-c"}, false);
+        return makepkg_exec({"-fs", "--noconfirm", "--noextract", "--noprepare", "--nocheck", "--holdver", "--ignorearch", "-c"}, false);
     } else
         log_println(INFO, _("{} exists already, skipping..."), built_pkg);
 
