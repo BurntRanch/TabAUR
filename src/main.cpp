@@ -138,6 +138,7 @@ void execPacman(int argc, char *argv[]) {
 
     if (execvp(args[0], const_cast<char *const *>(args.data())) == -1)
         perror("execvp");
+    
     exit(1);
 }
 
@@ -187,11 +188,10 @@ int installPkg(alpm_list_t *pkgNames) {
     // I swear there was a comment here..
     vector<string_view> AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
 
-    for (const auto& pkg : pkgNamesVec) {
-        // Check if pkg is not in aurPkgNamesSet
-        if (std::find(AURPkgs.begin(), AURPkgs.end(), pkg) == AURPkgs.end()) {
+    for (const auto& pkg : pkgNamesVec) 
+    {
+        if (std::find(AURPkgs.begin(), AURPkgs.end(), pkg) == AURPkgs.end())
             pacmanPkgs.push_back(pkg.data());
-        }
     }
 
     if (!op.op_s_cleanbuild && !AURPkgs.empty())
@@ -221,7 +221,7 @@ int installPkg(alpm_list_t *pkgNames) {
         } 
         else {
             log_println(INFO, _("Cleaning {}"), pkgDir.c_str());
-            taur_exec({config->git.c_str(), "-C", pkgDir.c_str(), "clean", "-xffd"});
+            taur_exec({config->git, "-C", pkgDir.c_str(), "clean", "-xffd"});
         }
     }
 
@@ -229,12 +229,12 @@ int installPkg(alpm_list_t *pkgNames) {
     // to pass flags to the editor, e.g nano --modernbindings
     // instead of creating another config variable
     for (string_view& pkg : pkgsToReview) {
-        path pkgBuildFile = path(cacheDir) / pkg;
-        vector<const char *> cmd;
-
+        path pkgDir = path(cacheDir) / pkg;
+        
+        vector<string> cmd;
         for (auto& str : config->editor)
-            cmd.push_back(str.c_str());
-        cmd.push_back((pkgBuildFile / "PKGBUILD").c_str());
+            cmd.push_back(str);
+        cmd.push_back((pkgDir / "PKGBUILD").string());
 
         taur_exec(cmd);
     }

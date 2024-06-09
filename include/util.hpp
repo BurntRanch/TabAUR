@@ -90,7 +90,7 @@ string                           expandVar(string& str);
 bool                             is_numerical(string_view s, bool allowSpace = false);
 bool                             taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure = true);
 void                             interruptHandler(int);
-bool                             taur_exec(vector<const char *> cmd, bool exitOnFailure = true);
+bool                             taur_exec(vector<string> cmd, bool exitOnFailure = true);
 void                             sanitizeStr(string& str);
 bool                             is_package_from_syncdb(const char *name, alpm_list_t *syncdbs);
 bool                             commitTransactionAndRelease(bool soft = false);

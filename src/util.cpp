@@ -425,11 +425,15 @@ bool taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure
 }
 
 /** Executes commands with execvp() and keep the program running without existing
- * @param cmd The command to execute 
+ * @param cmd_str The command to execute 
  * @param exitOnFailure Whether to call exit(1) on command failure.
  * @return true if the command successed, else false 
  */
-bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
+bool taur_exec(vector<string> cmd_str, bool exitOnFailure) {
+
+    vector<const char *> cmd;
+    for (string& str : cmd_str)
+        cmd.push_back(str.c_str());
 
     int pid = fork();
 
@@ -466,21 +470,21 @@ bool taur_exec(vector<const char *> cmd, bool exitOnFailure) {
  * @return true if the command successed, else false 
  */
 bool makepkg_exec(vector<string> const& args, bool exitOnFailure) {
-    vector<const char *> ccmd = {config->makepkgBin.c_str()};
+    vector<string> cmd = {config->makepkgBin};
 
     if (config->noconfirm)
-        ccmd.push_back("--noconfirm");
+        cmd.push_back("--noconfirm");
 
     if (!config->colors)
-        ccmd.push_back("--nocolor");
+        cmd.push_back("--nocolor");
 
-    ccmd.push_back("--config");
-    ccmd.push_back(config->makepkgConf.c_str());
+    cmd.push_back("--config");
+    cmd.push_back(config->makepkgConf);
 
     for (auto& str : args)
-        ccmd.push_back(str.c_str());
+        cmd.push_back(str.c_str());
 
-    return taur_exec(ccmd, exitOnFailure);
+    return taur_exec(cmd, exitOnFailure);
 }
 
 /** Convinient way to executes pacman commands with taur_exec() and keep the program running without existing
@@ -492,29 +496,29 @@ bool makepkg_exec(vector<string> const& args, bool exitOnFailure) {
  * @return true if the command successed, else false 
  */
 bool pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure, bool root) {
-    vector<const char *> ccmd;
+    vector<string> cmd;
 
     if (root)
-        ccmd = {config->sudo.c_str(), "pacman", op.data()};
+        cmd = {config->sudo, "pacman", op.data()};
     else
-        ccmd = {"pacman", op.data()};
+        cmd = {"pacman", op.data()};
 
     if (config->noconfirm)
-        ccmd.push_back("--noconfirm");
+        cmd.push_back("--noconfirm");
 
     if (config->colors)
-        ccmd.push_back("--color=auto");
+        cmd.push_back("--color=auto");
     else
-        ccmd.push_back("--color=never");
+        cmd.push_back("--color=never");
 
-    ccmd.push_back("--config");
-    ccmd.push_back(config->pmConfig.c_str());
-    ccmd.push_back("--");
+    cmd.push_back("--config");
+    cmd.push_back(config->pmConfig);
+    cmd.push_back("--");
 
     for (auto& str : args)
-        ccmd.push_back(str.c_str());
+        cmd.push_back(str);
 
-    return taur_exec(ccmd, exitOnFailure);
+    return taur_exec(cmd, exitOnFailure);
 }
 
 /** Free a list and every single item in it.

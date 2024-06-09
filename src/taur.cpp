@@ -9,11 +9,11 @@ TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string_view url, path out_path) {
     if (std::filesystem::exists(path(out_path) / ".git")) {
-        return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--autostash", "--rebase", "--ff-only", "--force"});
+        return taur_exec({config.git.c_str(), "-C", out_path, "pull", "--autostash", "--rebase", "--ff-only", "--force"});
     } else {
         if (std::filesystem::exists(path(out_path)))
             std::filesystem::remove_all(out_path);
-        return taur_exec({config.git.c_str(), "clone", url.data(), out_path.c_str()});
+        return taur_exec({config.git.c_str(), "clone", url.data(), out_path});
     }
 }
 
