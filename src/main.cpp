@@ -184,9 +184,7 @@ int installPkg(alpm_list_t *pkgNames) {
     if (!update_aur_cache())
         log_println(ERROR, _("Failed to get information about {}"), (config->cacheDir / "packages.aur").string());   
 
-    // this feels horrible despite being 100% correct and probably not problematic.
-    // it just feels like we should ask for every package.
-    // Toni500 note: do someone agree with this above? because I don't
+    // I swear there was a comment here..
     vector<string_view> AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
 
     for (const auto& pkg : pkgNamesVec) {
@@ -227,21 +225,16 @@ int installPkg(alpm_list_t *pkgNames) {
         }
     }
 
-    // cmd is just a workaround for making possible
-    // that editor can have flags, e.g nano --modernbindings
+    // cmd is just a workaround for making it possible
+    // to pass flags to the editor, e.g nano --modernbindings
     // instead of creating another config variable
-    // This is really ugly 
-    // because you can't convert std::vector<std::string> to std::vector<const char*>
     for (string_view& pkg : pkgsToReview) {
-        path pkgDir = path(cacheDir) / pkg;
-        vector<string> _cmd;
+        path pkgBuildFile = path(cacheDir) / pkg;
         vector<const char *> cmd;
-        for (auto& str : config->editor)
-            _cmd.push_back(str);
-        _cmd.push_back((pkgDir / "PKGBUILD").string());
 
-        for (auto& str : _cmd)
+        for (auto& str : config->editor)
             cmd.push_back(str.c_str());
+        cmd.push_back((pkgBuildFile / "PKGBUILD").c_str());
 
         taur_exec(cmd);
     }
@@ -274,38 +267,38 @@ int installPkg(alpm_list_t *pkgNames) {
     for (size_t i = 0; i < AURPkgs.size(); i++) {
         vector<TaurPkg_t> pkgs    = backend->search(AURPkgs[i], useGit, config->aurOnly, true);
 
-        optional<vector<TaurPkg_t>> oSelectedPkg = askUserForPkg(pkgs, *backend, useGit);
+        optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
-        if (!oSelectedPkg) {
+        if (!oSelectedPkgs) {
             returnStatus = false;
             continue;
         }
 
-        vector<TaurPkg_t> selectedPkg = oSelectedPkg.value();
+        vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
 
-        TaurPkg_t pkg = selectedPkg[0];
+        for (TaurPkg_t &pkg : selectedPkgs) {
+            path pkgDir = path(cacheDir) / pkg.name;
 
-        path pkgDir = path(cacheDir) / pkg.name;
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
 
-        stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+            if (!stat) {
+                log_println(ERROR, _("Installing AUR dependencies for your package has failed."));
+                returnStatus = false;
+                continue;
+            }
 
-        if (!stat) {
-            log_println(ERROR, _("Installing AUR dependencies for your package has failed."));
-            returnStatus = false;
-            continue;
+            stat = backend->build_pkg(pkg.name, pkgDir, false);
+
+            if (!stat) {
+                log_println(ERROR, _("Building {} has failed."), pkg.name);
+                returnStatus = false;
+                pkgs_failed_to_build += pkg.name + ' ';
+                log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
+                continue;
+            }
+
+            pkgs_to_install += built_pkg + ' ';
         }
-
-        stat = backend->build_pkg(pkg.name, pkgDir, false);
-
-        if (!stat) {
-            log_println(ERROR, _("Building {} has failed."), pkg.name);
-            returnStatus = false;
-            pkgs_failed_to_build += pkg.name + ' ';
-            log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
-            continue;
-        }
-
-        pkgs_to_install += built_pkg + ' ';
     }
 
     if (!pkgs_to_install.empty()) {
