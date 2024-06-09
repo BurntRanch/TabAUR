@@ -9,7 +9,7 @@ TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string_view url, path out_path) {
     if (std::filesystem::exists(path(out_path) / ".git")) {
-        return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
+        return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--autostash", "--rebase", "--ff-only", "--force"});
     } else {
         if (std::filesystem::exists(path(out_path)))
             std::filesystem::remove_all(out_path);
@@ -238,7 +238,7 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
 
     if (!alreadyprepared) {
         log_println(INFO, _("Verifying package sources.."));
-        makepkg_exec({"--verifysource", "--skippgpcheck", "-f", "-Cc"});
+        makepkg_exec({"--verifysource", "--skippgpcheck", "-fs", "-Cc"});
 
         log_println(INFO, _("Preparing for compilation.."));
         makepkg_exec({"--nobuild", "--skippgpcheck", "-fs", "-C", "--ignorearch"});
@@ -615,11 +615,11 @@ vector<TaurPkg_t> TaurBackend::search(string_view query, bool useGit, bool aurOn
     if (!aurOnly)
         pacPkgs = this->search_pac(query);
 
-    size_t            count = aurPkgs.size() + pacPkgs.size();
+    size_t allPkgsSize = aurPkgs.size() + pacPkgs.size();
 
     vector<TaurPkg_t> combined;
 
-    combined.reserve(count);
+    combined.reserve(allPkgsSize);
 
     if (!aurPkgs.empty())
         combined.insert(combined.end(), aurPkgs.begin(), aurPkgs.end());
