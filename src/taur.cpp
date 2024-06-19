@@ -493,8 +493,6 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         goto text;
     }
 
-    // remove the last ' ' so we can pass it to pacman
-    pkgs_to_install.erase(pkgs_to_install.end() - 1);
     if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
         log_println(ERROR, _("Failed to install/upgrade packages"));
         return false;

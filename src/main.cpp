@@ -371,7 +371,7 @@ bool removePkg(alpm_list_t *pkgNames) {
         try {
             auto pkg = std::find(pkgs.begin(), pkgs.end(), includedPkgs[i]);
 
-            if (pkgs.begin() >= pkg || pkg >= pkgs.end())
+            if (pkg >= pkgs.end())
                 continue;
 
             size_t pkgIndex = std::distance(pkgs.begin(), pkg);
