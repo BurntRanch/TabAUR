@@ -733,6 +733,28 @@ bool update_aur_cache(bool recursiveCall) {
     return true;
 }
 
+bool install_package_files(const vector<string> &packageFiles, alpm_handle_t *handle, int flags) {
+    if (alpm_trans_init(handle, flags)) {
+        log_println(ERROR, _("Failed to initialize transaction ({})"), alpm_strerror(alpm_errno(handle)));
+        return false;
+    }
+
+    for (const string &packageFile : packageFiles) {
+        alpm_pkg_t *pkg;
+        if (alpm_pkg_load(handle, packageFile.c_str(), 1, alpm_option_get_local_file_siglevel(handle), &pkg)) {
+            log_println(ERROR, _("Failed to load package {}! ({})"), packageFile, alpm_strerror(alpm_errno(handle)));
+            return false;
+        }
+
+        if (alpm_add_pkg(handle, pkg)) {
+            log_println(ERROR, _("Failed to add package {}! ({})"), packageFile, alpm_strerror(alpm_errno(handle)));
+            return false;
+        }
+    }
+
+    return commitTransactionAndRelease(true);
+}
+
 /** Ask the user to select a package out of a list.
  * @param pkgs The list of packages, in a vector
  * @param backend A reference to the TaurBackend responsible for fetching any AUR packages.
