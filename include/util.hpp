@@ -117,7 +117,6 @@ std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBacke
 string_view                      binarySearch(const vector<string>& arr, string_view target);
 vector<string>                   load_aur_list();
 bool                             update_aur_cache(bool recursiveCall = false);
-bool                             install_package_files(const vector<string> &packageFiles, alpm_handle_t *handle, int flags);
 
 template <typename T>
 struct is_fmt_convertible {

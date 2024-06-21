@@ -264,8 +264,6 @@ int installPkg(alpm_list_t *pkgNames) {
         backend->update_all_aur_pkgs(cacheDir, useGit);
     }
 
-    vector<string> pkgs_to_install, pkgs_failed_to_build;
-
     for (size_t i = 0; i < AURPkgs.size(); i++) {
         vector<TaurPkg_t> pkgs    = backend->search(AURPkgs[i], useGit, config->aurOnly, true);
 
@@ -294,19 +292,19 @@ int installPkg(alpm_list_t *pkgNames) {
             if (!stat) {
                 log_println(ERROR, _("Building {} has failed."), pkg.name);
                 returnStatus = false;
-                pkgs_failed_to_build.push_back(pkg.name);
+                pkgs_failed_to_build += pkg.name + ' ';
                 log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
                 continue;
             }
 
-            pkgs_to_install.push_back(built_pkg);
+            pkgs_to_install += built_pkg + ' ';
         }
     }
 
     if (!pkgs_to_install.empty()) {
         log_println(DEBUG, _("Installing {}"), fmt::join(pkgNamesVec, " "));
-
-        if (!install_package_files(pkgs_to_install, config->handle, config->flags)) {
+        pkgs_to_install.erase(pkgs_to_install.length() - 1);
+        if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
             log_println(ERROR, _("Failed to install {}"), fmt::join(pkgNamesVec, " "));
             returnStatus = false;
         }

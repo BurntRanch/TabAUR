@@ -3,7 +3,6 @@
 #include "taur.hpp"
 #include "config.hpp"
 #include "util.hpp"
-#include <array>
 #include <filesystem>
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
@@ -383,14 +382,13 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         return true;
     }
 
-    vector<string> pkgNames(pkgs.size());
+    vector<string> pkgNames;
+    pkgNames.reserve(pkgs.size());
 
     for (size_t i = 0; i < pkgs.size(); ++i)
-        pkgNames[i] = pkgs[i].name;
+        pkgNames.push_back(pkgs[i].name);
 
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
-
-    vector<string> pkgs_to_install, pkgs_failed_to_build;
 
     int               updatedPkgs        = 0;
     int               attemptedDownloads = 0;
@@ -418,9 +416,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
             continue;
         }
 
-        bool isGitPackage = hasEnding(pkgs[pkgIndex].name, "-git");
-
-        if (pkgs[pkgIndex].version == onlinePkgs[i].version && !isGitPackage) {
+        if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
             log_println(DEBUG, "pkg {} has no update, local: {}, online: {}, skipping!", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version); 
             continue;
         }
@@ -440,7 +436,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         }
 
         // workaround for -git package because they are "special"
-        if (isGitPackage) {
+        if (hasEnding(pkgs[pkgIndex].name, "-git")) {
             alrprepared = true;
             std::filesystem::current_path(pkgDir);
             makepkg_exec({"--verifysource", "-fA"});
@@ -479,15 +475,15 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         bool installSuccess = this->build_pkg(pkgs[pkgIndex].name, pkgDir, alrprepared);
 
         if (installSuccess) {
-            pkgs_to_install.push_back(built_pkg);
-            log_println(DEBUG, "pkgs_to_install = {}", fmt::join(pkgs_to_install, ", "));
+            pkgs_to_install += built_pkg + ' ';
+            log_println(DEBUG, "pkgs_to_install = {}", pkgs_to_install);
             updatedPkgs++;
 
             // prevent duplicated entries
             pkgs.erase(pkgs.begin() + pkgIndex);
         } else {
-            pkgs_failed_to_build.push_back(pkgs[pkgIndex].name);
-            log_println(DEBUG, "pkgs_failed_to_build = [{}]", fmt::join(pkgs_failed_to_build, ", "));
+            pkgs_failed_to_build += pkgs[pkgIndex].name + ' ';
+            log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
         }
     }
 
@@ -497,17 +493,12 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         goto text;
     }
 
-    {
-        // if (!pacman_exec("-U", pkgs_to_install, false)) {
-        //     log_println(ERROR, _("Failed to install/upgrade packages"));
-        //     return false;
-        // }
-
-        if (install_package_files(pkgs_to_install, this->config.handle, this->config.flags))
-            log_println(INFO, _("Upgraded {}/{} packages."), updatedPkgs, attemptedDownloads);
-
-        goto text;
+    if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
+        log_println(ERROR, _("Failed to install/upgrade packages"));
+        return false;
     }
+
+    log_println(INFO, _("Upgraded {}/{} packages."), updatedPkgs, attemptedDownloads);
 
 text:
     if (attemptedDownloads > updatedPkgs) {

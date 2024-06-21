@@ -66,6 +66,6 @@ class TaurBackend {
     vector<TaurPkg_t>   get_all_local_pkgs(bool aurOnly);
 };
 
-inline string built_pkg;
+inline string built_pkg, pkgs_to_install, pkgs_failed_to_build;
 
 #endif
