@@ -548,6 +548,46 @@ static void localize(void) {
 }
 #endif
 
+// parseargs() but only for parsing the user config path trough args
+// and so we can directly construct Config
+static bool parse_config_path(int argc, char* argv[], string& configFile, string& themeFile) {
+    int opt = 0;
+    int option_index = 0;
+    opterr = 0;
+    const char *optstring = "C:";
+    static const struct option opts[] =
+    {
+        {"config", required_argument, 0, OP_CONFIG},
+        {"theme",  required_argument, 0, OP_THEME},
+        {0,0,0,0}
+    };
+    
+    while ((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
+        if (opt == 0 || opt == '?')
+            continue;
+
+        switch (opt) {
+            case OP_CONFIG:
+                configFile = strndup(optarg, PATH_MAX); 
+                if (!std::filesystem::exists(configFile))
+                    die("config file '{}' doesn't exist", configFile);
+
+                break;
+            case OP_THEME:
+                themeFile = strndup(optarg, PATH_MAX); 
+                if (!std::filesystem::exists(themeFile))
+                    die("theme file '{}' doesn't exist", themeFile);
+
+                break;
+
+            default:
+                return false;
+        }
+    }
+
+    return true;
+}
+
 // function taken from pacman
 int parseargs(int argc, char* argv[]) {
     // default
@@ -556,6 +596,8 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
+    opterr = 1; // re-enable since before we disabled for "invalid option" error
+    optind = 0;
     const char *optstring = "DFQRSTUVaihqsurytns";
     static const struct option opts[] =
     {
@@ -678,20 +720,20 @@ int parseargs(int argc, char* argv[]) {
 
 // main
 int main(int argc, char *argv[]) {
-    config = std::make_unique<Config>();
     string configDir = getConfigDir();
 
 #if defined(ENABLE_NLS)
     localize();
 #endif
 
-    configfile = (configDir + "/config.toml");
-    themefile  = (configDir + "/theme.toml");
+    string configfile = (configDir + "/config.toml");
+    string themefile  = (configDir + "/theme.toml");
+    parse_config_path(argc, argv, configfile, themefile);
+
+    config = std::make_unique<Config>(configfile, themefile, configDir);
 
     if (parseargs(argc, argv))
         return 1;
-
-    config->init(configfile, themefile, configDir);
 
     if (op.test_colors) {
         test_colors();
