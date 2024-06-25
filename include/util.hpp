@@ -62,6 +62,7 @@ enum prompt_yn {
     PROMPT_YN_CONTINUE_WITHOUT_DIFF,
     PROMPT_YN_EDIT_PKGBUILD,
     PROMPT_YN_PROCEED_INSTALL,
+    PROMPT_YN_PROCEED_UPGRADE,
     PROMPT_YN_PROCEED_TRANSACTION,
     PROMPT_YN_CLEANBUILD,
 };
@@ -253,6 +254,10 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
             break;
         case PROMPT_YN_PROCEED_INSTALL:
             log_printf(INFO, BOLD, _("Proceed with the installation? {}"), inputs_str);
+            NOCONFIRM(YES);
+            break;
+        case PROMPT_YN_PROCEED_UPGRADE:
+            log_printf(INFO, BOLD, _("Would you like to upgrade the above packages? {}"), inputs_str);
             NOCONFIRM(YES);
             break;
         case PROMPT_YN_PROCEED_TRANSACTION:
