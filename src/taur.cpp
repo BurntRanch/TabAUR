@@ -414,7 +414,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
             continue;
         }
         
-        if ((localPkg.version != pkg.version) && alpm_pkg_vercmp(localPkg.version.c_str(), pkg.version.c_str()) == 0) {
+        if ((localPkg.version != pkg.version) && alpm_pkg_vercmp(pkg.version.c_str(), localPkg.version.c_str()) == 1) {
             potentialUpgradeTargets.push_back(std::make_tuple(pkg, localPkg));
             log_println(INFO, "- {} (from {} to {})", localPkg.name, localPkg.version, pkg.version);
             continue;
@@ -522,8 +522,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
     if (pkgs_to_install.size() <= 0) {
         log_println(WARN, _("No packages to be upgraded."));
-        // oh no, a goto oh noooo this program is ruined
-        goto text;
+        return false;
     }
 
     if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
@@ -533,7 +532,6 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
     log_println(INFO, _("Upgraded {}/{} packages."), updatedPkgs, attemptedDownloads);
 
-text:
     if (attemptedDownloads > updatedPkgs) {
         pkgs_failed_to_build.erase(pkgs_failed_to_build.end() - 1);
         log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), pkgs_failed_to_build);
