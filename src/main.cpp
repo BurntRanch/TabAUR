@@ -262,6 +262,8 @@ int installPkg(alpm_list_t *pkgNames) {
     if (op.op_s_upgrade) {
         log_println(INFO, _("Upgrading AUR packages!"));
         backend->update_all_aur_pkgs(cacheDir, useGit);
+
+        pkgs_to_install = "";    // Reset the list.
     }
 
     for (size_t i = 0; i < AURPkgs.size(); i++) {
