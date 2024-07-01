@@ -29,6 +29,7 @@ enum {
     OP_SYNC,
     OP_REM,
     OP_QUERY,
+    OP_UPGRADE,
     OP_PACMAN, // when it's different from -S,R,Q we gonna use pacman
 };
 

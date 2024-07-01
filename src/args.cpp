@@ -62,7 +62,9 @@ int parsearg_op(int opt, int dryrun) {
                 op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
         case 'U':
                 if(dryrun) break;
-                op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_UPGRADE);
+                op.requires_root = true;
+                break;
         case 'V':
                 if(dryrun) break;
                 op.version = 1; break;

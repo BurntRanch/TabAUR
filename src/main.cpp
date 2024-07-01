@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <alpm.h>
 #include <cstddef>
 #pragma GCC diagnostic ignored "-Wvla"
 
@@ -143,6 +144,9 @@ void execPacman(int argc, char *argv[]) {
 }
 
 int installPkg(alpm_list_t *pkgNames) {
+    if (!pkgNames)
+        return false;
+
     bool  useGit   = config->useGit;
     path  cacheDir = config->cacheDir;
 
@@ -534,6 +538,35 @@ bool queryPkgs(alpm_list_t *pkgNames) {
     return true;
 }
 
+bool upgradePkgs(alpm_list_t *pkgNames) {
+    if (!pkgNames) {
+        return false;
+    }
+
+    if (alpm_trans_init(config->handle, config->flags)) {
+        log_println(ERROR, _("Failed to initialize transaction ({})"), alpm_strerror(alpm_errno(config->handle)));
+        return false;
+    }
+
+    for (; pkgNames; pkgNames = pkgNames->next) {
+        alpm_pkg_t *pkg;
+        alpm_pkg_load(config->handle, (const char *)pkgNames->data, 1, alpm_option_get_local_file_siglevel(config->handle), &pkg);
+
+        if (!pkg) {
+            log_println(ERROR, _("Failed to load package {}! ({})"), (const char *)(pkgNames->data), alpm_strerror(alpm_errno(config->handle)));
+            return false;   // Yes, I am ignoring the transaction we just created.
+        }
+
+        if (alpm_add_pkg(config->handle, pkg)) {
+            log_println(ERROR, _("Failed to add package {} to transaction! ({})"), (const char *)(pkgNames->data), alpm_strerror(alpm_errno(config->handle)));
+            return false;
+        }
+
+    }
+
+    return commitTransactionAndRelease(true);
+}
+
 /** Sets up gettext localization. Safe to call multiple times.
  */
 /* Inspired by the monotone function localize_monotone. */
@@ -774,7 +807,9 @@ int main(int argc, char *argv[]) {
             log_println(WARN, _("Watch out when using the -R operation in TabAUR, it has been tested pretty well, but you should always watch out for any errors, Please use pacman or be careful"));
             return removePkg(taur_targets.get()) ? 0 : 1;
         case OP_QUERY:
-            return (queryPkgs(taur_targets.get())) ? 0 : 1;
+            return queryPkgs(taur_targets.get()) ? 0 : 1;
+        case OP_UPGRADE:
+            return upgradePkgs(taur_targets.get()) ? 0 : 1;
         case OP_SYSUPGRADE:
             return (updateAll()) ? 0 : 1;
         default:
