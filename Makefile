@@ -14,7 +14,7 @@ else
         CXXFLAGS := -O2 $(CXXFLAGS)
 endif
 
-VERSION    	 = 0.6.7
+VERSION    	 = 0.6.8
 BRANCH     	 = main
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
