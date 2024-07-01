@@ -62,6 +62,7 @@ enum prompt_yn {
     PROMPT_YN_CONTINUE_WITHOUT_DIFF,
     PROMPT_YN_EDIT_PKGBUILD,
     PROMPT_YN_PROCEED_INSTALL,
+    PROMPT_YN_PROCEED_UPGRADE,
     PROMPT_YN_PROCEED_TRANSACTION,
     PROMPT_YN_CLEANBUILD,
 };
@@ -90,7 +91,7 @@ string                           expandVar(string& str);
 bool                             is_numerical(string_view s, bool allowSpace = false);
 bool                             taur_read_exec(vector<const char *> cmd, string& output, bool exitOnFailure = true);
 void                             interruptHandler(int);
-bool                             taur_exec(vector<const char *> cmd, bool exitOnFailure = true);
+bool                             taur_exec(vector<string> cmd, bool exitOnFailure = true);
 void                             sanitizeStr(string& str);
 bool                             is_package_from_syncdb(const char *name, alpm_list_t *syncdbs);
 bool                             commitTransactionAndRelease(bool soft = false);
@@ -253,6 +254,10 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args) {
             break;
         case PROMPT_YN_PROCEED_INSTALL:
             log_printf(INFO, BOLD, _("Proceed with the installation? {}"), inputs_str);
+            NOCONFIRM(YES);
+            break;
+        case PROMPT_YN_PROCEED_UPGRADE:
+            log_printf(INFO, BOLD, _("Would you like to upgrade the above packages? {}"), inputs_str);
             NOCONFIRM(YES);
             break;
         case PROMPT_YN_PROCEED_TRANSACTION:

@@ -17,6 +17,8 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <alpm.h>
+#include <cstddef>
 #pragma GCC diagnostic ignored "-Wvla"
 
 #include "args.hpp"
@@ -137,14 +139,19 @@ void execPacman(int argc, char *argv[]) {
 
     if (execvp(args[0], const_cast<char *const *>(args.data())) == -1)
         perror("execvp");
+    
     exit(1);
 }
 
 int installPkg(alpm_list_t *pkgNames) {
+    if (!pkgNames)
+        return false;
+
     bool  useGit   = config->useGit;
     path  cacheDir = config->cacheDir;
 
-    bool  returnStatus = true, stat;
+    bool  returnStatus = true;
+    bool  stat;
 
     vector<string> pacmanPkgs; // list of pacman packages to install, to avoid spamming pacman.
     vector<string_view> pkgNamesVec;
@@ -182,9 +189,14 @@ int installPkg(alpm_list_t *pkgNames) {
     if (!update_aur_cache())
         log_println(ERROR, _("Failed to get information about {}"), (config->cacheDir / "packages.aur").string());   
 
-    // this feels horrible despite being 100% correct and probably not problematic.
-    // it just feels like we should ask for every package.
+    // I swear there was a comment here..
     vector<string_view> AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+
+    for (const auto& pkg : pkgNamesVec) 
+    {
+        if (std::find(AURPkgs.begin(), AURPkgs.end(), pkg) == AURPkgs.end())
+            pacmanPkgs.push_back(pkg.data());
+    }
 
     if (!op.op_s_cleanbuild && !AURPkgs.empty())
         pkgsToCleanBuild = askUserForList<string_view>(AURPkgs, PROMPT_LIST_CLEANBUILDS);
@@ -192,93 +204,48 @@ int installPkg(alpm_list_t *pkgNames) {
     if (!config->noconfirm && !AURPkgs.empty())
         pkgsToReview = askUserForList<string_view>(AURPkgs, PROMPT_LIST_REVIEWS);
 
-    
-    for (size_t i = 0; i < pkgNamesVec.size(); i++) {
-        vector<TaurPkg_t> pkgs    = backend->search(pkgNamesVec[i], useGit, config->aurOnly, true);
+    for (auto& pkg_name : AURPkgs) {
 
-        optional<vector<TaurPkg_t>> oSelectedPkg = askUserForPkg(pkgs, *backend, useGit);
+        path pkgDir = path(cacheDir) / pkg_name;
 
-        if (!oSelectedPkg) {
+        stat = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
+        if (!stat) {
+            log_println(ERROR, _("Failed to download {}"), pkg_name);
             returnStatus = false;
             continue;
         }
 
-        vector<TaurPkg_t> selectedPkg = oSelectedPkg.value();
+    }
 
-        for (size_t i = 0; i < selectedPkg.size(); i++) {
-            TaurPkg_t   pkg = selectedPkg[i];
-
-            if (pkg.db_name != "aur") {
-                pacmanPkgs.push_back(pkg.name);
-                continue;
-            }
-
-            path pkgDir = path(cacheDir) / pkg.name;
-            bool cleanBuild = op.op_s_cleanbuild ? false : std::find(pkgsToCleanBuild.begin(), pkgsToCleanBuild.end(), pkg.name) != pkgsToCleanBuild.end();
-            bool review = config->noconfirm ? false : std::find(pkgsToReview.begin(), pkgsToReview.end(), pkg.name) != pkgsToReview.end();
-
-            if (cleanBuild) {
-                log_println(INFO, _("Removing {}"), pkgDir.c_str());
-                std::filesystem::remove_all(pkgDir);
-            }
-
-            stat = useGit ? backend->download_git(AUR_URL_GIT(pkg.name), pkgDir) : backend->download_tar(AUR_URL_TAR(pkg.name), pkgDir);
-            if (!stat) {
-                log_println(ERROR, _("Failed to download {}"), pkg.name);
-                returnStatus = false;
-                continue;
-            }
-
-            if (review || askUserYorN(YES, PROMPT_YN_EDIT_PKGBUILD, pkg.name)) {
-                // cmd is just a workaround for making possible
-                // that editor can have flags, e.g nano --modernbindings
-                // instead of creating another config variable
-                // This is really ugly 
-                // because u can't convert std::vector<std::string> to std::vector<const char*>
-                vector<string> _cmd;
-                vector<const char *> cmd;
-                for (auto& str : config->editor)
-                    _cmd.push_back(str);
-                _cmd.push_back((pkgDir / "PKGBUILD").string());
-
-                for (auto& str : _cmd)
-                    cmd.push_back(str.c_str());
-
-                taur_exec(cmd);
-
-                if (!askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
-                    return false;
-            }
-
-            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
-
-            if (!stat) {
-                log_println(ERROR, _("Installing AUR dependencies for your package has failed."));
-                returnStatus = false;
-                continue;
-            }
-
-            stat = backend->build_pkg(pkg.name, pkgDir, false);
-
-            if (!stat) {
-                log_println(ERROR, _("Building your package has failed."));
-                returnStatus = false;
-                continue;
-            }
-
-            pkgs_to_install += built_pkg + ' ';
+    for (string_view& pkg : pkgsToCleanBuild) {
+        path pkgDir = path(cacheDir) / pkg;
+        if (!useGit) {
+            log_println(INFO, _("Removing {}"), pkgDir.c_str());
+            std::filesystem::remove_all(pkgDir);
+        } 
+        else {
+            log_println(INFO, _("Cleaning {}"), pkgDir.c_str());
+            taur_exec({config->git, "-C", pkgDir.c_str(), "clean", "-xffd"});
         }
     }
 
-    if (!pkgs_to_install.empty()) {
-        log_println(DEBUG, _("Installing {}"), fmt::join(pkgNamesVec, " "));
-        pkgs_to_install.erase(pkgs_to_install.length() - 1);
-        if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
-            log_println(ERROR, _("Failed to install {}"), fmt::join(pkgNamesVec, " "));
-            returnStatus = false;
-        }
+    // cmd is just a workaround for making it possible
+    // to pass flags to the editor, e.g nano --modernbindings
+    // instead of creating another config variable
+    for (string_view& pkg : pkgsToReview) {
+        path pkgDir = path(cacheDir) / pkg;
+        
+        vector<string> cmd;
+        for (auto& str : config->editor)
+            cmd.push_back(str);
+        cmd.push_back((pkgDir / "PKGBUILD").string());
+
+        taur_exec(cmd);
     }
-    
+
+    if (!pkgsToReview.empty() && !askUserYorN(YES, PROMPT_YN_PROCEED_INSTALL))
+        return false;
+
     if (!config->aurOnly && (op.op_s_upgrade || !pacmanPkgs.empty())) {
         if (op.op_s_upgrade)
             log_println(INFO, _("Upgrading system packages!"));
@@ -299,8 +266,61 @@ int installPkg(alpm_list_t *pkgNames) {
     if (op.op_s_upgrade) {
         log_println(INFO, _("Upgrading AUR packages!"));
         backend->update_all_aur_pkgs(cacheDir, useGit);
+
+        pkgs_to_install = "";    // Reset the list.
     }
 
+    for (size_t i = 0; i < AURPkgs.size(); i++) {
+        vector<TaurPkg_t> pkgs    = backend->search(AURPkgs[i], useGit, config->aurOnly, true);
+
+        optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
+
+        if (!oSelectedPkgs) {
+            returnStatus = false;
+            continue;
+        }
+
+        vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
+
+        for (TaurPkg_t &pkg : selectedPkgs) {
+            path pkgDir = path(cacheDir) / pkg.name;
+
+            stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
+
+            if (!stat) {
+                log_println(ERROR, _("Installing AUR dependencies for your package has failed."));
+                returnStatus = false;
+                continue;
+            }
+
+            stat = backend->build_pkg(pkg.name, pkgDir, false);
+
+            if (!stat) {
+                log_println(ERROR, _("Building {} has failed."), pkg.name);
+                returnStatus = false;
+                pkgs_failed_to_build += pkg.name + ' ';
+                log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
+                continue;
+            }
+
+            pkgs_to_install += built_pkg + ' ';
+        }
+    }
+
+    if (!pkgs_to_install.empty()) {
+        log_println(DEBUG, _("Installing {}"), fmt::join(pkgNamesVec, " "));
+        pkgs_to_install.erase(pkgs_to_install.length() - 1);
+        if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
+            log_println(ERROR, _("Failed to install {}"), fmt::join(pkgNamesVec, " "));
+            returnStatus = false;
+        }
+    }
+    
+    if (!pkgs_failed_to_build.empty()) {
+        pkgs_failed_to_build.erase(pkgs_failed_to_build.end() - 1);
+        log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), pkgs_failed_to_build);
+        log_println(INFO, fg(color.cyan), _("Tip: try to run taur with \"-S {}\" (e.g \"taur -S {}\")"), pkgs_failed_to_build, pkgs_failed_to_build);
+    }
     return returnStatus;
 }
 
@@ -357,7 +377,7 @@ bool removePkg(alpm_list_t *pkgNames) {
         try {
             auto pkg = std::find(pkgs.begin(), pkgs.end(), includedPkgs[i]);
 
-            if (pkgs.begin() >= pkg || pkg >= pkgs.end())
+            if (pkg >= pkgs.end())
                 continue;
 
             size_t pkgIndex = std::distance(pkgs.begin(), pkg);
@@ -518,6 +538,35 @@ bool queryPkgs(alpm_list_t *pkgNames) {
     return true;
 }
 
+bool upgradePkgs(alpm_list_t *pkgNames) {
+    if (!pkgNames) {
+        return false;
+    }
+
+    if (alpm_trans_init(config->handle, config->flags)) {
+        log_println(ERROR, _("Failed to initialize transaction ({})"), alpm_strerror(alpm_errno(config->handle)));
+        return false;
+    }
+
+    for (; pkgNames; pkgNames = pkgNames->next) {
+        alpm_pkg_t *pkg;
+        alpm_pkg_load(config->handle, (const char *)pkgNames->data, 1, alpm_option_get_local_file_siglevel(config->handle), &pkg);
+
+        if (!pkg) {
+            log_println(ERROR, _("Failed to load package {}! ({})"), (const char *)(pkgNames->data), alpm_strerror(alpm_errno(config->handle)));
+            return false;   // Yes, I am ignoring the transaction we just created.
+        }
+
+        if (alpm_add_pkg(config->handle, pkg)) {
+            log_println(ERROR, _("Failed to add package {} to transaction! ({})"), (const char *)(pkgNames->data), alpm_strerror(alpm_errno(config->handle)));
+            return false;
+        }
+
+    }
+
+    return commitTransactionAndRelease(true);
+}
+
 /** Sets up gettext localization. Safe to call multiple times.
  */
 /* Inspired by the monotone function localize_monotone. */
@@ -534,6 +583,46 @@ static void localize(void) {
 }
 #endif
 
+// parseargs() but only for parsing the user config path trough args
+// and so we can directly construct Config
+static bool parse_config_path(int argc, char* argv[], string& configFile, string& themeFile) {
+    int opt = 0;
+    int option_index = 0;
+    opterr = 0;
+    const char *optstring = "C:";
+    static const struct option opts[] =
+    {
+        {"config", required_argument, 0, OP_CONFIG},
+        {"theme",  required_argument, 0, OP_THEME},
+        {0,0,0,0}
+    };
+    
+    while ((opt = getopt_long(argc, argv, optstring, opts, &option_index)) != -1) {
+        if (opt == 0 || opt == '?')
+            continue;
+
+        switch (opt) {
+            case OP_CONFIG:
+                configFile = strndup(optarg, PATH_MAX); 
+                if (!std::filesystem::exists(configFile))
+                    die("config file '{}' doesn't exist", configFile);
+
+                break;
+            case OP_THEME:
+                themeFile = strndup(optarg, PATH_MAX); 
+                if (!std::filesystem::exists(themeFile))
+                    die("theme file '{}' doesn't exist", themeFile);
+
+                break;
+
+            default:
+                return false;
+        }
+    }
+
+    return true;
+}
+
 // function taken from pacman
 int parseargs(int argc, char* argv[]) {
     // default
@@ -542,6 +631,8 @@ int parseargs(int argc, char* argv[]) {
     int opt = 0;
     int option_index = 0;
     int result = 0;
+    opterr = 1; // re-enable since before we disabled for "invalid option" error
+    optind = 0;
     const char *optstring = "DFQRSTUVaihqsurytns";
     static const struct option opts[] =
     {
@@ -664,20 +755,20 @@ int parseargs(int argc, char* argv[]) {
 
 // main
 int main(int argc, char *argv[]) {
-    config = std::make_unique<Config>();
     string configDir = getConfigDir();
 
 #if defined(ENABLE_NLS)
     localize();
 #endif
 
-    configfile = (configDir + "/config.toml");
-    themefile  = (configDir + "/theme.toml");
+    string configfile = (configDir + "/config.toml");
+    string themefile  = (configDir + "/theme.toml");
+    parse_config_path(argc, argv, configfile, themefile);
+
+    config = std::make_unique<Config>(configfile, themefile, configDir);
 
     if (parseargs(argc, argv))
         return 1;
-
-    config->init(configfile, themefile, configDir);
 
     if (op.test_colors) {
         test_colors();
@@ -716,7 +807,9 @@ int main(int argc, char *argv[]) {
             log_println(WARN, _("Watch out when using the -R operation in TabAUR, it has been tested pretty well, but you should always watch out for any errors, Please use pacman or be careful"));
             return removePkg(taur_targets.get()) ? 0 : 1;
         case OP_QUERY:
-            return (queryPkgs(taur_targets.get())) ? 0 : 1;
+            return queryPkgs(taur_targets.get()) ? 0 : 1;
+        case OP_UPGRADE:
+            return upgradePkgs(taur_targets.get()) ? 0 : 1;
         case OP_SYSUPGRADE:
             return (updateAll()) ? 0 : 1;
         default:

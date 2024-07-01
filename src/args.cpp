@@ -62,7 +62,9 @@ int parsearg_op(int opt, int dryrun) {
                 op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
         case 'U':
                 if(dryrun) break;
-                op.op = (op.op != OP_MAIN ? 0 : OP_PACMAN); break;
+                op.op = (op.op != OP_MAIN ? 0 : OP_UPGRADE);
+                op.requires_root = true;
+                break;
         case 'V':
                 if(dryrun) break;
                 op.version = 1; break;
@@ -88,34 +90,31 @@ int parsearg_op(int opt, int dryrun) {
 int parsearg_global(int opt) {
     switch (opt) {
         case OP_CACHEDIR:
-                config->overrides["general.cacheDir"] = {STR, strndup(optarg, PATH_MAX)};
+                config->cacheDir = strndup(optarg, PATH_MAX);
                 break;
         case OP_COLORS:
                 fmt::disable_colors = !((bool)std::atoi(optarg));
-                config->overrides["general.colors"] = {BOOL, "", (bool)std::atoi(optarg)};
+                config->colors = (bool)std::atoi(optarg);
                 break;
         case OP_DEBUG:
-                config->overrides["general.debug"] = {BOOL, "", true};
+                config->debug = true;
                 break;
         case OP_AURONLY:
         case 'a':
-                config->overrides["general.aurOnly"] = {BOOL, "", true};
+                config->aurOnly = true;
                 break;
         case OP_SUDO:
-                config->overrides["general.sudo"] = {STR, strndup(optarg, PATH_MAX)};
+                config->sudo = strndup(optarg, PATH_MAX);
                 break;
         case OP_NOCONFIRM:
                 config->noconfirm = true;
                 break;
         case OP_USEGIT:
         case 'g':
-                config->overrides["general.useGit"] = {BOOL, "", true};
+                config->useGit = true;
                 break;
         case OP_CONFIG:
-                configfile = strndup(optarg, PATH_MAX);
-                break;
         case OP_THEME:
-                themefile = strndup(optarg, PATH_MAX);
                 break;
         default:
                 return 1;

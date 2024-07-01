@@ -22,17 +22,6 @@ using std::filesystem::path;
 // so we don't need to include util.hpp for getConfigValue()
 string expandVar(string& str);
 
-enum types {
-    STR,
-    BOOL
-};
-
-struct strOrBool {
-    types  valueType;
-    string stringValue = "";
-    bool   boolValue   = false;
-};
-
 struct _color_t {
     fmt::rgb red;
     fmt::rgb green;
@@ -77,16 +66,11 @@ class Config {
     // alpm transaction flags
     int            flags;
 
-    std::map<string, strOrBool> overrides;
-
-    Config();
+    Config(string_view configFile, string_view themeFile, string_view configDir);
     ~Config();
 
-    void init(string &configFile, string &themeFile, string_view configDir);
     void initVars();
     void initColors();
-
-    bool isInitialized();
 
     void loadConfigFile(string_view filename);
     void loadPacmanConfigFile(string filename);
@@ -95,18 +79,6 @@ class Config {
     // stupid c++ that wants template functions in header
     template <typename T>
     T getConfigValue(const string& value, T fallback) {
-        auto overridePos = overrides.find(value);
-
-        // user wants a bool (overridable), we found an override matching the name, and the override is a bool.
-        if constexpr (std::is_same<T, bool>())
-            if (overridePos != overrides.end() && overrides[value].valueType == BOOL)
-                return overrides[value].boolValue;
-
-        // user wants a str (overridable), we found an override matching the name, and the override is a str.
-        if constexpr (std::is_same<T, string>())
-            if (overridePos != overrides.end() && overrides[value].valueType == STR)
-                return overrides[value].stringValue;
-
         std::optional<T> ret = this->tbl.at_path(value).value<T>();
         if constexpr (toml::is_string<T>) // if we want to get a value that's a string
             return ret ? expandVar(ret.value()) : expandVar(fallback);
@@ -119,7 +91,6 @@ class Config {
 
   private:
     toml::table tbl, theme_tbl;
-    bool        initialized = false;
 };
 
 extern std::unique_ptr<Config> config;
@@ -199,8 +170,5 @@ gray = "#5a5a5a"
 #installed = "#5a5a5a"
 #index = "#ff11cc"
 )#";
-
-inline string configfile;
-inline string themefile;
 
 #endif

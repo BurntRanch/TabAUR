@@ -8,8 +8,6 @@
 using std::ofstream;
 using std::ifstream;
 
-Config::Config() {}
-
 Config::~Config() {
     if (this->handle) {
         alpm_trans_release(this->handle);
@@ -21,10 +19,7 @@ Config::~Config() {
 }
 
 // initialize Config, can only be ran once for each Config instance.
-void Config::init(string &configFile, string &themeFile, string_view configDir) {
-    if (this->initialized)
-        return;
-    
+Config::Config(string_view configFile, string_view themeFile, string_view configDir) {
     bool   newUser   = false;
 
     if (!std::filesystem::exists(configDir)) {
@@ -36,13 +31,13 @@ void Config::init(string &configFile, string &themeFile, string_view configDir) 
     if (!std::filesystem::exists(configFile)) {
         log_println(WARN, _("{} not found, generating new one"), configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
-        ofstream f(configFile, std::ios::trunc);
+        ofstream f(configFile.data(), std::ios::trunc);
         f << AUTOCONFIG;
         f.close();
     }
     if (!std::filesystem::exists(themeFile)) {
         log_println(WARN, _("{} not found, generating new one"), themeFile);
-        ofstream f(themeFile, std::ios::trunc);
+        ofstream f(themeFile.data(), std::ios::trunc);
         f << AUTOTHEME;
         f.close();
     }
@@ -50,10 +45,9 @@ void Config::init(string &configFile, string &themeFile, string_view configDir) 
     this->loadConfigFile(configFile);
     this->loadThemeFile(themeFile);
 
-    this->initialized = true;
-    if (!std::filesystem::exists(config->cacheDir)) {
-        log_println(WARN, _("TabAUR cache folder was not found, Creating folders at {}!"), config->cacheDir.string());
-        std::filesystem::create_directories(config->cacheDir);
+    if (!std::filesystem::exists(this->cacheDir)) {
+        log_println(WARN, _("TabAUR cache folder was not found, Creating folders at {}!"), this->cacheDir.string());
+        std::filesystem::create_directories(this->cacheDir);
     }
 
     if (newUser)
@@ -64,11 +58,6 @@ void Config::init(string &configFile, string &themeFile, string_view configDir) 
                      "You should always read the sources, popularity, and votes to judge by yourself whether the package is trustable.\n"
                      "This project is in no way liable for any damage done to your system as a result of AUR packages.\n"
                      "Thank you!\n"));
-}
-
-// get initialized variable
-bool Config::isInitialized() {
-    return this->initialized;
 }
 
 /*

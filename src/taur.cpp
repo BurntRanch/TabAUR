@@ -3,17 +3,19 @@
 #include "taur.hpp"
 #include "config.hpp"
 #include "util.hpp"
+#include <algorithm>
 #include <filesystem>
+#include <iterator>
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
 bool TaurBackend::download_git(string_view url, path out_path) {
     if (std::filesystem::exists(path(out_path) / ".git")) {
-        return taur_exec({config.git.c_str(), "-C", out_path.c_str(), "pull", "--rebase", "--autostash", "--ff-only"});
+        return taur_exec({config.git.c_str(), "-C", out_path, "pull", "--autostash", "--rebase", "--ff-only", "--force"});
     } else {
         if (std::filesystem::exists(path(out_path)))
             std::filesystem::remove_all(out_path);
-        return taur_exec({config.git.c_str(), "clone", url.data(), out_path.c_str()});
+        return taur_exec({config.git.c_str(), "clone", url.data(), out_path});
     }
 }
 
@@ -238,7 +240,7 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
 
     if (!alreadyprepared) {
         log_println(INFO, _("Verifying package sources.."));
-        makepkg_exec({"--verifysource", "--skippgpcheck", "-f", "-Cc"});
+        makepkg_exec({"--verifysource", "--skippgpcheck", "-fs", "-Cc"});
 
         log_println(INFO, _("Preparing for compilation.."));
         makepkg_exec({"--nobuild", "--skippgpcheck", "-fs", "-C", "--ignorearch"});
@@ -251,7 +253,7 @@ bool TaurBackend::build_pkg(string_view pkg_name, string extracted_path, bool al
         /*log_println(INFO, _("Compiling {} in 3 seconds, you can cancel at this point if you can't compile."), pkg_name);
         sleep(3);*/
 
-        return makepkg_exec({"-f", "--noconfirm", "--noextract", "--noprepare", "--nocheck", "--holdver", "--ignorearch", "-c"}, false);
+        return makepkg_exec({"-fs", "--noconfirm", "--noextract", "--noprepare", "--nocheck", "--holdver", "--ignorearch", "-c"}, false);
     } else
         log_println(INFO, _("{} exists already, skipping..."), built_pkg);
 
@@ -375,68 +377,99 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, vector<TaurPk
 }
 
 bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
-    vector<TaurPkg_t> pkgs = this->get_all_local_pkgs(true);
+    vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
 
-    if (pkgs.empty()) {
+    if (localPkgs.empty()) {
         log_println(INFO, _("No AUR packages found in your system."));
         return true;
     }
 
     vector<string> pkgNames;
-    pkgNames.reserve(pkgs.size());
+    pkgNames.reserve(localPkgs.size());
 
-    for (size_t i = 0; i < pkgs.size(); ++i)
-        pkgNames.push_back(pkgs[i].name);
+    for (const TaurPkg_t &pkg : localPkgs)
+        pkgNames.push_back(pkg.name);
 
     vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
 
     int               updatedPkgs        = 0;
     int               attemptedDownloads = 0;
 
-    if (onlinePkgs.size() != pkgs.size())
-        log_println(WARN, _("Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others."), pkgs.size(), onlinePkgs.size());
+    if (onlinePkgs.size() != localPkgs.size())
+        log_println(WARN, _("Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others."), localPkgs.size(), onlinePkgs.size());
+
+    log_println(INFO, "Here's a list of packages that may be updated:");
+
+    vector<std::tuple<TaurPkg_t, TaurPkg_t>> potentialUpgradeTargets;
 
     for (size_t i = 0; i < onlinePkgs.size(); i++) {
-        size_t pkgIndex;
-        bool   found = false;
+        TaurPkg_t &pkg = onlinePkgs[i];
+        auto pkgIteratorInLocalPkgs = std::find_if(localPkgs.begin(), localPkgs.end(), [&pkg] (const TaurPkg_t &element) { return element.name == pkg.name; });
+        size_t pkgIndexInLocalPkgs = std::distance(localPkgs.begin(), pkgIteratorInLocalPkgs);
+        TaurPkg_t &localPkg = localPkgs[pkgIndexInLocalPkgs];
+
+        if (hasEnding(pkg.name, "-git")) {
+            potentialUpgradeTargets.push_back(std::make_tuple(pkg, localPkg));
+            log_println(INFO, "- {} (from {} to {}, (dev package, may change despite AUR version))", localPkg.name, localPkg.version, pkg.version);
+            continue;
+        }
+        
+        if ((localPkg.version != pkg.version) && alpm_pkg_vercmp(pkg.version.c_str(), localPkg.version.c_str()) == 1) {
+            potentialUpgradeTargets.push_back(std::make_tuple(pkg, localPkg));
+            log_println(INFO, "- {} (from {} to {})", localPkg.name, localPkg.version, pkg.version);
+            continue;
+        }
+    }
+
+    if (!askUserYorN(true, PROMPT_YN_PROCEED_UPGRADE))
+        return false;
+
+    for (const auto &potentialUpgrade : potentialUpgradeTargets) {
+        // size_t pkgIndex;
+        // bool   found = false;
         bool   alrprepared = false;
 
-        for (pkgIndex = 0; pkgIndex < pkgs.size(); pkgIndex++) {
-            if (pkgs[pkgIndex].name == onlinePkgs[i].name) {
-                found = true;
-                break;
-            }
-        }
+        // for (pkgIndex = 0; pkgIndex < localPkgs.size(); pkgIndex++) {
+        //     if (localPkgs[pkgIndex].name == onlinePkgs[i].name) {
+        //         found = true;
+        //         break;
+        //     }
+        // }
 
-        log_println(DEBUG, "onlinePkgs.name = {}", onlinePkgs[i].name);
-        log_println(DEBUG, "onlinePkgs.totaldepends = {}", onlinePkgs[i].totaldepends);
+        TaurPkg_t potentialUpgradeTargetTo = std::get<0>(potentialUpgrade);
+        TaurPkg_t potentialUpgradeTargetFrom = std::get<1>(potentialUpgrade);
 
-        if (!found) {
-            log_println(WARN, _("We couldn't find {} in the local pkg database, This shouldn't happen."), onlinePkgs[i].name);
-            continue;
-        }
+        log_println(DEBUG, "potentialUpgradeTarget.name = {}", potentialUpgradeTargetTo.name);
+        log_println(DEBUG, "potentialUpgradeTarget.totaldepends = {}", potentialUpgradeTargetTo.totaldepends);
 
-        if (pkgs[pkgIndex].version == onlinePkgs[i].version) {
-            log_println(DEBUG, "pkg {} has no update, local: {}, online: {}, skipping!", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version); 
-            continue;
-        }
+        // if (!found) {
+        //     log_println(WARN, _("We couldn't find {} in the local pkg database, This shouldn't happen."), onlinePkgs[i].name);
+        //     continue;
+        // }
 
-        path pkgDir = cacheDir / onlinePkgs[i].name;
+        bool isGitPackage = hasEnding(potentialUpgradeTargetTo.name, "-git");
 
-        log_println(INFO, _("Downloading {}."), onlinePkgs[i].name);
+        // if (!isGitPackage && localPkgs[pkgIndex].version == onlinePkgs[i].version) {
+        //     log_println(DEBUG, "pkg {} has no update, local: {}, online: {}, skipping!", localPkgs[pkgIndex].name, localPkgs[pkgIndex].version, onlinePkgs[i].version); 
+        //     continue;
+        // }
+
+        path pkgDir = cacheDir / potentialUpgradeTargetTo.name;
+
+        log_println(INFO, _("Downloading {}."), potentialUpgradeTargetTo.name);
 
         if (!useGit)
             std::filesystem::remove_all(pkgDir);
 
-        bool downloadSuccess = this->download_pkg(onlinePkgs[i].aur_url, pkgDir);
+        bool downloadSuccess = this->download_pkg(potentialUpgradeTargetTo.aur_url, pkgDir);
 
         if (!downloadSuccess) {
-            log_println(WARN, _("Failed to download package {}!"), onlinePkgs[i].name);
+            log_println(WARN, _("Failed to download package {}!"), potentialUpgradeTargetTo.name);
             continue;
         }
 
         // workaround for -git package because they are "special"
-        if (hasEnding(pkgs[pkgIndex].name, "-git")) {
+        if (isGitPackage) {
             alrprepared = true;
             std::filesystem::current_path(pkgDir);
             makepkg_exec({"--verifysource", "-fA"});
@@ -446,7 +479,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         string versionInfo = shell_exec("grep 'pkgver=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
 
         if (versionInfo.empty()) {
-            log_println(WARN, _("Failed to parse version information from {}'s PKGBUILD, You might be able to ignore this safely."), pkgs[pkgIndex].name);
+            log_println(WARN, _("Failed to parse version information from {}'s PKGBUILD, You might be able to ignore this safely."), potentialUpgradeTargetTo.name);
             continue;
         }
 
@@ -459,20 +492,20 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
         if (!epoch.empty() && epoch[0] != '\0')
             versionInfo = epoch + ':' + versionInfo;
 
-        log_println(DEBUG, "pkg {} versions: local {} vs online {}", pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);   
+        log_println(DEBUG, "pkg {} versions: local {} vs online {}", potentialUpgradeTargetTo.name, potentialUpgradeTargetTo.version, potentialUpgradeTargetFrom.version);   
 
-        if ((alpm_pkg_vercmp(pkgs[pkgIndex].version.data(), versionInfo.c_str())) == 0) {
+        if ((alpm_pkg_vercmp(potentialUpgradeTargetFrom.version.data(), versionInfo.c_str())) == 0) {
             
-            log_println(DEBUG, _("pkg {} has the same version on the AUR than in its PKGBUILD, local: {}, online: {}, PKGBUILD: {}, skipping!"), pkgs[pkgIndex].name,
-                        pkgs[pkgIndex].version, onlinePkgs[i].version, versionInfo);
+            log_println(DEBUG, _("pkg {} has the same version on the AUR than in its PKGBUILD, local: {}, online: {}, PKGBUILD: {}, skipping!"), potentialUpgradeTargetFrom.name,
+                        potentialUpgradeTargetFrom.version, potentialUpgradeTargetTo.version, versionInfo);
             continue;
         }
 
-        log_println(INFO, _("Upgrading package {} from version {} to version {}!"), pkgs[pkgIndex].name, pkgs[pkgIndex].version, onlinePkgs[i].version);
+        log_println(INFO, _("Upgrading package {} from version {} to version {}!"), potentialUpgradeTargetFrom.name, potentialUpgradeTargetTo.version, potentialUpgradeTargetTo.version);
         attemptedDownloads++;
 
-        this->handle_aur_depends(onlinePkgs[i], pkgDir, this->get_all_local_pkgs(true), useGit);
-        bool installSuccess = this->build_pkg(pkgs[pkgIndex].name, pkgDir, alrprepared);
+        this->handle_aur_depends(potentialUpgradeTargetTo, pkgDir, this->get_all_local_pkgs(true), useGit);
+        bool installSuccess = this->build_pkg(potentialUpgradeTargetTo.name, pkgDir, alrprepared);
 
         if (installSuccess) {
             pkgs_to_install += built_pkg + ' ';
@@ -480,21 +513,18 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
             updatedPkgs++;
 
             // prevent duplicated entries
-            pkgs.erase(pkgs.begin() + pkgIndex);
+            //localPkgs.erase(localPkgs.begin() + pkgIndex);
         } else {
-            pkgs_failed_to_build += pkgs[pkgIndex].name + ' ';
+            pkgs_failed_to_build += potentialUpgradeTargetTo.name + ' ';
             log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
         }
     }
 
     if (pkgs_to_install.size() <= 0) {
         log_println(WARN, _("No packages to be upgraded."));
-        // oh no, a goto oh noooo this program is ruined
-        goto text;
+        return false;
     }
 
-    // remove the last ' ' so we can pass it to pacman
-    pkgs_to_install.erase(pkgs_to_install.end() - 1);
     if (!pacman_exec("-U", split(pkgs_to_install, ' '), false)) {
         log_println(ERROR, _("Failed to install/upgrade packages"));
         return false;
@@ -502,7 +532,6 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
 
     log_println(INFO, _("Upgraded {}/{} packages."), updatedPkgs, attemptedDownloads);
 
-text:
     if (attemptedDownloads > updatedPkgs) {
         pkgs_failed_to_build.erase(pkgs_failed_to_build.end() - 1);
         log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), pkgs_failed_to_build);
@@ -615,11 +644,11 @@ vector<TaurPkg_t> TaurBackend::search(string_view query, bool useGit, bool aurOn
     if (!aurOnly)
         pacPkgs = this->search_pac(query);
 
-    size_t            count = aurPkgs.size() + pacPkgs.size();
+    size_t allPkgsSize = aurPkgs.size() + pacPkgs.size();
 
     vector<TaurPkg_t> combined;
 
-    combined.reserve(count);
+    combined.reserve(allPkgsSize);
 
     if (!aurPkgs.empty())
         combined.insert(combined.end(), aurPkgs.begin(), aurPkgs.end());
