@@ -15,7 +15,7 @@ else
 endif
 
 VERSION    	 = 0.6.8
-BRANCH     	 = main
+BRANCH     	 = dev
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
 CURL_LIBS	?= -lcurl -lnghttp3 -lnghttp2 -lidn2 -lssh2 -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz # pkg-config --static --libs libcurl (but fixed)
