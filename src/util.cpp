@@ -605,9 +605,9 @@ void printLocalFullPkgInfo(alpm_pkg_t *pkg) {
 string makepkg_list(string_view pkg_name, string path) {
     string ret;
 
-    string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1");
-    string pkgrel      = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1");
-    string epoch       = shell_exec("grep 'epoch=' "  + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1");
+    string versionInfo = shell_exec("grep 'pkgver=' " + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | cut -d\\' -f2");
+    string pkgrel      = shell_exec("grep 'pkgrel=' " + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | cut -d\\' -f2");
+    string epoch       = shell_exec("grep 'epoch=' "  + path + "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | cut -d\\' -f2");
 
     if (!pkgrel.empty() && pkgrel[0] != '\0')
         versionInfo += '-' + pkgrel;
