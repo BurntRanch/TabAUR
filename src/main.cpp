@@ -144,7 +144,7 @@ void execPacman(int argc, char *argv[]) {
 }
 
 int installPkg(alpm_list_t *pkgNames) {
-    if (!pkgNames)
+    if (!pkgNames && !op.op_s_upgrade)
         return false;
 
     bool  useGit   = config->useGit;
