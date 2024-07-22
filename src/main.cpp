@@ -407,10 +407,6 @@ bool removePkg(alpm_list_t *pkgNames) {
     return backend->remove_pkgs(finalList);
 }
 
-bool updateAll() {
-    return backend->update_all_aur_pkgs(config->cacheDir, config->useGit);
-}
-
 bool queryPkgs(alpm_list_t *pkgNames) {
     log_println(DEBUG, "AUR Only: {}", config->aurOnly);
 
@@ -810,8 +806,6 @@ int main(int argc, char *argv[]) {
             return queryPkgs(taur_targets.get()) ? 0 : 1;
         case OP_UPGRADE:
             return upgradePkgs(taur_targets.get()) ? 0 : 1;
-        case OP_SYSUPGRADE:
-            return (updateAll()) ? 0 : 1;
         default:
             log_println(ERROR, _("no operation specified (use {} -h for help)"), argv[0]);
     }

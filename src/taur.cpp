@@ -398,7 +398,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
     if (onlinePkgs.size() != localPkgs.size())
         log_println(WARN, _("Couldn't get all packages! (searched {} packages, got {}) Still trying to update the others."), localPkgs.size(), onlinePkgs.size());
 
-    log_println(INFO, "Here's a list of packages that may be updated:");
+    log_println(INFO, "Here's a list of packages that may be upgraded:");
 
     vector<std::tuple<TaurPkg_t, TaurPkg_t>> potentialUpgradeTargets;
 
@@ -420,6 +420,8 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit) {
             continue;
         }
     }
+
+    log_println(INFO, _("{} packages to upgrade."), potentialUpgradeTargets.size());
 
     if (!askUserYorN(true, PROMPT_YN_PROCEED_UPGRADE))
         return false;
