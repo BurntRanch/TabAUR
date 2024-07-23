@@ -8,7 +8,7 @@ An AUR Helper with support for downloading AUR packages with either tarballs or 
 TabAUR aims to be a fast, lightweight, capable, and safe front-end for pacman, that supports and even *helps* you with AUR stuff!
 
 > [!NOTE]
-> #### TabAUR has decided to become public in **April 27 2024** since we agreeed that is almost in a good beta shape.
+> #### TabAUR has decided to become public in **April 27 2024** since we agreed that is almost in a good beta shape.
 > #### Expect bugs and some problems to happen, though we believe that there won't be so so many because it's great for installing, upgrading and querying
 
 ## Some features:
