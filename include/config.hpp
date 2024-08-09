@@ -5,24 +5,26 @@
 #define TOML_ENABLE_FORMATTERS 0
 
 #include <alpm.h>
+
+#include <filesystem>
 #include <map>
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <filesystem>
 
 #include "fmt/color.h"
 #include "toml++/toml.hpp"
 
 using std::string;
-using std::vector;
 using std::string_view;
+using std::vector;
 using std::filesystem::path;
 
 // so we don't need to include util.hpp for getConfigValue()
 string expandVar(string& str);
 
-struct _color_t {
+struct _color_t
+{
     fmt::rgb red;
     fmt::rgb green;
     fmt::rgb blue;
@@ -45,10 +47,11 @@ struct _color_t {
     fmt::rgb index;
 };
 
-class Config {
-  public:
-    alpm_handle_t *handle = nullptr;
-    alpm_list_t   *repos  = nullptr;
+class Config
+{
+   public:
+    alpm_handle_t* handle = nullptr;
+    alpm_list_t*   repos  = nullptr;
     string         makepkgBin;
     vector<string> editor;
     path           cacheDir;
@@ -64,7 +67,7 @@ class Config {
     bool           quiet;
     bool           noconfirm;
     // alpm transaction flags
-    int            flags;
+    int flags;
 
     Config(string_view configFile, string_view themeFile, string_view configDir);
     ~Config();
@@ -78,9 +81,10 @@ class Config {
 
     // stupid c++ that wants template functions in header
     template <typename T>
-    T getConfigValue(const string& value, T fallback) {
+    T getConfigValue(const string& value, T fallback)
+    {
         std::optional<T> ret = this->tbl.at_path(value).value<T>();
-        if constexpr (toml::is_string<T>) // if we want to get a value that's a string
+        if constexpr (toml::is_string<T>)  // if we want to get a value that's a string
             return ret ? expandVar(ret.value()) : expandVar(fallback);
         else
             return ret.value_or(fallback);
@@ -89,7 +93,7 @@ class Config {
     fmt::rgb getThemeValue(const string& value, const string& fallback);
     string   getThemeHexValue(const string& value, const string& fallback);
 
-  private:
+   private:
     toml::table tbl, theme_tbl;
 };
 

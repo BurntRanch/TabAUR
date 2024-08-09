@@ -23,19 +23,19 @@
 
 #include <alpm.h>
 #include <alpm_list.h>
-#include <string>
-#include <string_view>
-#include <vector>
-
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <string>
+#include <string_view>
+#include <vector>
 
 using std::string;
 using std::string_view;
 
 #define ARRAYSIZE(a) (sizeof(a) / sizeof(a[0]))
-#define CLBUF_SIZE   4096
+#define CLBUF_SIZE 4096
 
 /* As of 2015/10/20, the longest title (all locales considered) was less than 30
  * characters long. We set the title maximum length to 50 to allow for some
@@ -47,7 +47,8 @@ using std::string_view;
  * information displayed by pacman. Titles are stored in the `titles` array and
  * referenced by the following indices.
  */
-enum {
+enum
+{
     T_ARCHITECTURE = 0,
     T_BACKUP_FILES,
     T_BUILD_DATE,
@@ -82,10 +83,10 @@ enum {
 
 static char titles[_T_MAX][TITLE_MAXLEN * sizeof(wchar_t)];
 
-int getcols_fd(int fd);
+int            getcols_fd(int fd);
 unsigned short getcols(void);
-void string_display(string_view title, string_view string, unsigned short cols = getcols());
-void list_display(const char *title, const alpm_list_t *list, unsigned short maxcols = getcols());
-void deplist_display(const char *title, alpm_list_t *deps, unsigned short cols = getcols());
-void indentprint(const char *str, unsigned short indent, unsigned short cols = getcols());
-void list_display_linebreak(const char *title, const alpm_list_t *list, unsigned short maxcols = getcols());
+void           string_display(string_view title, string_view string, unsigned short cols = getcols());
+void           list_display(const char* title, const alpm_list_t* list, unsigned short maxcols = getcols());
+void           deplist_display(const char* title, alpm_list_t* deps, unsigned short cols = getcols());
+void           indentprint(const char* str, unsigned short indent, unsigned short cols = getcols());
+void           list_display_linebreak(const char* title, const alpm_list_t* list, unsigned short maxcols = getcols());

@@ -20,20 +20,23 @@
 #ifndef ARGS_HPP
 #define ARGS_HPP
 
-#include "util.hpp"
 #include <alpm.h>
 #include <getopt.h>
 
-enum {
+#include "util.hpp"
+
+enum
+{
     OP_MAIN = 1,
     OP_SYNC,
     OP_REM,
     OP_QUERY,
     OP_UPGRADE,
-    OP_PACMAN, // when it's different from -S,R,Q we gonna use pacman
+    OP_PACMAN,  // when it's different from -S,R,Q we gonna use pacman
 };
 
-enum {
+enum
+{
     OP_ASK = 1000,
     OP_CACHEDIR,
     OP_AURONLY,
@@ -55,7 +58,8 @@ enum {
     OP_NOSAVE,
 };
 
-struct Operation_t {
+struct Operation_t
+{
     u_short op;
     u_short op_s_sync;
     u_short op_s_upgrade;
