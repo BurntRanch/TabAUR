@@ -18,6 +18,8 @@
  */
 
 #include <alpm.h>
+#include <algorithm>
+#include <cstdint>
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
 #include "config.hpp"
@@ -134,6 +136,7 @@ bool hasStart(std::string_view fullString, std::string_view start)
     return (0 == fullString.compare(0, start.length(), start));
 }
 
+// clang-format off
 bool isInvalid(char c)
 { return !isprint(c); }
 
@@ -146,6 +149,7 @@ void sanitizeStr(std::string& str)
 void interruptHandler(int)
 { die(_("Caught CTRL-C, Exiting!")); }
 
+// clang-format on
 /** Function to check if a package is from a synchronization database
  * Basically if it's in pacman repos like core, extra, multilib, etc.
  * @param name The package name to check
@@ -653,16 +657,56 @@ void printLocalFullPkgInfo(alpm_pkg_t* pkg)
 }
 
 // faster than makepkg --packagelist
-std::string makepkg_list(std::string_view pkg_name, std::string path)
+std::string makepkg_list(std::string_view pkg_name, std::string_view path)
 {
-    std::string ret;
+    std::ifstream pkgbuild_f(fmt::format("{}/PKGBUILD", path), std::ios::in);
 
-    std::string versionInfo = shell_exec("grep 'pkgver=' " + path +
+    /*std::string versionInfo = shell_exec("grep 'pkgver=' " + path +
                                          "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
     std::string pkgrel      = shell_exec("grep 'pkgrel=' " + path +
                                          "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
     std::string epoch       = shell_exec("grep 'epoch=' " + path +
                                          "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
+    std::string arch_field
+                            = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path +
+                                        "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");*/
+
+    std::string  versionInfo, pkgrel, epoch, arch_field;
+    std::uint8_t iterIndex = 0;
+
+    std::string line;
+    while (std::getline(pkgbuild_f, line) && iterIndex < 4)
+    {
+        if (hasStart(line, "pkgver="))
+        {
+            versionInfo = line.substr("pkgver="_len);
+            versionInfo.erase(std::remove(versionInfo.begin(), versionInfo.end(), '\"'), versionInfo.end());
+            versionInfo.erase(std::remove(versionInfo.begin(), versionInfo.end(), '\''), versionInfo.end());
+            iterIndex++;
+        }
+        else if (hasStart(line, "pkgrel="))
+        {
+            pkgrel = line.substr("pkgrel="_len);
+            pkgrel.erase(std::remove(pkgrel.begin(), pkgrel.end(), '\"'), pkgrel.end());
+            pkgrel.erase(std::remove(pkgrel.begin(), pkgrel.end(), '\''), pkgrel.end());
+            iterIndex++;
+        }
+        else if (hasStart(line, "epoch="))
+        {
+            epoch = line.substr("epoch="_len);
+            epoch.erase(std::remove(epoch.begin(), epoch.end(), '\"'), epoch.end());
+            epoch.erase(std::remove(epoch.begin(), epoch.end(), '\''), epoch.end());
+            iterIndex++;
+        }
+        else if (hasStart(line, "arch=("))
+        {
+            arch_field = line.substr("arch=("_len);
+            arch_field.pop_back();
+            arch_field.erase(std::remove(arch_field.begin(), arch_field.end(), '\"'), arch_field.end());
+            arch_field.erase(std::remove(arch_field.begin(), arch_field.end(), '\''), arch_field.end());
+            iterIndex++;
+        }
+    }
 
     if (!pkgrel.empty() && pkgrel[0] != '\0')
         versionInfo += '-' + pkgrel;
@@ -670,20 +714,38 @@ std::string makepkg_list(std::string_view pkg_name, std::string path)
     if (!epoch.empty() && epoch[0] != '\0')
         versionInfo = epoch + ':' + versionInfo;
 
-    std::string arch =
+    /*std::string arch =
         shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
 
-    std::string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path +
-                                        "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
+    std::string pkgext =
+        shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");*/
+
+    std::ifstream makepkgConf(config->makepkgConf, std::ios::in);
+    std::string arch, pkgext;
+    iterIndex = 0;
+
+    while (std::getline(makepkgConf, line) && iterIndex < 2)
+    {
+        if (hasStart(line, "CARCH="))
+        {
+            arch = line.substr("CARCH="_len);
+            arch.erase(std::remove(arch.begin(), arch.end(), '\"'), arch.end());
+            arch.erase(std::remove(arch.begin(), arch.end(), '\''), arch.end());
+            iterIndex++;
+        }
+        else if (hasStart(line, "PKGEXT="))
+        {
+            pkgext = line.substr("PKGEXT="_len);
+            pkgext.erase(std::remove(pkgext.begin(), pkgext.end(), '\"'), pkgext.end());
+            pkgext.erase(std::remove(pkgext.begin(), pkgext.end(), '\''), pkgext.end());
+            iterIndex++;
+        }
+    }
 
     if (arch_field == "any")
         arch = "any";
 
-    std::string pkgext =
-        shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
-
-    ret = fmt::format("{}/{}-{}-{}{}", path, pkg_name, versionInfo, arch, pkgext);
-    return ret;
+    return fmt::format("{}/{}-{}-{}{}", path, pkg_name, versionInfo, arch, pkgext);
 }
 
 /** Search a DB using libalpm

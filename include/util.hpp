@@ -100,7 +100,7 @@ bool                     is_package_from_syncdb(const char* name, alpm_list_t* s
 bool                     commitTransactionAndRelease(bool soft = false);
 void                     printPkgInfo(TaurPkg_t& pkg, std::string_view db_name);
 void                     printLocalFullPkgInfo(alpm_pkg_t* pkg);
-std::string              makepkg_list(std::string_view pkg_name, std::string path);
+std::string              makepkg_list(std::string_view pkg_name, std::string_view path);
 void                     free_list_and_internals(alpm_list_t* list);
 fmt::text_style          getColorFromDBName(std::string_view db_name);
 std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs, bool inverse);
@@ -116,9 +116,10 @@ std::string                   getHomeConfigDir();
 std::string                   getConfigDir();
 std::string                   getCacheDir();
 bool                          makepkg_exec(std::vector<std::string> const& args, bool exitOnFailure = true);
-bool pacman_exec(std::string_view op, std::vector<std::string> const& args, bool exitOnFailure = true,
-                 bool root = true);
-bool util_db_search(alpm_db_t* db, alpm_list_t* needles, alpm_list_t** ret);
+bool                          pacman_exec(std::string_view op, std::vector<std::string> const& args, bool exitOnFailure = true,
+                                            bool root = true);
+bool                          util_db_search(alpm_db_t* db, alpm_list_t* needles, alpm_list_t** ret);
+
 std::optional<std::vector<TaurPkg_t>> askUserForPkg(std::vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
 std::string_view                      binarySearch(const std::vector<std::string>& arr, std::string_view target);
 std::vector<std::string>              load_aur_list();
@@ -140,6 +141,11 @@ struct is_fmt_convertible
 
 template <typename T>
 constexpr bool is_fmt_convertible_v = is_fmt_convertible<T>::value;
+
+constexpr std::size_t operator""_len(const char*,std::size_t ln) noexcept
+{
+    return ln;
+}
 
 // clang-format off
 template <typename... Args>
