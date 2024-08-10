@@ -252,7 +252,7 @@ void indentprint(const char* str, unsigned short indent, unsigned short cols)
     free(wcstr);
 }
 
-void string_display(string_view title, string_view string, unsigned short cols)
+void string_display(std::string_view title, std::string_view string, unsigned short cols)
 {
     if (title.length())
     {

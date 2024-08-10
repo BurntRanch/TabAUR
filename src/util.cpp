@@ -26,7 +26,7 @@
 #include "util.hpp"
 
 /** Build the `titles` array of localized titles and pad them with spaces so
- * that they align with the longest title. Storage for strings is stack
+ * that they align with the longest title. Storage for std::strings is stack
  * allocated and naively truncated to TITLE_MAXLEN characters.
  */
 // function from pacman code for aligning colonums
@@ -119,15 +119,15 @@ static void optdeplist_display(alpm_pkg_t* pkg, unsigned short cols = getcols())
     FREELIST(text);
 }
 
-// https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c#874160
-bool hasEnding(string_view fullString, string_view ending)
+// https://stackoverflow.com/questions/874134/find-out-if-std::string-ends-with-another-std::string-in-c#874160
+bool hasEnding(std::string_view fullString, std::string_view ending)
 {
     if (ending.length() > fullString.length())
         return false;
     return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
 }
 
-bool hasStart(string_view fullString, string_view start)
+bool hasStart(std::string_view fullString, std::string_view start)
 {
     if (start.length() > fullString.length())
         return false;
@@ -137,7 +137,7 @@ bool hasStart(string_view fullString, string_view start)
 bool isInvalid(char c)
 { return !isprint(c); }
 
-void sanitizeStr(string& str)
+void sanitizeStr(std::string& str)
 { str.erase(std::remove_if(str.begin(), str.end(), isInvalid), str.end()); }
 
 /** Print some text after hitting CTRL-C.
@@ -208,7 +208,7 @@ bool commitTransactionAndRelease(bool soft)
             case ALPM_ERR_PKG_INVALID_ARCH:
                 for (alpm_list_t* i = data; i; i = i->next)
                 {
-                    string_view pkgName = (char*)(i->data);
+                    std::string_view pkgName = (char*)(i->data);
                     log_println(ERROR, "This package ({}) is built on an invalid architecture.", pkgName);
                     free(i->data);
                 }
@@ -302,7 +302,7 @@ bool commitTransactionAndRelease(bool soft)
             case ALPM_ERR_PKG_INVALID_SIG:
                 for (alpm_list_t* i = data; i; i = i->next)
                 {
-                    string_view name = (char*)i->data;
+                    std::string_view name = (char*)i->data;
                     log_println(ERROR, "Package {} is corrupt or invalid!", name);
                     free(i->data);
                 }
@@ -325,10 +325,10 @@ bool commitTransactionAndRelease(bool soft)
 }
 
 /** Replace special symbols such as ~ and $ in std::strings
- * @param str The string
- * @return The modified string
+ * @param str The std::string
+ * @return The modified std::string
  */
-string expandVar(string& str)
+std::string expandVar(std::string& str)
 {
     const char* env;
     if (str[0] == '~')
@@ -352,10 +352,10 @@ string expandVar(string& str)
     return str;
 }
 
-fmt::rgb hexStringToColor(string_view hexstr)
+fmt::rgb hexStringToColor(std::string_view hexstr)
 {
     hexstr = hexstr.substr(1);
-    // convert the hexadecimal string to individual components
+    // convert the hexadecimal std::string to individual components
     std::stringstream ss;
     ss << std::hex << hexstr;
 
@@ -370,10 +370,10 @@ fmt::rgb hexStringToColor(string_view hexstr)
 }
 
 // http://stackoverflow.com/questions/478898/ddg#478960
-string shell_exec(string_view cmd)
+std::string shell_exec(std::string_view cmd)
 {
     std::array<char, 128>                    buffer;
-    string                                   result;
+    std::string                              result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.data(), "r"), pclose);
 
     if (!pipe)
@@ -388,8 +388,8 @@ string shell_exec(string_view cmd)
     return result;
 }
 
-// https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c#4654718
-bool is_numerical(string_view s, bool allowSpace)
+// https://stackoverflow.com/questions/4654636/how-to-determine-if-a-std::string-is-a-number-with-c#4654718
+bool is_numerical(std::string_view s, bool allowSpace)
 {
     if (allowSpace)
         return !s.empty() && std::find_if(s.begin(), s.end(),
@@ -399,7 +399,7 @@ bool is_numerical(string_view s, bool allowSpace)
                std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c)); }) == s.end();
 }
 
-bool taur_read_exec(vector<const char*> cmd, string& output, bool exitOnFailure)
+bool taur_read_exec(std::vector<const char*> cmd, std::string& output, bool exitOnFailure)
 {
     int pipeout[2];
 
@@ -465,10 +465,10 @@ bool taur_read_exec(vector<const char*> cmd, string& output, bool exitOnFailure)
  * @param exitOnFailure Whether to call exit(1) on command failure.
  * @return true if the command successed, else false
  */
-bool taur_exec(vector<string> cmd_str, bool exitOnFailure)
+bool taur_exec(std::vector<std::string> cmd_str, bool exitOnFailure)
 {
-    vector<const char*> cmd;
-    for (string& str : cmd_str)
+    std::vector<const char*> cmd;
+    for (std::string& str : cmd_str)
         cmd.push_back(str.c_str());
 
     int pid = fork();
@@ -510,9 +510,9 @@ bool taur_exec(vector<string> cmd_str, bool exitOnFailure)
  * @param exitOnFailure Whether to call exit(1) on command failure.
  * @return true if the command successed, else false
  */
-bool makepkg_exec(vector<string> const& args, bool exitOnFailure)
+bool makepkg_exec(std::vector<std::string> const& args, bool exitOnFailure)
 {
-    vector<string> cmd = { config->makepkgBin };
+    std::vector<std::string> cmd = { config->makepkgBin };
 
     if (config->noconfirm)
         cmd.push_back("--noconfirm");
@@ -537,9 +537,9 @@ bool makepkg_exec(vector<string> const& args, bool exitOnFailure)
  * @param root If pacman should be executed as root (Default true)
  * @return true if the command successed, else false
  */
-bool pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure, bool root)
+bool pacman_exec(std::string_view op, std::vector<std::string> const& args, bool exitOnFailure, bool root)
 {
-    vector<string> cmd;
+    std::vector<std::string> cmd;
 
     if (root)
         cmd = { config->sudo, "pacman", op.data() };
@@ -565,7 +565,7 @@ bool pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure,
 }
 
 /** Free a list and every single item in it.
- * This will attempt to free everything, should be used for strings that contain C strings only.
+ * This will attempt to free everything, should be used for std::strings that contain C std::strings only.
  * @param list the list to free
  */
 void free_list_and_internals(alpm_list_t* list)
@@ -580,7 +580,7 @@ void free_list_and_internals(alpm_list_t* list)
  * @param db_name The database name
  * @return database's color in bold
  */
-fmt::text_style getColorFromDBName(string_view db_name)
+fmt::text_style getColorFromDBName(std::string_view db_name)
 {
     if (db_name == "aur")
         return BOLD_TEXT(color.aur);
@@ -595,7 +595,7 @@ fmt::text_style getColorFromDBName(string_view db_name)
 }
 
 // Takes a pkg to show on search.
-void printPkgInfo(TaurPkg_t& pkg, string_view db_name)
+void printPkgInfo(TaurPkg_t& pkg, std::string_view db_name)
 {
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(BOLD, "{} ", pkg.name);
@@ -612,8 +612,8 @@ void printPkgInfo(TaurPkg_t& pkg, string_view db_name)
 
     if (pkg.outofdate)
     {
-        char*       timestr      = std::ctime(&pkg.outofdate);
-        string_view timestr_view = timestr;
+        char*            timestr      = std::ctime(&pkg.outofdate);
+        std::string_view timestr_view = timestr;
         if (!timestr_view.empty())
         {
             timestr[timestr_view.length() - 1] = '\0';  // delete the last newline.
@@ -653,16 +653,16 @@ void printLocalFullPkgInfo(alpm_pkg_t* pkg)
 }
 
 // faster than makepkg --packagelist
-string makepkg_list(string_view pkg_name, string path)
+std::string makepkg_list(std::string_view pkg_name, std::string path)
 {
-    string ret;
+    std::string ret;
 
-    string versionInfo = shell_exec("grep 'pkgver=' " + path +
-                                    "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
-    string pkgrel      = shell_exec("grep 'pkgrel=' " + path +
-                                    "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
-    string epoch       = shell_exec("grep 'epoch=' " + path +
-                                    "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
+    std::string versionInfo = shell_exec("grep 'pkgver=' " + path +
+                                         "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
+    std::string pkgrel      = shell_exec("grep 'pkgrel=' " + path +
+                                         "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
+    std::string epoch       = shell_exec("grep 'epoch=' " + path +
+                                         "/PKGBUILD | cut -d= -f2 | cut -d' ' -f1 | sed -e \"s/'//g\" -e 's/\"//g'");
 
     if (!pkgrel.empty() && pkgrel[0] != '\0')
         versionInfo += '-' + pkgrel;
@@ -670,15 +670,16 @@ string makepkg_list(string_view pkg_name, string path)
     if (!epoch.empty() && epoch[0] != '\0')
         versionInfo = epoch + ':' + versionInfo;
 
-    string arch = shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
-    
-    string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path +
-                                   "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
+    std::string arch =
+        shell_exec("grep 'CARCH=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
+
+    std::string arch_field = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path +
+                                        "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");
 
     if (arch_field == "any")
         arch = "any";
 
-    string pkgext =
+    std::string pkgext =
         shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");
 
     ret = fmt::format("{}/{}-{}-{}{}", path, pkg_name, versionInfo, arch, pkgext);
@@ -711,8 +712,8 @@ bool util_db_search(alpm_db_t* db, alpm_list_t* needles, alpm_list_t** ret)
     return true;
 }
 
-// Function to perform binary search on a vector of strings
-string_view binarySearch(const vector<string>& arr, string_view target)
+// Function to perform binary search on a vector of std::strings
+std::string_view binarySearch(const std::vector<std::string>& arr, std::string_view target)
 {
     int left = 0, right = arr.size() - 1;
 
@@ -730,15 +731,15 @@ string_view binarySearch(const vector<string>& arr, string_view target)
     return "";
 }
 
-vector<string> load_aur_list()
+std::vector<std::string> load_aur_list()
 {
     path          file_path = config->cacheDir / "packages.aur";
     std::ifstream infile(file_path);
     if (!infile.good())
         die(_("Failed to open {}"), file_path.c_str());
 
-    vector<string> aur_list;
-    string         pkg;
+    std::vector<std::string> aur_list;
+    std::string              pkg;
 
     while (infile >> pkg)
         aur_list.push_back(pkg);
@@ -812,18 +813,18 @@ bool update_aur_cache(bool recursiveCall)
  * @param useGit Whether the fetched pkg should use a .git url
  * @return Optional TaurPkg_t, will not return if interrupted.
  */
-optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit)
+std::optional<std::vector<TaurPkg_t>> askUserForPkg(std::vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit)
 {
     if (pkgs.size() == 1)
     {
         return pkgs[0].aur_url.empty()
                    ? pkgs
-                   : vector<TaurPkg_t>({ backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]) });
+                   : std::vector<TaurPkg_t>({ backend.fetch_pkg(pkgs[0].name, useGit).value_or(pkgs[0]) });
     }
     else if (pkgs.size() > 1)
     {
         log_println(INFO, _("TabAUR has found multiple packages relating to your search query, Please pick one."));
-        string input;
+        std::string input;
         do
         {
             // CTRL-D
@@ -842,9 +843,9 @@ optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& b
             std::getline(std::cin, input);
         } while (!is_numerical(input, true));
 
-        vector<string> indices = split(input, ' ');
+        std::vector<std::string> indices = split(input, ' ');
 
-        vector<TaurPkg_t> output;
+        std::vector<TaurPkg_t> output;
         output.reserve(indices.size());
 
         for (size_t i = 0; i < indices.size(); i++)
@@ -879,9 +880,9 @@ void ctrl_d_handler()
  * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
  * @return an optional unique_ptr to a result.
  */
-vector<alpm_pkg_t*> filterAURPkgs(vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs, bool inverse)
+std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs, bool inverse)
 {
-    vector<alpm_pkg_t*> out;
+    std::vector<alpm_pkg_t*> out;
     out.reserve(pkgs.size());
 
     for (; syncdbs; syncdbs = syncdbs->next)
@@ -908,9 +909,9 @@ vector<alpm_pkg_t*> filterAURPkgs(vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs
  * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
  * @return an optional unique_ptr to a result.
  */
-vector<string_view> filterAURPkgsNames(vector<string_view> pkgs, alpm_list_t* syncdbs, bool inverse)
+std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view> pkgs, alpm_list_t* syncdbs, bool inverse)
 {
-    vector<string_view> out;
+    std::vector<std::string_view> out;
     out.reserve(pkgs.size());
 
     for (; syncdbs; syncdbs = syncdbs->next)
@@ -931,7 +932,7 @@ vector<string_view> filterAURPkgsNames(vector<string_view> pkgs, alpm_list_t* sy
     return out;
 }
 
-string getTitleFromVotes(float votes)
+std::string getTitleFromVotes(float votes)
 {
     if (votes < 2)
         return _("Untrustable");
@@ -951,12 +952,12 @@ string getTitleFromVotes(float votes)
  * either from $XDG_CACHE_HOME or from $HOME/.cache/
  * @return user's cache directory
  */
-string getHomeCacheDir()
+std::string getHomeCacheDir()
 {
     char* dir = getenv("XDG_CACHE_HOME");
     if (dir != NULL && dir[0] != '\0' && std::filesystem::exists(dir))
     {
-        string str_dir(dir);
+        std::string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     }
     else
@@ -965,7 +966,7 @@ string getHomeCacheDir()
         if (home == nullptr)
             die(_("Failed to find $HOME, set it to your home directory!"));
 
-        return string(home) + "/.cache";
+        return std::string(home) + "/.cache";
     }
 }
 
@@ -974,12 +975,12 @@ string getHomeCacheDir()
  * either from $XDG_CONFIG_HOME or from $HOME/.config/
  * @return user's config directory
  */
-string getHomeConfigDir()
+std::string getHomeConfigDir()
 {
     char* dir = getenv("XDG_CONFIG_HOME");
     if (dir != NULL && dir[0] != '\0' && std::filesystem::exists(dir))
     {
-        string str_dir(dir);
+        std::string str_dir(dir);
         return hasEnding(str_dir, "/") ? str_dir.substr(0, str_dir.rfind('/')) : str_dir;
     }
     else
@@ -988,7 +989,7 @@ string getHomeConfigDir()
         if (home == nullptr)
             die(_("Failed to find $HOME, set it to your home directory!"));
 
-        return string(home) + "/.config";
+        return std::string(home) + "/.config";
     }
 }
 
@@ -998,7 +999,7 @@ string getHomeConfigDir()
  * from Config::getHomeConfigDir()
  * @return TabAUR's config directory
  */
-string getConfigDir()
+std::string getConfigDir()
 { return getHomeConfigDir() + "/TabAUR"; }
 
 /*
@@ -1007,14 +1008,14 @@ string getConfigDir()
  * from Config::getHomeCacheDir()
  * @return TabAUR's cache directory
  */
-string getCacheDir()
+std::string getCacheDir()
 { return getHomeCacheDir() + "/TabAUR"; }
 
-vector<string> split(string_view text, char delim)
+std::vector<std::string> split(std::string_view text, char delim)
 {
-    string            line;
-    vector<string>    vec;
-    std::stringstream ss(text.data());
+    std::string              line;
+    std::vector<std::string> vec;
+    std::stringstream        ss(text.data());
     while (std::getline(ss, line, delim))
     {
         vec.push_back(line);

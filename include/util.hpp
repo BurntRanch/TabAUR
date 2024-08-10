@@ -15,11 +15,6 @@
 #include "fmt/format.h"
 #include "fmt/ranges.h"
 
-using std::string;
-using std::string_view;
-using std::unique_ptr;
-using std::vector;
-
 #ifdef ENABLE_NLS
 /* here so it doesn't need to be included elsewhere */
 #include <libintl.h>
@@ -40,12 +35,13 @@ class TaurBackend;
 #define AUR_URL_GIT(x) fmt::format("https://aur.archlinux.org/{}.git", x)
 #define AUR_URL_TAR(x) fmt::format("https://aur.archlinux.org/cgit/aur.git/snapshot/{}.tar.gz", x)
 
-#define alpm_list_smart_pointer unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
-#define make_list_smart_pointer(pointer) (unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
+#define alpm_list_smart_pointer std::unique_ptr<alpm_list_t, decltype(&alpm_list_free)>
+#define make_list_smart_pointer(pointer) \
+    (std::unique_ptr<alpm_list_t, decltype(&alpm_list_free)>(pointer, alpm_list_free))
 
-#define alpm_list_smart_deleter unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>
+#define alpm_list_smart_deleter std::unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>
 #define make_list_smart_deleter(pointer) \
-    (unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>(pointer, free_list_and_internals))
+    (std::unique_ptr<alpm_list_t, decltype(&free_list_and_internals)>(pointer, free_list_and_internals))
 
 #define NOCONFIRMREQ(x)                 \
     if (config->noconfirm && !required) \
@@ -92,39 +88,41 @@ enum log_level
     NONE  // display no prefix for this.
 };
 
-bool                hasEnding(string_view fullString, string_view ending);
-bool                hasStart(string_view fullString, string_view start);
-string              expandVar(string& str);
-bool                is_numerical(string_view s, bool allowSpace = false);
-bool                taur_read_exec(vector<const char*> cmd, string& output, bool exitOnFailure = true);
-void                interruptHandler(int);
-bool                taur_exec(vector<string> cmd, bool exitOnFailure = true);
-void                sanitizeStr(string& str);
-bool                is_package_from_syncdb(const char* name, alpm_list_t* syncdbs);
-bool                commitTransactionAndRelease(bool soft = false);
-void                printPkgInfo(TaurPkg_t& pkg, string_view db_name);
-void                printLocalFullPkgInfo(alpm_pkg_t* pkg);
-string              makepkg_list(string_view pkg_name, string path);
-void                free_list_and_internals(alpm_list_t* list);
-fmt::text_style     getColorFromDBName(string_view db_name);
-vector<alpm_pkg_t*> filterAURPkgs(vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs, bool inverse);
-vector<string_view> filterAURPkgsNames(vector<string_view> pkgs, alpm_list_t* syncdbs, bool inverse);
-string              shell_exec(string_view cmd);
-vector<string>      split(string_view text, char delim);
-fmt::rgb            hexStringToColor(string_view hexstr);
-void                ctrl_d_handler();
-string              getTitleFromVotes(float votes);
-string              getHomeCacheDir();
-string              getHomeConfigDir();
-string              getConfigDir();
-string              getCacheDir();
-bool                makepkg_exec(vector<string> const& args, bool exitOnFailure = true);
-bool pacman_exec(string_view op, vector<string> const& args, bool exitOnFailure = true, bool root = true);
+bool                     hasEnding(std::string_view fullString, std::string_view ending);
+bool                     hasStart(std::string_view fullString, std::string_view start);
+std::string              expandVar(std::string& str);
+bool                     is_numerical(std::string_view s, bool allowSpace = false);
+bool                     taur_read_exec(std::vector<const char*> cmd, std::string& output, bool exitOnFailure = true);
+void                     interruptHandler(int);
+bool                     taur_exec(std::vector<std::string> cmd, bool exitOnFailure = true);
+void                     sanitizeStr(std::string& str);
+bool                     is_package_from_syncdb(const char* name, alpm_list_t* syncdbs);
+bool                     commitTransactionAndRelease(bool soft = false);
+void                     printPkgInfo(TaurPkg_t& pkg, std::string_view db_name);
+void                     printLocalFullPkgInfo(alpm_pkg_t* pkg);
+std::string              makepkg_list(std::string_view pkg_name, std::string path);
+void                     free_list_and_internals(alpm_list_t* list);
+fmt::text_style          getColorFromDBName(std::string_view db_name);
+std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs, bool inverse);
+std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view> pkgs, alpm_list_t* syncdbs,
+                                                 bool inverse);
+std::string                   shell_exec(std::string_view cmd);
+std::vector<std::string>      split(std::string_view text, char delim);
+fmt::rgb                      hexStringToColor(std::string_view hexstr);
+void                          ctrl_d_handler();
+std::string                   getTitleFromVotes(float votes);
+std::string                   getHomeCacheDir();
+std::string                   getHomeConfigDir();
+std::string                   getConfigDir();
+std::string                   getCacheDir();
+bool                          makepkg_exec(std::vector<std::string> const& args, bool exitOnFailure = true);
+bool pacman_exec(std::string_view op, std::vector<std::string> const& args, bool exitOnFailure = true,
+                 bool root = true);
 bool util_db_search(alpm_db_t* db, alpm_list_t* needles, alpm_list_t** ret);
-std::optional<vector<TaurPkg_t>> askUserForPkg(vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
-string_view                      binarySearch(const vector<string>& arr, string_view target);
-vector<string>                   load_aur_list();
-bool                             update_aur_cache(bool recursiveCall = false);
+std::optional<std::vector<TaurPkg_t>> askUserForPkg(std::vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
+std::string_view                      binarySearch(const std::vector<std::string>& arr, std::string_view target);
+std::vector<std::string>              load_aur_list();
+bool                                  update_aur_cache(bool recursiveCall = false);
 
 template <typename T>
 struct is_fmt_convertible
@@ -176,13 +174,13 @@ void log_println(log_level log, const char *fmt, Args&&... args)
 }
 
 template <typename... Args>
-void log_println(log_level log, string_view fmt, Args&&... args)
+void log_println(log_level log, std::string_view fmt, Args&&... args)
 {
     _log_println(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_println(log_level log, const fmt::text_style ts, string_view fmt, Args&&... args)
+void log_println(log_level log, const fmt::text_style ts, std::string_view fmt, Args&&... args)
 {
     _log_println(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
 }
@@ -232,13 +230,13 @@ void log_printf(log_level log, const char *fmt, Args&&... args)
 }
 
 template <typename... Args>
-void log_printf(log_level log, string_view fmt, Args&&... args)
+void log_printf(log_level log, std::string_view fmt, Args&&... args)
 {
     _log_printf(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void log_printf(log_level log, const fmt::text_style ts, string_view fmt, Args&&... args)
+void log_printf(log_level log, const fmt::text_style ts, std::string_view fmt, Args&&... args)
 {
     _log_printf(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
 }
@@ -259,8 +257,8 @@ void log_printf(log_level log, const fmt::text_style ts, const char *fmt, Args&&
 template <typename... Args>
 bool askUserYorN(bool def, prompt_yn pr, Args&&... args)
 {
-    string inputs_str = "[" + (string)(def ? "Y" : "y") + "/" + (string)(!def ? "N" : "n") + "] ";
-    string result;
+    std::string inputs_str = "[" + (std::string)(def ? "Y" : "y") + "/" + (std::string)(!def ? "N" : "n") + "] ";
+    std::string result;
 
     switch (pr)
     {
@@ -268,7 +266,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args)
             log_printf(INFO, BOLD, _("View the diffs for {}? {}"), std::forward<Args>(args)..., inputs_str);
             NOCONFIRM(NO);
             break;
-        
+
         case PROMPT_YN_CONTINUE_WITHOUT_DIFF:
             log_printf(WARN, BOLD,
                        _("With your current settings, viewing PKGBUILD diffs is unsupported (maybe useGit is false?), "
@@ -276,7 +274,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args)
                        inputs_str);
             NOCONFIRM(YES);
             break;
-        
+
         case PROMPT_YN_EDIT_PKGBUILD:
             log_printf(INFO, BOLD, _("Review PKGBUILD for {}? {}"), std::forward<Args>(args)..., inputs_str);
             NOCONFIRM(NO);
@@ -286,17 +284,17 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args)
             log_printf(INFO, BOLD, _("Proceed with the installation? {}"), inputs_str);
             NOCONFIRM(YES);
             break;
-        
+
         case PROMPT_YN_PROCEED_UPGRADE:
             log_printf(INFO, BOLD, _("Would you like to upgrade the above packages? {}"), inputs_str);
             NOCONFIRM(YES);
             break;
-        
+
         case PROMPT_YN_PROCEED_TRANSACTION:
             log_printf(INFO, BOLD, _("Would you like to proceed with this transaction? {}"), inputs_str);
             NOCONFIRM(YES);
             break;
-        
+
         case PROMPT_YN_CLEANBUILD:
             log_printf(INFO, BOLD, "Would you like to cleanbuild {}? {}", std::forward<Args>(args)..., inputs_str);
             NOCONFIRM(NO);
@@ -327,11 +325,11 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args)
  * @returns the resulting list, empty if anything bad happens.
  */
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
-vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false)
+std::vector<T> askUserForList(std::vector<T>& list, prompt_list pr, bool required = false)
 {
-    string sep_str =
+    std::string sep_str =
         _("Type the index of each package (eg: \"0 1 2\", \"0-2\", \"a\" for all, \"n\" or enter for none)");
-    string result_str;
+    std::string result_str;
 
     for (size_t i = 0; i < list.size(); i++)
         fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD_TEXT(fmt::color::white), "{}", list[i]));
@@ -344,23 +342,23 @@ vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false)
             log_printf(INFO, BOLD, _("Packages to completely rebuild: "));
             NOCONFIRMREQ({});
             break;
-        
+
         case PROMPT_LIST_REVIEWS:
             log_printf(INFO, BOLD, _("Packages you'd like to review: "));
             NOCONFIRMREQ({});
             break;
-        
+
         case PROMPT_LIST_REMOVE_PKGS:
             log_printf(INFO, BOLD, _("Packages you'd like to remove: "));
             NOCONFIRMREQ({});
             break;
-        
+
         default: return {};
     }
 
     // std::cin.sync();
     //  while the getline function works, and the result is not 1 character long, keep reminding the user.
-    vector<T> result;
+    std::vector<T> result;
 
     while (std::getline(std::cin, result_str))
     {
@@ -373,16 +371,16 @@ vector<T> askUserForList(vector<T>& list, prompt_list pr, bool required = false)
         if (result_str == "a")
             return list;
 
-        vector<string> input_indices = split(result_str, ' ');
+        std::vector<std::string> input_indices = split(result_str, ' ');
 
         int  added_elements   = 0;
         bool breakandcontinue = false;
         for (size_t i = 0; i < input_indices.size() && !breakandcontinue; i++)
         {
             // 1-5 means 1 through 5
-            if (input_indices[i].find('-') != string::npos)
+            if (input_indices[i].find('-') != std::string::npos)
             {
-                vector<string> loop_bounds = split(input_indices[i], '-');
+                std::vector<std::string> loop_bounds = split(input_indices[i], '-');
                 if (loop_bounds.size() != 2 || !is_numerical(loop_bounds[0]) || !is_numerical(loop_bounds[1]))
                 {
                     log_printf(WARN, _("Invalid loop range! (loop ranges look like \"0-5\"): "));

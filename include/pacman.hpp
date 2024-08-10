@@ -85,7 +85,7 @@ static char titles[_T_MAX][TITLE_MAXLEN * sizeof(wchar_t)];
 
 int            getcols_fd(int fd);
 unsigned short getcols(void);
-void           string_display(string_view title, string_view string, unsigned short cols = getcols());
+void           string_display(std::string_view title, std::string_view string, unsigned short cols = getcols());
 void           list_display(const char* title, const alpm_list_t* list, unsigned short maxcols = getcols());
 void           deplist_display(const char* title, alpm_list_t* deps, unsigned short cols = getcols());
 void           indentprint(const char* str, unsigned short indent, unsigned short cols = getcols());

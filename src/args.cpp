@@ -30,7 +30,7 @@
 
 alpm_list_smart_deleter taur_targets(nullptr, free_list_and_internals);
 
-void invalid_opt(int used, string_view opt1, string_view opt2)
+void invalid_opt(int used, std::string_view opt1, std::string_view opt2)
 {
     if (used)
         log_println(ERROR, _("invalid option: '{}' and '{}' may not be used together"), opt1, opt2);

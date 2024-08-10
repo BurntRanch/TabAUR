@@ -88,7 +88,7 @@ void usage(int op)
 void test_colors()
 {
     std::time_t current_time = std::time(nullptr);
-    string      timestr      = std::ctime(&current_time);
+    std::string timestr      = std::ctime(&current_time);
     timestr.erase(timestr.length() - 1);
 
     TaurPkg_t pkg = {
@@ -141,7 +141,7 @@ void execPacman(int argc, char* argv[])
     if (argc > (_POSIX_ARG_MAX - 1))
         die(_("argc is invalid! (argc > {})"), _POSIX_ARG_MAX - 1);
 
-    vector<const char*> args;
+    std::vector<const char*> args;
 
     args.push_back("pacman");
     for (int i = 1; i < argc; ++i)
@@ -165,9 +165,9 @@ int installPkg(alpm_list_t* pkgNames)
     bool returnStatus = true;
     bool stat;
 
-    vector<string>      pacmanPkgs;  // list of pacman packages to install, to avoid spamming pacman.
-    vector<string_view> pkgNamesVec;
-    vector<string_view> pkgsToCleanBuild, pkgsToReview;
+    std::vector<std::string>      pacmanPkgs;  // list of pacman packages to install, to avoid spamming pacman.
+    std::vector<std::string_view> pkgNamesVec;
+    std::vector<std::string_view> pkgsToCleanBuild, pkgsToReview;
 
     // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next)
@@ -186,7 +186,7 @@ int installPkg(alpm_list_t* pkgNames)
     {
         for (size_t i = 0; i < pkgNamesVec.size(); i++)
         {
-            vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, config->aurOnly, false);
+            std::vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, config->aurOnly, false);
 
             if (pkgs.empty())
             {
@@ -207,7 +207,7 @@ int installPkg(alpm_list_t* pkgNames)
         log_println(ERROR, _("Failed to get information about {}"), (config->cacheDir / "packages.aur").string());
 
     // I swear there was a comment here..
-    vector<string_view> AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+    std::vector<std::string_view> AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
 
     for (const auto& pkg : pkgNamesVec)
     {
@@ -216,10 +216,10 @@ int installPkg(alpm_list_t* pkgNames)
     }
 
     if (!op.op_s_cleanbuild && !AURPkgs.empty())
-        pkgsToCleanBuild = askUserForList<string_view>(AURPkgs, PROMPT_LIST_CLEANBUILDS);
+        pkgsToCleanBuild = askUserForList<std::string_view>(AURPkgs, PROMPT_LIST_CLEANBUILDS);
 
     if (!config->noconfirm && !AURPkgs.empty())
-        pkgsToReview = askUserForList<string_view>(AURPkgs, PROMPT_LIST_REVIEWS);
+        pkgsToReview = askUserForList<std::string_view>(AURPkgs, PROMPT_LIST_REVIEWS);
 
     for (auto& pkg_name : AURPkgs)
     {
@@ -235,7 +235,7 @@ int installPkg(alpm_list_t* pkgNames)
         }
     }
 
-    for (string_view& pkg : pkgsToCleanBuild)
+    for (std::string_view& pkg : pkgsToCleanBuild)
     {
         path pkgDir = path(cacheDir) / pkg;
         if (!useGit)
@@ -253,11 +253,11 @@ int installPkg(alpm_list_t* pkgNames)
     // cmd is just a workaround for making it possible
     // to pass flags to the editor, e.g nano --modernbindings
     // instead of creating another config variable
-    for (string_view& pkg : pkgsToReview)
+    for (std::string_view& pkg : pkgsToReview)
     {
         path pkgDir = path(cacheDir) / pkg;
 
-        vector<string> cmd;
+        std::vector<std::string> cmd;
         for (auto& str : config->editor)
             cmd.push_back(str);
         cmd.push_back((pkgDir / "PKGBUILD").string());
@@ -275,7 +275,7 @@ int installPkg(alpm_list_t* pkgNames)
         else
             log_println(INFO, _("Installing system packages!"));
 
-        string op_s = "-S";
+        std::string op_s = "-S";
 
         if (op.op_s_sync)
             op_s += 'y';
@@ -296,9 +296,9 @@ int installPkg(alpm_list_t* pkgNames)
 
     for (size_t i = 0; i < AURPkgs.size(); i++)
     {
-        vector<TaurPkg_t> pkgs = backend->search(AURPkgs[i], useGit, config->aurOnly, true);
+        std::vector<TaurPkg_t> pkgs = backend->search(AURPkgs[i], useGit, config->aurOnly, true);
 
-        optional<vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
+        std::optional<std::vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
         if (!oSelectedPkgs)
         {
@@ -306,7 +306,7 @@ int installPkg(alpm_list_t* pkgNames)
             continue;
         }
 
-        vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
+        std::vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
 
         for (TaurPkg_t& pkg : selectedPkgs)
         {
@@ -398,14 +398,14 @@ bool removePkg(alpm_list_t* pkgNames)
     if (ret_length == 1)
         return backend->remove_pkg((alpm_pkg_t*)ret->data);
 
-    vector<string_view> pkgs;
+    std::vector<std::string_view> pkgs;
 
     // fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
 
     for (size_t i = 0; i < ret_length; i++)
         pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t*)(alpm_list_nth(ret.get(), i)->data)));
 
-    vector<string_view> includedPkgs = askUserForList<string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
+    std::vector<std::string_view> includedPkgs = askUserForList<std::string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
 
     alpm_list_t* finalPackageList      = nullptr;
     alpm_list_t* finalPackageListStart = nullptr;
@@ -454,9 +454,9 @@ bool queryPkgs(alpm_list_t* pkgNames)
     // we seperate pkgs that needs to be searched, like they'll include a description, to the ones that we just wanna
     // query out pkgs will be used for -Qs, for then using it on printPkgInfo() pkgs_name and pkgs_ver will be used for
     // bare operations (only -Q)
-    vector<const char*> pkgs_name, pkgs_ver;
-    vector<TaurPkg_t>   pkgs;
-    alpm_db_t*          localdb = alpm_get_localdb(config->handle);
+    std::vector<const char*> pkgs_name, pkgs_ver;
+    std::vector<TaurPkg_t>   pkgs;
+    alpm_db_t*               localdb = alpm_get_localdb(config->handle);
 
     if (op.op_q_search)
     {
@@ -658,7 +658,7 @@ static void localize(void)
 // clang-format off
 // parseargs() but only for parsing the user config path trough args
 // and so we can directly construct Config
-static bool parse_config_path(int argc, char* argv[], string& configFile, string& themeFile)
+static bool parse_config_path(int argc, char* argv[], std::string& configFile, std::string& themeFile)
 {
     int opt = 0;
     int option_index = 0;
@@ -841,14 +841,14 @@ int parseargs(int argc, char* argv[])
 // main
 int main(int argc, char* argv[])
 {
-    string configDir = getConfigDir();
+    const std::string& configDir = getConfigDir();
 
 #if defined(ENABLE_NLS)
     localize();
 #endif
 
-    string configfile = (configDir + "/config.toml");
-    string themefile  = (configDir + "/theme.toml");
+    std::string configfile = (configDir + "/config.toml");
+    std::string themefile  = (configDir + "/theme.toml");
     parse_config_path(argc, argv, configfile, themefile);
 
     config = std::make_unique<Config>(configfile, themefile, configDir);
@@ -893,7 +893,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    switch (op.op) {
+    // clang-format off
+    switch (op.op)
+    {
         case OP_SYNC:
             return installPkg(taur_targets.get()) ? 0 : 1;
         case OP_REM:

@@ -7,9 +7,6 @@
 #include "ini.h"
 #include "util.hpp"
 
-using std::ifstream;
-using std::ofstream;
-
 Config::~Config()
 {
     if (this->handle)
@@ -23,7 +20,7 @@ Config::~Config()
 }
 
 // initialize Config, can only be ran once for each Config instance.
-Config::Config(string_view configFile, string_view themeFile, string_view configDir)
+Config::Config(std::string_view configFile, std::string_view themeFile, std::string_view configDir)
 {
     bool newUser = false;
 
@@ -38,14 +35,14 @@ Config::Config(string_view configFile, string_view themeFile, string_view config
     {
         log_println(WARN, _("{} not found, generating new one"), configFile);
         // https://github.com/hyprwm/Hyprland/blob/main/src/config/ConfigManager.cpp#L681
-        ofstream f(configFile.data(), std::ios::trunc);
+        std::ofstream f(configFile.data(), std::ios::trunc);
         f << AUTOCONFIG;
         f.close();
     }
     if (!std::filesystem::exists(themeFile))
     {
         log_println(WARN, _("{} not found, generating new one"), themeFile);
-        ofstream f(themeFile.data(), std::ios::trunc);
+        std::ofstream f(themeFile.data(), std::ios::trunc);
         f << AUTOTHEME;
         f.close();
     }
@@ -78,12 +75,12 @@ Config::Config(string_view configFile, string_view themeFile, string_view config
  */
 void Config::initVars()
 {
-    this->cacheDir      = path(this->getConfigValue<string>("general.cacheDir", string(getHomeCacheDir()) + "/TabAUR"));
-    this->pmConfig      = this->getConfigValue<string>("pacman.ConfigFile", "/etc/pacman.conf");
-    this->makepkgConf   = this->getConfigValue<string>("pacman.MakepkgConf", "/etc/makepkg.conf");
-    this->makepkgBin    = this->getConfigValue<string>("bins.makepkg", "makepkg");
-    this->git           = this->getConfigValue<string>("bins.git", "git");
-    this->sudo          = this->getConfigValue<string>("general.sudo", "sudo");
+    this->cacheDir      = path(this->getConfigValue<std::string>("general.cacheDir", std::string(getHomeCacheDir()) + "/TabAUR"));
+    this->pmConfig      = this->getConfigValue<std::string>("pacman.ConfigFile", "/etc/pacman.conf");
+    this->makepkgConf   = this->getConfigValue<std::string>("pacman.MakepkgConf", "/etc/makepkg.conf");
+    this->makepkgBin    = this->getConfigValue<std::string>("bins.makepkg", "makepkg");
+    this->git           = this->getConfigValue<std::string>("bins.git", "git");
+    this->sudo          = this->getConfigValue<std::string>("general.sudo", "sudo");
     this->useGit        = this->getConfigValue<bool>("general.useGit", true);
     this->aurOnly       = this->getConfigValue<bool>("general.aurOnly", false);
     this->debug         = this->getConfigValue<bool>("general.debug", true);
@@ -96,7 +93,7 @@ void Config::initVars()
     sanitizeStr(this->makepkgConf);
     sanitizeStr(this->git);
 
-    for (auto& str : split(this->getConfigValue<string>("general.editor", "nano"), ' '))
+    for (auto& str : split(this->getConfigValue<std::string>("general.editor", "nano"), ' '))
     {
         sanitizeStr(str);
         this->editor.push_back(str);
@@ -115,7 +112,7 @@ void Config::initVars()
  *  using the variables under the [pacman] table in "config.toml"
  *  @param the directory of the config file
  */
-void Config::loadConfigFile(string_view filename)
+void Config::loadConfigFile(std::string_view filename)
 {
     try
     {
@@ -130,8 +127,8 @@ void Config::loadConfigFile(string_view filename)
     this->initVars();
 
     alpm_errno_t err;
-    this->handle = alpm_initialize(this->getConfigValue<string>("pacman.RootDir", "/").c_str(),
-                                   this->getConfigValue<string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
+    this->handle = alpm_initialize(this->getConfigValue<std::string>("pacman.RootDir", "/").c_str(),
+                                   this->getConfigValue<std::string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
 
     if (!(this->handle))
         die(_("Failed to get an alpm handle! Error: {}"), alpm_strerror(err));
@@ -142,7 +139,7 @@ void Config::loadConfigFile(string_view filename)
 /** parse the theme file (aka "theme.toml")
  *  @param filename The directory of the theme file
  */
-void Config::loadThemeFile(string_view filename)
+void Config::loadThemeFile(std::string_view filename)
 {
     try
     {
@@ -164,9 +161,9 @@ void Config::loadThemeFile(string_view filename)
  * @param fallback The default value if it doesn't exists
  * @return fmt::rgb type variable
  */
-fmt::rgb Config::getThemeValue(const string& value, const string& fallback)
+fmt::rgb Config::getThemeValue(const std::string& value, const std::string& fallback)
 {
-    return hexStringToColor(this->theme_tbl["theme"][value].value<string>().value_or(fallback));
+    return hexStringToColor(this->theme_tbl["theme"][value].value<std::string>().value_or(fallback));
 }
 
 /** Get the theme color variable and return its hexcode
@@ -174,9 +171,9 @@ fmt::rgb Config::getThemeValue(const string& value, const string& fallback)
  * @param fallback The default value if it doesn't exists
  * @return color hexcode value
  */
-string Config::getThemeHexValue(const string& value, const string& fallback)
+std::string Config::getThemeHexValue(const std::string& value, const std::string& fallback)
 {
-    return this->theme_tbl["theme"][value].value<string>().value_or(fallback);
+    return this->theme_tbl["theme"][value].value<std::string>().value_or(fallback);
 }
 
 // clang-format off
@@ -205,14 +202,14 @@ void Config::initColors()
 }
 
 // clang-format on
-bool addServers(alpm_db_t *db, const string& includeFilename, string_view repoName)
+bool addServers(alpm_db_t* db, const std::string& includeFilename, std::string_view repoName)
 {
-    ifstream includeFile(includeFilename);
+    std::ifstream includeFile(includeFilename);
 
     if (!includeFile.is_open())
         return false;
 
-    string line;
+    std::string line;
 
     while (std::getline(includeFile, line))
     {
@@ -220,10 +217,10 @@ bool addServers(alpm_db_t *db, const string& includeFilename, string_view repoNa
             continue;
 
         size_t repo_pos = line.find("$repo");
-        if (repo_pos != string::npos)
+        if (repo_pos != std::string::npos)
             line.replace(repo_pos, 5, repoName);
         size_t arch_pos = line.find("$arch");
-        if (arch_pos != string::npos)
+        if (arch_pos != std::string::npos)
             line.replace(arch_pos, 5, "x86_64");
 
         line = line.substr(9);
@@ -234,7 +231,7 @@ bool addServers(alpm_db_t *db, const string& includeFilename, string_view repoNa
     return true;
 }
 
-void Config::loadPacmanConfigFile(string filename)
+void Config::loadPacmanConfigFile(std::string filename)
 {
     mINI::INIFile      file(filename);
     mINI::INIStructure ini;
@@ -243,7 +240,7 @@ void Config::loadPacmanConfigFile(string filename)
 
     for (auto const& it : ini)
     {
-        string_view section = it.first;
+        std::string_view section = it.first;
         if (section == "options")
             continue;
 
