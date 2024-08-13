@@ -59,15 +59,12 @@ bool TaurBackend::download_pkg(std::string_view url, path out_path)
     return false;
 }
 
-std::string getUrl(rapidjson::Value& pkgJson, bool returnGit = false)
+std::string getUrl(const rapidjson::Value& pkgJson, bool returnGit = false)
 {
-    std::stringstream ss;
     if (returnGit)
-        ss << "https://aur.archlinux.org/" << pkgJson["Name"].GetString() << ".git";
-    else
-        ss << "https://aur.archlinux.org" << pkgJson["URLPath"].GetString();
-
-    return ss.str();
+        return fmt::format("https://aur.archlinux.org/{}.git", pkgJson["Name"].GetString());
+    else // URLPath starts with a / 
+        return fmt::format("https://aur.archlinux.org{}", pkgJson["URLPath"].GetString());
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false)
@@ -187,10 +184,10 @@ std::vector<TaurPkg_t> TaurBackend::fetch_pkgs(std::vector<std::string> const& p
 }
 
 /** Removes a single packages using libalpm.
-  @param pkgs an alpm package to remove.
-  @param ownTransaction a bool that dictates whether this function owns the transaction, this is used for remove_pkgs,
-  if not, it will not initialize it and not release it.
-  @return success.
+  * @param pkgs an alpm package to remove.
+  * @param ownTransaction a bool that dictates whether this function owns the transaction, this is used for remove_pkgs,
+  * if not, it will not initialize it and not release it.
+  * @return success.
 */
 bool TaurBackend::remove_pkg(alpm_pkg_t* pkg, bool ownTransaction)
 {
@@ -219,9 +216,9 @@ bool TaurBackend::remove_pkg(alpm_pkg_t* pkg, bool ownTransaction)
 
 /** Removes a list of packages using libalpm.
   * Will automatically call remove_pkg instead, if the size of pkgs is equal to 1.
-  @param pkgs alpm list of alpm_pkg_t pointers to remove.
-  @return success.
-*/
+  * @param pkgs alpm list of alpm_pkg_t pointers to remove.
+  * @return success.
+ */
 bool TaurBackend::remove_pkgs(alpm_list_smart_pointer& pkgs)
 {
     if (!pkgs)
@@ -266,10 +263,8 @@ bool TaurBackend::remove_pkgs(alpm_list_smart_pointer& pkgs)
     return true;
 }
 
-bool TaurBackend::build_pkg(std::string_view pkg_name, std::string extracted_path, bool alreadyprepared)
+bool TaurBackend::build_pkg(std::string_view pkg_name, std::string_view extracted_path, bool alreadyprepared)
 {
-    // never forget to sanitize
-    sanitizeStr(extracted_path);
     std::filesystem::current_path(extracted_path);
 
     if (!alreadyprepared)
@@ -300,7 +295,7 @@ bool TaurBackend::build_pkg(std::string_view pkg_name, std::string extracted_pat
 }
 
 // I don't know but I feel this is shitty, atleast it works great
-bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, std::vector<TaurPkg_t> const& localPkgs, bool useGit)
+bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, path out_path, std::vector<TaurPkg_t> const& localPkgs, bool useGit)
 {
     log_println(DEBUG, "pkg.name = {}", pkg.name);
     log_println(DEBUG, "pkg.totaldepends = {}", pkg.totaldepends);
@@ -308,7 +303,10 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, std::vector<T
 
     for (size_t i = 0; i < pkg.totaldepends.size(); i++)
     {
-        std::string_view pkg_depend = binarySearch(aur_list, pkg.totaldepends[i]);
+        std::string_view pkg_depend;
+
+        if (std::binary_search(aur_list.begin(), aur_list.end(), pkg.totaldepends.at(i)))
+            pkg_depend = pkg.totaldepends.at(i);
 
         if (pkg_depend.empty())
             continue;
@@ -323,8 +321,13 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, std::vector<T
 
         bool alreadyExists = false;
         for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
+        {
             if (depend.name == localPkgs[j].name)
+            {
                 alreadyExists = true;
+                break;
+            }
+        }
 
         if (alreadyExists)
         {
@@ -334,7 +337,10 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, std::vector<T
 
         for (size_t i = 0; i < depend.totaldepends.size(); i++)
         {
-            std::string_view sub_pkg_depend = binarySearch(aur_list, depend.totaldepends[i]);
+            std::string_view sub_pkg_depend;
+
+            if (std::binary_search(aur_list.begin(), aur_list.end(), depend.totaldepends.at(i)))
+                sub_pkg_depend = depend.totaldepends.at(i);
 
             if (sub_pkg_depend.empty())
                 continue;
@@ -347,8 +353,13 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, std::vector<T
 
             alreadyExists = false;
             for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
+            {
                 if (subDepend.name == localPkgs[j].name)
+                {
                     alreadyExists = true;
+                    break;
+                }
+            }
 
             if (alreadyExists)
             {
@@ -411,7 +422,7 @@ bool TaurBackend::handle_aur_depends(TaurPkg_t pkg, path out_path, std::vector<T
             return false;
         }
 
-        bool installStatus = this->build_pkg(depend.name, out_path / depend.name, false);
+        bool installStatus = this->build_pkg(depend.name, (out_path / depend.name).string(), false);
 
         if (!installStatus)
         {
@@ -440,6 +451,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
         return true;
     }
 
+    std::string line;
     std::vector<std::string> pkgNames;
     pkgNames.reserve(localPkgs.size());
 
@@ -463,8 +475,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
     for (size_t i = 0; i < onlinePkgs.size(); i++)
     {
         TaurPkg_t& pkg                    = onlinePkgs[i];
-        auto       pkgIteratorInLocalPkgs = std::find_if(
-            localPkgs.begin(), localPkgs.end(), [&pkg](const TaurPkg_t& element) { return element.name == pkg.name; });
+        auto       pkgIteratorInLocalPkgs = std::find_if(localPkgs.begin(), localPkgs.end(), [&pkg](const TaurPkg_t& element) { return element.name == pkg.name; });
         size_t     pkgIndexInLocalPkgs = std::distance(localPkgs.begin(), pkgIteratorInLocalPkgs);
         TaurPkg_t& localPkg            = localPkgs[pkgIndexInLocalPkgs];
 
@@ -502,8 +513,8 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
         //     }
         // }
 
-        TaurPkg_t potentialUpgradeTargetTo   = std::get<0>(potentialUpgrade);
-        TaurPkg_t potentialUpgradeTargetFrom = std::get<1>(potentialUpgrade);
+        const TaurPkg_t& potentialUpgradeTargetTo   = std::get<0>(potentialUpgrade);
+        const TaurPkg_t& potentialUpgradeTargetFrom = std::get<1>(potentialUpgrade);
 
         log_println(DEBUG, "potentialUpgradeTarget.name = {}", potentialUpgradeTargetTo.name);
         log_println(DEBUG, "potentialUpgradeTarget.totaldepends = {}", potentialUpgradeTargetTo.totaldepends);
@@ -544,7 +555,20 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
             makepkg_exec({ "--nobuild", "-dfA" });
         }
 
-        std::string versionInfo = shell_exec("grep 'pkgver=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
+        u_short iter_index = 0;
+        std::ifstream pkgbuild(pkgDir.string() + "/PKGBUILD", std::ios::in);
+        std::string versionInfo, pkgrel, epoch;
+        while (std::getline(pkgbuild, line) && iter_index < 3)
+        {
+            if (hasStart(line, "pkgver="))
+                getFileValue(iter_index, line, versionInfo, "pkgver="_len);
+
+            else if (hasStart(line, "pkgrel="))
+                getFileValue(iter_index, line, pkgrel, "pkgrel"_len);
+
+            else if (hasStart(line, "epoch="))
+                getFileValue(iter_index, line, epoch, "epoch="_len);
+        }
 
         if (versionInfo.empty())
         {
@@ -554,9 +578,6 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
                 potentialUpgradeTargetTo.name);
             continue;
         }
-
-        std::string pkgrel = shell_exec("grep 'pkgrel=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
-        std::string epoch  = shell_exec("grep 'epoch=' " + pkgDir.string() + "/PKGBUILD | cut -d= -f2");
 
         if (!pkgrel.empty() && pkgrel[0] != '\0')
             versionInfo += '-' + pkgrel;
@@ -582,7 +603,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
         attemptedDownloads++;
 
         this->handle_aur_depends(potentialUpgradeTargetTo, pkgDir, this->get_all_local_pkgs(true), useGit);
-        bool installSuccess = this->build_pkg(potentialUpgradeTargetTo.name, pkgDir, alrprepared);
+        bool installSuccess = this->build_pkg(potentialUpgradeTargetTo.name, pkgDir.string(), alrprepared);
 
         if (installSuccess)
         {

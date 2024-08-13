@@ -23,6 +23,7 @@
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
 #include "config.hpp"
+#include "switch_fnv1a.hpp"
 #include "pacman.hpp"
 #include "taur.hpp"
 #include "util.hpp"
@@ -180,13 +181,13 @@ bool commitTransactionAndRelease(bool soft)
     log_println(INFO, _("Changes to be made:"));
     for (alpm_list_t* addPkgsClone = addPkgs; addPkgsClone; addPkgsClone = addPkgsClone->next)
     {
-        fmt::print(BOLD_TEXT(color.green), "    ++ ");
+        fmt::print(BOLD_COLOR(color.green), "    ++ ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t*)(addPkgsClone->data)));
     }
 
     for (alpm_list_t* removePkgsClone = removePkgs; removePkgsClone; removePkgsClone = removePkgsClone->next)
     {
-        fmt::print(BOLD_TEXT(color.red), "    -- ");
+        fmt::print(BOLD_COLOR(color.red), "    -- ");
         fmt::println(fmt::emphasis::bold, "{}", alpm_pkg_get_name((alpm_pkg_t*)(removePkgsClone->data)));
     }
 
@@ -586,16 +587,15 @@ void free_list_and_internals(alpm_list_t* list)
  */
 fmt::text_style getColorFromDBName(std::string_view db_name)
 {
-    if (db_name == "aur")
-        return BOLD_TEXT(color.aur);
-    else if (db_name == "extra")
-        return BOLD_TEXT(color.extra);
-    else if (db_name == "core")
-        return BOLD_TEXT(color.core);
-    else if (db_name == "multilib")
-        return BOLD_TEXT(color.multilib);
-    else
-        return BOLD_TEXT(color.others);
+    switch (fnv1a16::hash(db_name))
+    {
+        case "aur"_fnv1a16:      return BOLD_COLOR(color.aur);
+        case "extra"_fnv1a16:    return BOLD_COLOR(color.extra);
+        case "core"_fnv1a16:     return BOLD_COLOR(color.core);
+        case "multilib"_fnv1a16: return BOLD_COLOR(color.multilib);
+    }
+
+    return BOLD_COLOR(color.others);
 }
 
 // Takes a pkg to show on search.
@@ -603,7 +603,7 @@ void printPkgInfo(TaurPkg_t& pkg, std::string_view db_name)
 {
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(BOLD, "{} ", pkg.name);
-    fmt::print(BOLD_TEXT(color.version), "{} ", pkg.version);
+    fmt::print(BOLD_COLOR(color.version), "{} ", pkg.version);
     // Don't print popularity and votes on system packages
     if (pkg.votes > -1)
     {
@@ -612,7 +612,7 @@ void printPkgInfo(TaurPkg_t& pkg, std::string_view db_name)
     }
 
     if (pkg.maintainer == "\1")
-        fmt::print(BOLD_TEXT(color.orphan), "(un-maintained) ");
+        fmt::print(BOLD_COLOR(color.orphan), "(un-maintained) ");
 
     if (pkg.outofdate)
     {
@@ -621,12 +621,12 @@ void printPkgInfo(TaurPkg_t& pkg, std::string_view db_name)
         if (!timestr_view.empty())
         {
             timestr[timestr_view.length() - 1] = '\0';  // delete the last newline.
-            fmt::print(BOLD_TEXT(color.outofdate), "(Outdated: {}) ", timestr);
+            fmt::print(BOLD_COLOR(color.outofdate), "(Outdated: {}) ", timestr);
         }
     }
 
     if (pkg.installed)
-        fmt::println(BOLD_TEXT(color.installed), "[Installed]");
+        fmt::println(BOLD_COLOR(color.installed), "[Installed]");
     else
         fmt::print("\n");
     fmt::println("    {}", pkg.desc);
@@ -656,7 +656,21 @@ void printLocalFullPkgInfo(alpm_pkg_t* pkg)
     fmt::print("\n");
 }
 
-// faster than makepkg --packagelist
+/* Get file value from a file and trim quotes and double-quotes
+ * @param iterIndex The iteration index used for getting the necessary value only tot times
+ * @param line The string used in std::getline
+ * @param str The string to assign the trimmed value, inline
+ * @param amount The amount to be used in the line.substr() (should be used with something like "foobar"_len)
+ */
+void getFileValue(u_short& iterIndex, const std::string& line, std::string& str, const size_t& amount)
+{
+    str = line.substr(amount);
+    str.erase(std::remove(str.begin(), str.end(), '\"'), str.end());
+    str.erase(std::remove(str.begin(), str.end(), '\''), str.end());
+    iterIndex++;
+}
+
+// faster than `makepkg --packagelist`
 std::string makepkg_list(std::string_view pkg_name, std::string_view path)
 {
     std::ifstream pkgbuild_f(fmt::format("{}/PKGBUILD", path), std::ios::in);
@@ -671,40 +685,25 @@ std::string makepkg_list(std::string_view pkg_name, std::string_view path)
                             = shell_exec("awk -F '[()]' '/^arch=/ {gsub(/\"/,\"\",$2); print $2}' " + path +
                                         "/PKGBUILD | sed -e \"s/'//g\" -e 's/\"//g'");*/
 
-    std::string  versionInfo, pkgrel, epoch, arch_field;
-    std::uint8_t iterIndex = 0;
+    std::string versionInfo, pkgrel, epoch, arch_field;
+    u_short     iterIndex = 0;
 
     std::string line;
     while (std::getline(pkgbuild_f, line) && iterIndex < 4)
     {
         if (hasStart(line, "pkgver="))
-        {
-            versionInfo = line.substr("pkgver="_len);
-            versionInfo.erase(std::remove(versionInfo.begin(), versionInfo.end(), '\"'), versionInfo.end());
-            versionInfo.erase(std::remove(versionInfo.begin(), versionInfo.end(), '\''), versionInfo.end());
-            iterIndex++;
-        }
+            getFileValue(iterIndex, line, versionInfo, "pkgver="_len);
+
         else if (hasStart(line, "pkgrel="))
-        {
-            pkgrel = line.substr("pkgrel="_len);
-            pkgrel.erase(std::remove(pkgrel.begin(), pkgrel.end(), '\"'), pkgrel.end());
-            pkgrel.erase(std::remove(pkgrel.begin(), pkgrel.end(), '\''), pkgrel.end());
-            iterIndex++;
-        }
+            getFileValue(iterIndex, line, pkgrel, "pkgrel="_len);
+
         else if (hasStart(line, "epoch="))
-        {
-            epoch = line.substr("epoch="_len);
-            epoch.erase(std::remove(epoch.begin(), epoch.end(), '\"'), epoch.end());
-            epoch.erase(std::remove(epoch.begin(), epoch.end(), '\''), epoch.end());
-            iterIndex++;
-        }
+            getFileValue(iterIndex, line, epoch, "epoch="_len);
+
         else if (hasStart(line, "arch=("))
         {
-            arch_field = line.substr("arch=("_len);
+            getFileValue(iterIndex, line, arch_field, "arch=("_len);
             arch_field.pop_back();
-            arch_field.erase(std::remove(arch_field.begin(), arch_field.end(), '\"'), arch_field.end());
-            arch_field.erase(std::remove(arch_field.begin(), arch_field.end(), '\''), arch_field.end());
-            iterIndex++;
         }
     }
 
@@ -727,19 +726,10 @@ std::string makepkg_list(std::string_view pkg_name, std::string_view path)
     while (std::getline(makepkgConf, line) && iterIndex < 2)
     {
         if (hasStart(line, "CARCH="))
-        {
-            arch = line.substr("CARCH="_len);
-            arch.erase(std::remove(arch.begin(), arch.end(), '\"'), arch.end());
-            arch.erase(std::remove(arch.begin(), arch.end(), '\''), arch.end());
-            iterIndex++;
-        }
+            getFileValue(iterIndex, line, arch, "CARCH="_len);
+
         else if (hasStart(line, "PKGEXT="))
-        {
-            pkgext = line.substr("PKGEXT="_len);
-            pkgext.erase(std::remove(pkgext.begin(), pkgext.end(), '\"'), pkgext.end());
-            pkgext.erase(std::remove(pkgext.begin(), pkgext.end(), '\''), pkgext.end());
-            iterIndex++;
-        }
+            getFileValue(iterIndex, line, pkgext, "PKGEXT="_len);
     }
 
     if (arch_field == "any")
@@ -775,7 +765,7 @@ bool util_db_search(alpm_db_t* db, alpm_list_t* needles, alpm_list_t** ret)
 }
 
 // Function to perform binary search on a vector of std::strings
-std::string_view binarySearch(const std::vector<std::string>& arr, std::string_view target)
+/*std::string_view binarySearch(const std::vector<std::string>& arr, std::string_view target)
 {
     int left = 0, right = arr.size() - 1;
 
@@ -791,7 +781,7 @@ std::string_view binarySearch(const std::vector<std::string>& arr, std::string_v
     }
 
     return "";
-}
+}*/
 
 std::vector<std::string> load_aur_list()
 {
@@ -803,7 +793,7 @@ std::vector<std::string> load_aur_list()
     std::vector<std::string> aur_list;
     std::string              pkg;
 
-    while (infile >> pkg)
+    while (std::getline(infile, pkg))
         aur_list.push_back(pkg);
 
     return aur_list;
@@ -890,7 +880,7 @@ std::optional<std::vector<TaurPkg_t>> askUserForPkg(std::vector<TaurPkg_t> pkgs,
         do
         {
             // CTRL-D
-            ctrl_d_handler();
+            ctrl_d_handler(std::cin);
 
             if (!input.empty())
                 log_println(WARN, _("Invalid input!"));
@@ -928,12 +918,10 @@ std::optional<std::vector<TaurPkg_t>> askUserForPkg(std::vector<TaurPkg_t> pkgs,
     return {};
 }
 
-void ctrl_d_handler()
+void ctrl_d_handler(const std::istream& cin)
 {
-    if (std::cin.eof())
-    {
+    if (cin.eof())
         die(_("Exiting due to CTRL-D or EOF"));
-    }
 }
 
 /** Filters out/only AUR packages.

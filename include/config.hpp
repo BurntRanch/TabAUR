@@ -98,7 +98,7 @@ extern std::unique_ptr<Config> config;
 inline struct _color_t         color;
 
 // we comment the default config values, just like /etc/pacman.conf
-inline const constexpr std::string_view AUTOCONFIG = R"#([general]
+inline constexpr std::string_view AUTOCONFIG = R"#([general]
 # All options are commented out with their default values listed.
 # If you wish to use different options values, uncomment and update those.
 # It's safe to remove any options you want, just remember their default value
@@ -143,7 +143,7 @@ inline const constexpr std::string_view AUTOCONFIG = R"#([general]
 #MakepkgConf = "/etc/makepkg.conf"
 )#";
 
-inline const constexpr std::string_view AUTOTHEME = R"#([theme]
+inline constexpr std::string_view AUTOTHEME = R"#([theme]
 red = "#ff2000"
 green = "#00ff00"
 blue = "#00aaff"

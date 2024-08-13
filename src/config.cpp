@@ -218,11 +218,13 @@ bool addServers(alpm_db_t* db, const std::string& includeFilename, std::string_v
 
         size_t repo_pos = line.find("$repo");
         if (repo_pos != std::string::npos)
-            line.replace(repo_pos, 5, repoName);
+            line.replace(repo_pos, "$repo"_len, repoName);
+
         size_t arch_pos = line.find("$arch");
         if (arch_pos != std::string::npos)
-            line.replace(arch_pos, 5, "x86_64");
+            line.replace(arch_pos, "$arch"_len, "x86_64");
 
+        // Each line that has a server starts with a 9 letter header
         line = line.substr(9);
 
         alpm_db_add_server(db, line.c_str());

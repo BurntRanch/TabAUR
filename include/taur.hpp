@@ -61,10 +61,10 @@ public:
     std::vector<TaurPkg_t>   fetch_pkgs(std::vector<std::string> const& pkgs, bool returnGit);
     bool                     remove_pkgs(alpm_list_smart_pointer& pkgs);
     bool                     remove_pkg(alpm_pkg_t* pkgs, bool ownTransaction = true);
-    bool handle_aur_depends(TaurPkg_t pkg, path out_path, std::vector<TaurPkg_t> const& localPkgs, bool useGit);
-    bool build_pkg(std::string_view pkg_name, std::string extracted_path, bool alreadyprepared);
-    bool update_all_aur_pkgs(path cacheDir, bool useGit);
-    std::vector<TaurPkg_t> get_all_local_pkgs(bool aurOnly);
+    bool                     handle_aur_depends(const TaurPkg_t& pkg, path out_path, std::vector<TaurPkg_t> const& localPkgs, bool useGit);
+    bool                     build_pkg(std::string_view pkg_name, std::string_view extracted_path, bool alreadyprepared);
+    bool                     update_all_aur_pkgs(path cacheDir, bool useGit);
+    std::vector<TaurPkg_t>   get_all_local_pkgs(bool aurOnly);
 };
 
 inline std::string built_pkg, pkgs_to_install, pkgs_failed_to_build;

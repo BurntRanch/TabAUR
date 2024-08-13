@@ -105,10 +105,10 @@ void test_colors()
 
     if (fmt::disable_colors)
         fmt::println("Colors are disabled");
-    log_println(DEBUG, _("Debug color: {}"), fmt::format(BOLD_TEXT(color.magenta), "(bold) magenta"));
-    log_println(INFO, _("Info color: {}"), fmt::format(BOLD_TEXT(color.cyan), "(bold) cyan"));
-    log_println(WARN, _("Warning color: {}"), fmt::format(BOLD_TEXT(color.yellow), "(bold) yellow"));
-    log_println(ERROR, _("Error color: {}"), fmt::format(BOLD_TEXT(color.red), "(bold) red"));
+    log_println(DEBUG, _("Debug color: {}"), fmt::format(BOLD_COLOR(color.magenta), "(bold) magenta"));
+    log_println(INFO, _("Info color: {}"), fmt::format(BOLD_COLOR(color.cyan), "(bold) cyan"));
+    log_println(WARN, _("Warning color: {}"), fmt::format(BOLD_COLOR(color.yellow), "(bold) yellow"));
+    log_println(ERROR, _("Error color: {}"), fmt::format(BOLD_COLOR(color.red), "(bold) red"));
     fmt::println(fg(color.red), "red");
     fmt::println(fg(color.blue), "blue");
     fmt::println(fg(color.yellow), "yellow");
@@ -124,13 +124,13 @@ void test_colors()
     fmt::println(getColorFromDBName("multilib"), "(bold) multilib");
     fmt::println(getColorFromDBName("others"), "(bold) others");
 
-    fmt::println(BOLD_TEXT(color.version), "\n(bold) version " VERSION);
+    fmt::println(BOLD_COLOR(color.version), "\n(bold) version " VERSION);
     fmt::println(fg(color.popularity), "Popularity: {}", pkg.popularity);
     fmt::println(fg(color.votes), "Votes: {} ({})", pkg.votes, getTitleFromVotes(pkg.votes));
     fmt::println(fg(color.index), "index [1]");
-    fmt::println(BOLD_TEXT(color.installed), "(bold) indicator [Installed]");
-    fmt::println(BOLD_TEXT(color.orphan), "(bold) (un-maintained)");
-    fmt::println(BOLD_TEXT(color.outofdate), "(bold) (Outdated: {})", timestr);
+    fmt::println(BOLD_COLOR(color.installed), "(bold) indicator [Installed]");
+    fmt::println(BOLD_COLOR(color.orphan), "(bold) (un-maintained)");
+    fmt::println(BOLD_COLOR(color.outofdate), "(bold) (Outdated: {})", timestr);
 
     fmt::println("\nexamples package search preview:");
     printPkgInfo(pkg, pkg.db_name);
@@ -321,7 +321,7 @@ int installPkg(alpm_list_t* pkgNames)
                 continue;
             }
 
-            stat = backend->build_pkg(pkg.name, pkgDir, false);
+            stat = backend->build_pkg(pkg.name, pkgDir.string(), false);
 
             if (!stat)
             {
@@ -595,7 +595,7 @@ bool queryPkgs(alpm_list_t* pkgNames)
             if (!pkgs_name[i])
                 continue;
             fmt::print(BOLD, "{} ", pkgs_name[i]);
-            fmt::println(BOLD_TEXT(color.green), "{}", pkgs_ver[i]);
+            fmt::println(BOLD_COLOR(color.green), "{}", pkgs_ver[i]);
         }
     }
 

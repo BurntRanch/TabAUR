@@ -1,6 +1,7 @@
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
+#include <array>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -29,7 +30,7 @@ struct TaurPkg_t;
 class TaurBackend;
 
 #define BOLD fmt::emphasis::bold
-#define BOLD_TEXT(x) (fmt::emphasis::bold | fmt::fg(x))
+#define BOLD_COLOR(x) (fmt::emphasis::bold | fmt::fg(x))
 #define NOCOLOR "\033[0m"
 #define AUR_URL "https://aur.archlinux.org"
 #define AUR_URL_GIT(x) fmt::format("https://aur.archlinux.org/{}.git", x)
@@ -101,6 +102,7 @@ bool                     commitTransactionAndRelease(bool soft = false);
 void                     printPkgInfo(TaurPkg_t& pkg, std::string_view db_name);
 void                     printLocalFullPkgInfo(alpm_pkg_t* pkg);
 std::string              makepkg_list(std::string_view pkg_name, std::string_view path);
+void                     getFileValue(u_short& iterIndex, const std::string& line, std::string& str, const size_t& amount);
 void                     free_list_and_internals(alpm_list_t* list);
 fmt::text_style          getColorFromDBName(std::string_view db_name);
 std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs, bool inverse);
@@ -109,7 +111,7 @@ std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view> p
 std::string                   shell_exec(std::string_view cmd);
 std::vector<std::string>      split(std::string_view text, char delim);
 fmt::rgb                      hexStringToColor(std::string_view hexstr);
-void                          ctrl_d_handler();
+void                          ctrl_d_handler(const std::istream& cin);
 std::string                   getTitleFromVotes(float votes);
 std::string                   getHomeCacheDir();
 std::string                   getHomeConfigDir();
@@ -154,29 +156,23 @@ void _log_println(log_level log, const fmt::text_style ts, fmt::runtime_format_s
     switch (log)
     {
         case ERROR:
-            fmt::print(stderr, BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
+            fmt::print(stderr, BOLD_COLOR(color.red), fmt::runtime(_("ERROR: ")));
             break;
         case WARN:
-            fmt::print(BOLD_TEXT(color.yellow), fmt::runtime(_("Warning: ")));
+            fmt::print(BOLD_COLOR(color.yellow), fmt::runtime(_("Warning: ")));
             break;
         case INFO:
-            fmt::print(BOLD_TEXT(color.cyan), fmt::runtime(_("Info: ")));
+            fmt::print(BOLD_COLOR(color.cyan), fmt::runtime(_("Info: ")));
             break;
         case DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
+            fmt::print(BOLD_COLOR(color.magenta), "[DEBUG]: ");
             break;
         default:
             break;
     }
     fmt::println(ts, fmt, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void log_println(log_level log, const char *fmt, Args&&... args)
-{
-    _log_println(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
@@ -192,13 +188,7 @@ void log_println(log_level log, const fmt::text_style ts, std::string_view fmt, 
 }
 
 template <typename... Args>
-void log_println(log_level log, const fmt::text_style ts, const char *fmt, Args&&... args)
-{
-    _log_println(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void die(const char *fmt, Args&&... args)
+void die(const std::string_view fmt, Args&&... args)
 {
     _log_println(ERROR, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
     std::exit(1);
@@ -210,29 +200,23 @@ void _log_printf(log_level log, const fmt::text_style ts, fmt::runtime_format_st
     switch (log)
     {
         case ERROR:
-            fmt::print(stderr, BOLD_TEXT(color.red), fmt::runtime(_("ERROR: ")));
+            fmt::print(stderr, BOLD_COLOR(color.red), fmt::runtime(_("ERROR: ")));
             break;
         case WARN:
-            fmt::print(BOLD_TEXT(color.yellow), fmt::runtime(_("Warning: ")));
+            fmt::print(BOLD_COLOR(color.yellow), fmt::runtime(_("Warning: ")));
             break;
         case INFO:
-            fmt::print(BOLD_TEXT(color.cyan), fmt::runtime(_("Info: ")));
+            fmt::print(BOLD_COLOR(color.cyan), fmt::runtime(_("Info: ")));
             break;
         case DEBUG:
             if (!config->debug)
                 return;
-            fmt::print(BOLD_TEXT(color.magenta), "[DEBUG]: ");
+            fmt::print(BOLD_COLOR(color.magenta), "[DEBUG]: ");
             break;
         default:
             break;
     }
     fmt::print(ts, fmt, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void log_printf(log_level log, const char *fmt, Args&&... args)
-{
-    _log_printf(log, fmt::text_style(), fmt::runtime(fmt), std::forward<Args>(args)...);
 }
 
 template <typename... Args>
@@ -243,12 +227,6 @@ void log_printf(log_level log, std::string_view fmt, Args&&... args)
 
 template <typename... Args>
 void log_printf(log_level log, const fmt::text_style ts, std::string_view fmt, Args&&... args)
-{
-    _log_printf(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void log_printf(log_level log, const fmt::text_style ts, const char *fmt, Args&&... args)
 {
     _log_printf(log, ts, fmt::runtime(fmt), std::forward<Args>(args)...);
 }
@@ -313,7 +291,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args)
     while (std::getline(std::cin, result) && (result.length() > 1))
         log_printf(WARN, _("Please provide a valid response {}"), inputs_str);
 
-    ctrl_d_handler();
+    ctrl_d_handler(std::cin);
 
     if (result.empty())
         return def;
@@ -338,7 +316,7 @@ std::vector<T> askUserForList(std::vector<T>& list, prompt_list pr, bool require
     std::string result_str;
 
     for (size_t i = 0; i < list.size(); i++)
-        fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD_TEXT(fmt::color::white), "{}", list[i]));
+        fmt::println(fmt::fg(color.index), "[{}] {}", i, fmt::format(BOLD_COLOR(fmt::color::white), "{}", list[i]));
 
     log_println(INFO, _("{}"), sep_str);
 
@@ -441,7 +419,7 @@ std::vector<T> askUserForList(std::vector<T>& list, prompt_list pr, bool require
 
         break;
     }
-    ctrl_d_handler();
+    ctrl_d_handler(std::cin);
 
     return result;
 }
@@ -460,8 +438,8 @@ T sanitize(T beg, T end)
     return dest;
 }
 
-static inline std::vector<std::string_view> secret = {
-    { "Ingredients:" },
+inline constexpr std::array<std::string_view, 7> secret = {
+    "Ingredients:",
     { R"#(
     3/4 cup milk
     1/2 cup vegetable oil
