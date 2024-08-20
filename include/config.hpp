@@ -5,24 +5,23 @@
 #define TOML_ENABLE_FORMATTERS 0
 
 #include <alpm.h>
+
+#include <filesystem>
 #include <map>
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <filesystem>
 
 #include "fmt/color.h"
 #include "toml++/toml.hpp"
 
-using std::string;
-using std::vector;
-using std::string_view;
 using std::filesystem::path;
 
 // so we don't need to include util.hpp for getConfigValue()
-string expandVar(string& str);
+std::string expandVar(std::string& str);
 
-struct _color_t {
+struct _color_t
+{
     fmt::rgb red;
     fmt::rgb green;
     fmt::rgb blue;
@@ -45,51 +44,53 @@ struct _color_t {
     fmt::rgb index;
 };
 
-class Config {
-  public:
-    alpm_handle_t *handle = nullptr;
-    alpm_list_t   *repos  = nullptr;
-    string         makepkgBin;
-    vector<string> editor;
-    path           cacheDir;
-    string         pmConfig;
-    string         sudo;
-    string         git;
-    string         makepkgConf;
-    bool           aurOnly;
-    bool           useGit;
-    bool           colors;
-    bool           secretRecipe;
-    bool           debug;
-    bool           quiet;
-    bool           noconfirm;
+class Config
+{
+public:
+    alpm_handle_t*           handle = nullptr;
+    alpm_list_t*             repos  = nullptr;
+    std::string              makepkgBin;
+    std::vector<std::string> editor;
+    path                     cacheDir;
+    std::string              pmConfig;
+    std::string              sudo;
+    std::string              git;
+    std::string              makepkgConf;
+    bool                     aurOnly;
+    bool                     useGit;
+    bool                     colors;
+    bool                     secretRecipe;
+    bool                     debug;
+    bool                     quiet;
+    bool                     noconfirm;
     // alpm transaction flags
-    int            flags;
+    int flags;
 
-    Config(string_view configFile, string_view themeFile, string_view configDir);
+    Config(std::string_view configFile, std::string_view themeFile, std::string_view configDir);
     ~Config();
 
     void initVars();
     void initColors();
 
-    void loadConfigFile(string_view filename);
-    void loadPacmanConfigFile(string filename);
-    void loadThemeFile(string_view filename);
+    void loadConfigFile(std::string_view filename);
+    void loadPacmanConfigFile(std::string filename);
+    void loadThemeFile(std::string_view filename);
 
     // stupid c++ that wants template functions in header
     template <typename T>
-    T getConfigValue(const string& value, T fallback) {
+    T getConfigValue(const std::string& value, T fallback)
+    {
         std::optional<T> ret = this->tbl.at_path(value).value<T>();
-        if constexpr (toml::is_string<T>) // if we want to get a value that's a string
+        if constexpr (toml::is_string<T>)  // if we want to get a value that's a std::string
             return ret ? expandVar(ret.value()) : expandVar(fallback);
         else
             return ret.value_or(fallback);
     }
 
-    fmt::rgb getThemeValue(const string& value, const string& fallback);
-    string   getThemeHexValue(const string& value, const string& fallback);
+    fmt::rgb    getThemeValue(const std::string& value, const std::string& fallback);
+    std::string getThemeHexValue(const std::string& value, const std::string& fallback);
 
-  private:
+private:
     toml::table tbl, theme_tbl;
 };
 
@@ -97,7 +98,7 @@ extern std::unique_ptr<Config> config;
 inline struct _color_t         color;
 
 // we comment the default config values, just like /etc/pacman.conf
-inline const constexpr string_view AUTOCONFIG = R"#([general]
+inline constexpr std::string_view AUTOCONFIG = R"#([general]
 # All options are commented out with their default values listed.
 # If you wish to use different options values, uncomment and update those.
 # It's safe to remove any options you want, just remember their default value
@@ -142,7 +143,7 @@ inline const constexpr string_view AUTOCONFIG = R"#([general]
 #MakepkgConf = "/etc/makepkg.conf"
 )#";
 
-inline const constexpr string_view AUTOTHEME = R"#([theme]
+inline constexpr std::string_view AUTOTHEME = R"#([theme]
 red = "#ff2000"
 green = "#00ff00"
 blue = "#00aaff"

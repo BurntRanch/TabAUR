@@ -14,14 +14,14 @@ else
         CXXFLAGS := -O2 $(CXXFLAGS)
 endif
 
-VERSION    	 = 0.6.8
+VERSION    	 = 0.6.9
 BRANCH     	 = main
 SRC 	   	 = $(sort $(wildcard src/*.cpp))
 OBJ 	   	 = $(SRC:.cpp=.o)
 CURL_LIBS	?= -lcurl -lnghttp3 -lnghttp2 -lidn2 -lssh2 -lssl -lcrypto -lpsl -lgssapi_krb5 -lzstd -lbrotlidec -lz # pkg-config --static --libs libcurl (but fixed)
 LDFLAGS   	+= -L./$(BUILDDIR)/fmt -L./$(BUILDDIR)/cpr -lcpr -lalpm -lfmt $(CURL_LIBS)
 CXXFLAGS  	?= -mtune=generic -march=native
-CXXFLAGS	+= -funroll-all-loops -isystem include -std=c++20 $(VARS) -DVERSION=\"$(VERSION)\" -DBRANCH=\"$(BRANCH)\" -DLOCALEDIR=\"$(LOCALEDIR)\"
+CXXFLAGS	+= -funroll-all-loops -isystem include -std=c++23 $(VARS) -DVERSION=\"$(VERSION)\" -DBRANCH=\"$(BRANCH)\" -DLOCALEDIR=\"$(LOCALEDIR)\"
 
 is_cpr_installed = $(shell ldconfig -p | grep libcpr > /dev/null || test -d $(BUILDDIR)/cpr && echo -n yes)
 
