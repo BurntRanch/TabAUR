@@ -171,7 +171,7 @@ int installPkg(alpm_list_t* pkgNames)
 
     // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next)
-        pkgNamesVec.push_back((const char*)(pkgNames->data));
+        pkgNamesVec.push_back(reinterpret_cast<const char *>(pkgNames->data));
 
     if (pkgNamesVec.empty())
     {
@@ -369,7 +369,7 @@ bool removePkg(alpm_list_t* pkgNames)
 
     for (alpm_list_t* i = pkgNames; i; i = i->next)
     {
-        alpm_pkg_t* result = alpm_db_get_pkg(localdb, (const char*)i->data);
+        alpm_pkg_t* result = alpm_db_get_pkg(localdb, reinterpret_cast<const char *>(i->data));
         if (result != NULL)
             exactMatches = alpm_list_add(exactMatches, result);
         else
@@ -396,14 +396,14 @@ bool removePkg(alpm_list_t* pkgNames)
     }
 
     if (ret_length == 1)
-        return backend->remove_pkg((alpm_pkg_t*)ret->data);
+        return backend->remove_pkg(reinterpret_cast<alpm_pkg_t *>(ret->data));
 
     std::vector<std::string_view> pkgs;
 
     // fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
 
     for (size_t i = 0; i < ret_length; i++)
-        pkgs.push_back(alpm_pkg_get_name((alpm_pkg_t*)(alpm_list_nth(ret.get(), i)->data)));
+        pkgs.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t *>(alpm_list_nth(ret.get(), i)->data)));
 
     std::vector<std::string_view> includedPkgs = askUserForList<std::string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
 
@@ -454,82 +454,9 @@ bool queryPkgs(alpm_list_t* pkgNames)
     // we seperate pkgs that needs to be searched, like they'll include a description, to the ones that we just wanna
     // query out pkgs will be used for -Qs, for then using it on printPkgInfo() pkgs_name and pkgs_ver will be used for
     // bare operations (only -Q)
-    std::vector<const char*> pkgs_name, pkgs_ver;
-    std::vector<TaurPkg_t>   pkgs;
+    std::vector<const char *> pkgs_name, pkgs_ver;
+    std::vector<alpm_pkg_t *>   pkgs;
     alpm_db_t*               localdb = alpm_get_localdb(config->handle);
-
-    if (op.op_q_search)
-    {
-        if (!pkgNames)
-        {
-            alpm_list_t* pkg;
-            for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = pkg->next)
-            {
-                pkgs.push_back(
-                    { .name    = alpm_pkg_get_name((alpm_pkg_t*)(pkg->data)),
-                      .version = alpm_pkg_get_version((alpm_pkg_t*)(pkg->data)),
-                      .desc    = alpm_pkg_get_desc((alpm_pkg_t*)(pkg->data)),
-                      .votes   = -1 });  // push back a negative votes value so we can disable it on printPkgInfo()
-            }
-        }
-        else
-        {
-            alpm_list_t* result = nullptr;
-            util_db_search(localdb, pkgNames, &result);
-
-            for (; result; result = result->next)
-            {
-                pkgs.push_back({ .name    = alpm_pkg_get_name((alpm_pkg_t*)(result->data)),
-                                 .version = alpm_pkg_get_version((alpm_pkg_t*)(result->data)),
-                                 .desc    = alpm_pkg_get_desc((alpm_pkg_t*)(result->data)),
-                                 .votes   = -1 });
-            }
-        }
-
-        for (size_t i = 0; i < pkgs.size(); i++)
-            printPkgInfo(pkgs[i], "local");
-
-        return true;
-    }
-
-    if (op.op_q_info)
-    {
-        alpm_pkg_t* pkg;
-
-        if (!pkgNames)
-        {
-            alpm_list_t* local_pkg;
-            for (local_pkg = alpm_db_get_pkgcache(localdb); local_pkg; local_pkg = local_pkg->next)
-            {
-                pkg = (alpm_pkg_t*)(local_pkg->data);
-                printLocalFullPkgInfo(pkg);
-            }
-        }
-        else
-        {
-            for (alpm_list_t* i = pkgNames; i; i = i->next)
-            {
-                const char* strname = (const char*)i->data;
-                pkg                 = alpm_db_get_pkg(localdb, strname);
-
-                if (pkg == nullptr)
-                    pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);
-
-                // why double check the same thing? because:
-                // the 1st is to see if pkg "foo" exists, and if not, it will search for (aliases?)
-                // this one is if no aliases has been found, print the error and continue for the next target
-                if (pkg == nullptr)
-                {
-                    log_println(ERROR, _("package \"{}\" was not found"), strname);
-                    continue;
-                }
-
-                printLocalFullPkgInfo(pkg);
-            }
-        }
-
-        return true;
-    }
 
     // just -Q, no options other than --quiet and global ones
     if (!pkgNames)
@@ -537,16 +464,27 @@ bool queryPkgs(alpm_list_t* pkgNames)
         alpm_list_t* pkg;
         for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = alpm_list_next(pkg))
         {
-            pkgs_name.push_back(alpm_pkg_get_name((alpm_pkg_t*)(pkg->data)));
-            pkgs_ver.push_back(alpm_pkg_get_version((alpm_pkg_t*)(pkg->data)));
+            pkgs.push_back(reinterpret_cast<alpm_pkg_t *>(pkg->data));
+            pkgs_name.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t *>(pkg->data)));
+            pkgs_ver.push_back(alpm_pkg_get_version(reinterpret_cast<alpm_pkg_t *>(pkg->data)));
         }
     }
-    else
+    else if (op.op_q_search)
     {
+        alpm_list_t* result = nullptr;
+        util_db_search(localdb, pkgNames, &result);
+
+        for (; result; result = result->next)
+        {
+            pkgs.push_back(reinterpret_cast<alpm_pkg_t *>(result->data));
+            pkgs_name.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t *>(result->data)));
+            pkgs_ver.push_back(alpm_pkg_get_version(reinterpret_cast<alpm_pkg_t *>(result->data)));
+        }
+    } else {
         alpm_pkg_t* pkg;
         for (; pkgNames; pkgNames = pkgNames->next)
         {
-            const char* strname = (const char*)pkgNames->data;
+            const char* strname = reinterpret_cast<const char *>(pkgNames->data);
             pkg                 = alpm_db_get_pkg(localdb, strname);
 
             if (pkg == nullptr)
@@ -558,6 +496,7 @@ bool queryPkgs(alpm_list_t* pkgNames)
                 continue;
             }
 
+            pkgs.push_back(pkg);
             pkgs_name.push_back(alpm_pkg_get_name(pkg));
             pkgs_ver.push_back(alpm_pkg_get_version(pkg));
         }
@@ -594,8 +533,13 @@ bool queryPkgs(alpm_list_t* pkgNames)
         {
             if (!pkgs_name[i])
                 continue;
-            fmt::print(BOLD, "{} ", pkgs_name[i]);
-            fmt::println(BOLD_COLOR(color.green), "{}", pkgs_ver[i]);
+
+            if (!op.op_q_info) {
+                fmt::print(BOLD, "{} ", pkgs_name[i]);
+                fmt::println(BOLD_COLOR(color.green), "{}", pkgs_ver[i]);
+            } else {
+                printLocalFullPkgInfo(pkgs[i]);
+            }
         }
     }
 
@@ -616,19 +560,19 @@ bool upgradePkgs(alpm_list_t* pkgNames)
     for (; pkgNames; pkgNames = pkgNames->next)
     {
         alpm_pkg_t* pkg;
-        alpm_pkg_load(config->handle, (const char*)pkgNames->data, 1,
+        alpm_pkg_load(config->handle, reinterpret_cast<const char *>(pkgNames->data), 1,
                       alpm_option_get_local_file_siglevel(config->handle), &pkg);
 
         if (!pkg)
         {
-            log_println(ERROR, _("Failed to load package {}! ({})"), (const char*)(pkgNames->data),
+            log_println(ERROR, _("Failed to load package {}! ({})"), reinterpret_cast<const char *>(pkgNames->data),
                         alpm_strerror(alpm_errno(config->handle)));
             return false;  // Yes, I am ignoring the transaction we just created.
         }
 
         if (alpm_add_pkg(config->handle, pkg))
         {
-            log_println(ERROR, _("Failed to add package {} to transaction! ({})"), (const char*)(pkgNames->data),
+            log_println(ERROR, _("Failed to add package {} to transaction! ({})"), reinterpret_cast<const char *>(pkgNames->data),
                         alpm_strerror(alpm_errno(config->handle)));
             return false;
         }
