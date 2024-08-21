@@ -714,7 +714,7 @@ int parseargs(int argc, char* argv[])
 
     if (op.version)
     {
-        fmt::println("TabAUR version {}, branch {}", VERSION, BRANCH);
+        fmt::println("TabAUR {} branch {}", VERSION, BRANCH);
         exit(0);
     }
     if (op.help)
