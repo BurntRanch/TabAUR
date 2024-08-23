@@ -15,8 +15,7 @@ bool TaurBackend::download_git(std::string_view url, path out_path)
 {
     if (std::filesystem::exists(path(out_path) / ".git"))
     {
-        return taur_exec(
-            { config.git.c_str(), "-C", out_path, "pull", "--autostash", "--rebase", "--ff-only", "--force" });
+        return taur_exec({ config.git.c_str(), "-C", out_path, "pull", "--autostash", "--rebase", "--ff-only", "--force" });
     }
     else
     {
@@ -56,6 +55,7 @@ bool TaurBackend::download_pkg(std::string_view url, path out_path)
         return this->download_git(url, out_path);
     else if (hasEnding(url, ".tar.gz"))
         return this->download_tar(url, out_path);
+    
     return false;
 }
 
@@ -63,8 +63,9 @@ std::string getUrl(const rapidjson::Value& pkgJson, bool returnGit = false)
 {
     if (returnGit)
         return fmt::format("https://aur.archlinux.org/{}.git", pkgJson["Name"].GetString());
-    else // URLPath starts with a / 
-        return fmt::format("https://aur.archlinux.org{}", pkgJson["URLPath"].GetString());
+    
+    // URLPath starts with a / 
+    return fmt::format("https://aur.archlinux.org{}", pkgJson["URLPath"].GetString());
 }
 
 TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false)

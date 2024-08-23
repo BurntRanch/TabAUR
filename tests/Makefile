@@ -7,7 +7,7 @@ DEBUG 		?= 0
 SRC_DIR = ../src
 TEST_DIR = .
 
-VERSION    	 = 0.6.7
+VERSION    	 = 0.6.9
 BRANCH     	 = main
 SRC 		 = $(filter-out $(SRC_DIR)/main.cpp, $(wildcard $(SRC_DIR)/*.cpp))
 OBJ 		 = $(patsubst $(SRC_DIR)/%.cpp, $(BUILDDIR)/%.o, $(SRC))
