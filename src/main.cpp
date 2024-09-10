@@ -87,9 +87,9 @@ void usage(int op)
 
 void test_colors()
 {
-    std::time_t current_time = std::time(nullptr);
+    const std::time_t& current_time = std::time(nullptr);
     std::string timestr      = std::ctime(&current_time);
-    timestr.erase(timestr.length() - 1);
+    timestr.pop_back();
 
     TaurPkg_t pkg = {
         .name       = "TabAUR",
@@ -207,7 +207,7 @@ int installPkg(alpm_list_t* pkgNames)
         log_println(ERROR, _("Failed to get information about {}"), (config->cacheDir / "packages.aur").string());
 
     // I swear there was a comment here..
-    std::vector<std::string_view> AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+    const std::vector<std::string_view>& AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
 
     for (const auto& pkg : pkgNamesVec)
     {
@@ -223,7 +223,7 @@ int installPkg(alpm_list_t* pkgNames)
 
     for (auto& pkg_name : AURPkgs)
     {
-        path pkgDir = path(cacheDir) / pkg_name;
+        const path& pkgDir = path(cacheDir) / pkg_name;
 
         stat = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir)
                       : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
@@ -235,9 +235,9 @@ int installPkg(alpm_list_t* pkgNames)
         }
     }
 
-    for (std::string_view& pkg : pkgsToCleanBuild)
+    for (const std::string_view pkg : pkgsToCleanBuild)
     {
-        path pkgDir = path(cacheDir) / pkg;
+        const path& pkgDir = path(cacheDir) / pkg;
         if (!useGit)
         {
             log_println(INFO, _("Removing {}"), pkgDir.c_str());
@@ -253,13 +253,15 @@ int installPkg(alpm_list_t* pkgNames)
     // cmd is just a workaround for making it possible
     // to pass flags to the editor, e.g nano --modernbindings
     // instead of creating another config variable
-    for (std::string_view& pkg : pkgsToReview)
+    for (const std::string_view pkg : pkgsToReview)
     {
-        path pkgDir = path(cacheDir) / pkg;
+        const path& pkgDir = path(cacheDir) / pkg;
 
         std::vector<std::string> cmd;
+        cmd.reserve(config->editor.size());
         for (auto& str : config->editor)
             cmd.push_back(str);
+
         cmd.push_back((pkgDir / "PKGBUILD").string());
 
         taur_exec(cmd);
@@ -296,9 +298,9 @@ int installPkg(alpm_list_t* pkgNames)
 
     for (size_t i = 0; i < AURPkgs.size(); i++)
     {
-        std::vector<TaurPkg_t> pkgs = backend->search(AURPkgs[i], useGit, config->aurOnly, true);
+        const std::vector<TaurPkg_t>& pkgs = backend->search(AURPkgs[i], useGit, config->aurOnly, true);
 
-        std::optional<std::vector<TaurPkg_t>> oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
+        const std::optional<std::vector<TaurPkg_t>>& oSelectedPkgs = askUserForPkg(pkgs, *backend, useGit);
 
         if (!oSelectedPkgs)
         {
@@ -306,9 +308,9 @@ int installPkg(alpm_list_t* pkgNames)
             continue;
         }
 
-        std::vector<TaurPkg_t> selectedPkgs = oSelectedPkgs.value();
+        const std::vector<TaurPkg_t>& selectedPkgs = oSelectedPkgs.value();
 
-        for (TaurPkg_t& pkg : selectedPkgs)
+        for (const TaurPkg_t& pkg : selectedPkgs)
         {
             path pkgDir = path(cacheDir) / pkg.name;
 
@@ -325,7 +327,7 @@ int installPkg(alpm_list_t* pkgNames)
 
             if (!stat)
             {
-                log_println(ERROR, _("Building {} has failed."), pkg.name);
+                log_println(ERROR, _("Building '{}' has failed."), pkg.name);
                 returnStatus = false;
                 pkgs_failed_to_build += pkg.name + ' ';
                 log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
@@ -387,25 +389,26 @@ bool removePkg(alpm_list_t* pkgNames)
 
     alpm_list_smart_pointer ret(alpm_list_join(exactMatches, searchResults), alpm_list_free);
 
-    size_t ret_length = alpm_list_count(ret.get());
+    size_t ret_size = alpm_list_count(ret.get());
 
-    if (ret_length == 0)
+    if (ret_size == 0)
     {
         log_println(ERROR, _("No packages found!"));
         return false;
     }
 
-    if (ret_length == 1)
+    if (ret_size == 1)
         return backend->remove_pkg(reinterpret_cast<alpm_pkg_t *>(ret->data));
 
     std::vector<std::string_view> pkgs;
+    pkgs.reserve(ret_size);
 
     // fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
 
-    for (size_t i = 0; i < ret_length; i++)
+    for (size_t i = 0; i < ret_size; i++)
         pkgs.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t *>(alpm_list_nth(ret.get(), i)->data)));
 
-    std::vector<std::string_view> includedPkgs = askUserForList<std::string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
+    const std::vector<std::string_view>& includedPkgs = askUserForList<std::string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
 
     alpm_list_t* finalPackageList      = nullptr;
     alpm_list_t* finalPackageListStart = nullptr;
@@ -414,7 +417,7 @@ bool removePkg(alpm_list_t* pkgNames)
     {
         try
         {
-            auto pkg = std::find(pkgs.begin(), pkgs.end(), includedPkgs[i]);
+            const auto& pkg = std::find(pkgs.begin(), pkgs.end(), includedPkgs[i]);
 
             if (pkg >= pkgs.end())
                 continue;
@@ -455,8 +458,8 @@ bool queryPkgs(alpm_list_t* pkgNames)
     // query out pkgs will be used for -Qs, for then using it on printPkgInfo() pkgs_name and pkgs_ver will be used for
     // bare operations (only -Q)
     std::vector<const char *> pkgs_name, pkgs_ver;
-    std::vector<alpm_pkg_t *>   pkgs;
-    alpm_db_t*               localdb = alpm_get_localdb(config->handle);
+    std::vector<alpm_pkg_t *> pkgs;
+    alpm_db_t*                localdb = alpm_get_localdb(config->handle);
 
     // just -Q, no options other than --quiet and global ones
     if (!pkgNames)
@@ -481,11 +484,10 @@ bool queryPkgs(alpm_list_t* pkgNames)
             pkgs_ver.push_back(alpm_pkg_get_version(reinterpret_cast<alpm_pkg_t *>(result->data)));
         }
     } else {
-        alpm_pkg_t* pkg;
         for (; pkgNames; pkgNames = pkgNames->next)
         {
             const char* strname = reinterpret_cast<const char *>(pkgNames->data);
-            pkg                 = alpm_db_get_pkg(localdb, strname);
+            alpm_pkg_t* pkg     = alpm_db_get_pkg(localdb, strname);
 
             if (pkg == nullptr)
                 pkg = alpm_find_satisfier(alpm_db_get_pkgcache(localdb), strname);

@@ -19,7 +19,6 @@
 
 #include <alpm.h>
 #include <algorithm>
-#include <cstdint>
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
 #include "config.hpp"
@@ -142,7 +141,7 @@ bool isInvalid(char c)
 { return !isprint(c); }
 
 void sanitizeStr(std::string& str)
-{ str.erase(std::remove_if(str.begin(), str.end(), isInvalid), str.end()); }
+{ str.erase(std::remove_if(str.begin(), str.end(), [](unsigned char c){ return isInvalid(c); } ), str.end()); }
 
 /** Print some text after hitting CTRL-C.
  * Used only in main() for signal()
@@ -333,28 +332,38 @@ bool commitTransactionAndRelease(bool soft)
  * @param str The std::string
  * @return The modified std::string
  */
-std::string expandVar(std::string& str)
+std::string expandVar(std::string ret)
 {
     const char* env;
-    if (str[0] == '~')
+    if (ret[0] == '~')
     {
-        env = getenv("HOME");
+        env = std::getenv("HOME");
         if (env == nullptr)
-            die(_("FATAL: $HOME enviroment variable is not set (how?)"));
+            die("FATAL: $HOME enviroment variable is not set (how?)");
 
-        str.replace(0, 1, env);  // replace ~ with the $HOME value
+        ret.replace(0, 1, env);  // replace ~ with the $HOME value
     }
-    else if (str[0] == '$')
+    else if (ret[0] == '$')
     {
-        str.erase(0, 1);  // erase from str[0] to str[1]
-        env = getenv(str.c_str());
-        if (env == nullptr)
-            die(_("No such enviroment variable: {}"), str);
+        ret.erase(0, 1);
 
-        str = env;
+        std::string   temp;
+        const size_t& pos = ret.find('/');
+        if (pos != std::string::npos)
+        {
+            temp = ret.substr(pos);
+            ret.erase(pos);
+        }
+
+        env = std::getenv(ret.c_str());
+        if (env == nullptr)
+            die("No such enviroment variable: {}", ret);
+
+        ret = env;
+        ret += temp;
     }
 
-    return str;
+    return ret;
 }
 
 fmt::rgb hexStringToColor(std::string_view hexstr)
@@ -599,7 +608,7 @@ fmt::text_style getColorFromDBName(std::string_view db_name)
 }
 
 // Takes a pkg to show on search.
-void printPkgInfo(TaurPkg_t& pkg, std::string_view db_name)
+void printPkgInfo(const TaurPkg_t& pkg, const std::string_view db_name)
 {
     fmt::print(getColorFromDBName(db_name), "{}/", db_name);
     fmt::print(BOLD, "{} ", pkg.name);
@@ -865,7 +874,7 @@ bool update_aur_cache(bool recursiveCall)
  * @param useGit Whether the fetched pkg should use a .git url
  * @return Optional TaurPkg_t, will not return if interrupted.
  */
-std::optional<std::vector<TaurPkg_t>> askUserForPkg(std::vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit)
+std::optional<std::vector<TaurPkg_t>> askUserForPkg(const std::vector<TaurPkg_t>& pkgs, TaurBackend& backend, bool useGit)
 {
     if (pkgs.size() == 1)
     {
@@ -930,7 +939,7 @@ void ctrl_d_handler(const std::istream& cin)
  * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
  * @return an optional unique_ptr to a result.
  */
-std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs, bool inverse)
+std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*>& pkgs, alpm_list_t* syncdbs, bool inverse)
 {
     std::vector<alpm_pkg_t*> out;
     out.reserve(pkgs.size());
@@ -959,7 +968,7 @@ std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*> pkgs, alpm_list_
  * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
  * @return an optional unique_ptr to a result.
  */
-std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view> pkgs, alpm_list_t* syncdbs, bool inverse)
+std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view>& pkgs, alpm_list_t* syncdbs, bool inverse)
 {
     std::vector<std::string_view> out;
     out.reserve(pkgs.size());

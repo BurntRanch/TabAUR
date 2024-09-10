@@ -20,7 +20,7 @@ Config::~Config()
 }
 
 // initialize Config, can only be ran once for each Config instance.
-Config::Config(std::string_view configFile, std::string_view themeFile, std::string_view configDir)
+Config::Config(const std::string_view configFile, const std::string_view themeFile, const std::string_view configDir)
 {
     bool newUser = false;
 
@@ -133,7 +133,7 @@ void Config::loadConfigFile(std::string_view filename)
     if (!(this->handle))
         die(_("Failed to get an alpm handle! Error: {}"), alpm_strerror(err));
 
-    this->loadPacmanConfigFile(this->getConfigValue("pacman.ConfigFile", "/etc/pacman.conf"));
+    this->loadPacmanConfigFile(this->getConfigValue<std::string>("pacman.ConfigFile", "/etc/pacman.conf"));
 }
 
 /** parse the theme file (aka "theme.toml")
@@ -186,25 +186,25 @@ void Config::initColors()
     color.yellow        = this->getThemeValue("yellow",        "#ffff00");
     color.magenta       = this->getThemeValue("magenta",       "#ff11cc");
     color.gray          = this->getThemeValue("gray",          "#5a5a5a");
-    color.aur           = this->getThemeValue("aur",           this->getThemeHexValue("blue", "#00aaff"));
-    color.extra         = this->getThemeValue("extra",         this->getThemeHexValue("green", "#00ff00"));
-    color.core          = this->getThemeValue("core",          this->getThemeHexValue("yellow", "#ffff00"));
-    color.multilib      = this->getThemeValue("multilib",      this->getThemeHexValue("cyan", "#00ffff"));
+    color.aur           = this->getThemeValue("aur",           this->getThemeHexValue("blue",    "#00aaff"));
+    color.extra         = this->getThemeValue("extra",         this->getThemeHexValue("green",   "#00ff00"));
+    color.core          = this->getThemeValue("core",          this->getThemeHexValue("yellow",  "#ffff00"));
+    color.multilib      = this->getThemeValue("multilib",      this->getThemeHexValue("cyan",    "#00ffff"));
     color.others        = this->getThemeValue("others",        this->getThemeHexValue("magenta", "#ff11cc"));
-    color.version       = this->getThemeValue("version",       this->getThemeHexValue("green", "#00ff00"));
+    color.version       = this->getThemeValue("version",       this->getThemeHexValue("green",   "#00ff00"));
     color.last_modified = this->getThemeValue("last_modified", this->getThemeHexValue("magenta", "#ff11cc"));
-    color.outofdate     = this->getThemeValue("outofdate",     this->getThemeHexValue("red", "#ff2000"));
-    color.orphan        = this->getThemeValue("orphan",        this->getThemeHexValue("red", "#ff2000"));
-    color.popularity    = this->getThemeValue("popularity",    this->getThemeHexValue("cyan", "#00ffff"));
-    color.votes         = this->getThemeValue("votes",         this->getThemeHexValue("cyan", "#00ffff"));
-    color.installed     = this->getThemeValue("installed",     this->getThemeHexValue("gray", "#5a5a5a"));
+    color.outofdate     = this->getThemeValue("outofdate",     this->getThemeHexValue("red",     "#ff2000"));
+    color.orphan        = this->getThemeValue("orphan",        this->getThemeHexValue("red",     "#ff2000"));
+    color.popularity    = this->getThemeValue("popularity",    this->getThemeHexValue("cyan",    "#00ffff"));
+    color.votes         = this->getThemeValue("votes",         this->getThemeHexValue("cyan",    "#00ffff"));
+    color.installed     = this->getThemeValue("installed",     this->getThemeHexValue("gray",    "#5a5a5a"));
     color.index         = this->getThemeValue("index",         this->getThemeHexValue("magenta", "#ff11cc"));
 }
 
 // clang-format on
-bool addServers(alpm_db_t* db, const std::string& includeFilename, std::string_view repoName)
+bool addServers(alpm_db_t* db, const std::string_view includeFilename, std::string_view repoName)
 {
-    std::ifstream includeFile(includeFilename);
+    std::ifstream includeFile(includeFilename.data());
 
     if (!includeFile.is_open())
         return false;
@@ -233,9 +233,9 @@ bool addServers(alpm_db_t* db, const std::string& includeFilename, std::string_v
     return true;
 }
 
-void Config::loadPacmanConfigFile(std::string filename)
+void Config::loadPacmanConfigFile(const std::string_view filename)
 {
-    mINI::INIFile      file(filename);
+    mINI::INIFile      file(filename.data());
     mINI::INIStructure ini;
 
     file.read(ini);

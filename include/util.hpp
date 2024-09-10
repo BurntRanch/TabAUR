@@ -91,7 +91,7 @@ enum log_level
 
 bool                     hasEnding(std::string_view fullString, std::string_view ending);
 bool                     hasStart(std::string_view fullString, std::string_view start);
-std::string              expandVar(std::string& str);
+std::string              expandVar(std::string str);
 bool                     is_numerical(std::string_view s, bool allowSpace = false);
 bool                     taur_read_exec(std::vector<const char*> cmd, std::string& output, bool exitOnFailure = true);
 void                     interruptHandler(int);
@@ -99,14 +99,14 @@ bool                     taur_exec(std::vector<std::string> cmd, bool exitOnFail
 void                     sanitizeStr(std::string& str);
 bool                     is_package_from_syncdb(const char* name, alpm_list_t* syncdbs);
 bool                     commitTransactionAndRelease(bool soft = false);
-void                     printPkgInfo(TaurPkg_t& pkg, std::string_view db_name);
+void                     printPkgInfo(const TaurPkg_t& pkg, const std::string_view db_name);
 void                     printLocalFullPkgInfo(alpm_pkg_t* pkg);
 std::string              makepkg_list(std::string_view pkg_name, std::string_view path);
 void                     getFileValue(u_short& iterIndex, const std::string& line, std::string& str, const size_t& amount);
 void                     free_list_and_internals(alpm_list_t* list);
 fmt::text_style          getColorFromDBName(std::string_view db_name);
-std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*> pkgs, alpm_list_t* syncdbs, bool inverse);
-std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view> pkgs, alpm_list_t* syncdbs,
+std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*>& pkgs, alpm_list_t* syncdbs, bool inverse);
+std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view>& pkgs, alpm_list_t* syncdbs,
                                                  bool inverse);
 std::string                   shell_exec(std::string_view cmd);
 std::vector<std::string>      split(std::string_view text, char delim);
@@ -122,7 +122,7 @@ bool                          pacman_exec(std::string_view op, std::vector<std::
                                             bool root = true);
 bool                          util_db_search(alpm_db_t* db, alpm_list_t* needles, alpm_list_t** ret);
 
-std::optional<std::vector<TaurPkg_t>> askUserForPkg(std::vector<TaurPkg_t> pkgs, TaurBackend& backend, bool useGit);
+std::optional<std::vector<TaurPkg_t>> askUserForPkg(const std::vector<TaurPkg_t>& pkgs, TaurBackend& backend, bool useGit);
 std::string_view                      binarySearch(const std::vector<std::string>& arr, std::string_view target);
 std::vector<std::string>              load_aur_list();
 bool                                  update_aur_cache(bool recursiveCall = false);
@@ -241,7 +241,7 @@ void log_printf(log_level log, const fmt::text_style ts, std::string_view fmt, A
 template <typename... Args>
 bool askUserYorN(bool def, prompt_yn pr, Args&&... args)
 {
-    std::string inputs_str = "[" + (std::string)(def ? "Y" : "y") + "/" + (std::string)(!def ? "N" : "n") + "] ";
+    const std::string& inputs_str = fmt::format("[{}]: ", (def ? "Y/n" : "y/N"));
     std::string result;
 
     switch (pr)
@@ -309,7 +309,7 @@ bool askUserYorN(bool def, prompt_yn pr, Args&&... args)
  * @returns the resulting list, empty if anything bad happens.
  */
 template <typename T, typename = std::enable_if_t<is_fmt_convertible_v<T>>>
-std::vector<T> askUserForList(std::vector<T>& list, prompt_list pr, bool required = false)
+std::vector<T> askUserForList(const std::vector<T>& list, prompt_list pr, bool required = false)
 {
     std::string sep_str =
         _("Type the index of each package (eg: \"0 1 2\", \"0-2\", \"a\" for all, \"n\" or enter for none)");

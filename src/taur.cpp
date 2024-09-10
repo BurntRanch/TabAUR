@@ -11,7 +11,7 @@
 
 TaurBackend::TaurBackend(Config& cfg) : config(cfg) {}
 
-bool TaurBackend::download_git(std::string_view url, path out_path)
+bool TaurBackend::download_git(const std::string_view url, const path& out_path)
 {
     if (std::filesystem::exists(path(out_path) / ".git"))
     {
@@ -25,15 +25,19 @@ bool TaurBackend::download_git(std::string_view url, path out_path)
     }
 }
 
-bool TaurBackend::download_tar(std::string_view url, path out_path)
+bool TaurBackend::download_tar(const std::string_view url, const path& out_path)
 {
-    std::ofstream out(out_path.replace_extension("tar.gz"));
+    const std::string& out_path_str = out_path.string();
+    std::ofstream out(out_path_str.substr(0, out_path_str.length() - "tar.gz"_len));
     if (!out.is_open())
         return false;
 
     cpr::Session session;
     session.SetUrl(cpr::Url(url));
-    cpr::Response response = session.Download(out);
+    const cpr::Response& r = session.Download(out);
+
+    if (r.status_code != 200)
+        return false;
 
     out.close();
 
@@ -55,7 +59,7 @@ bool TaurBackend::download_pkg(std::string_view url, path out_path)
         return this->download_git(url, out_path);
     else if (hasEnding(url, ".tar.gz"))
         return this->download_tar(url, out_path);
-    
+
     return false;
 }
 
@@ -63,7 +67,7 @@ std::string getUrl(const rapidjson::Value& pkgJson, bool returnGit = false)
 {
     if (returnGit)
         return fmt::format("https://aur.archlinux.org/{}.git", pkgJson["Name"].GetString());
-    
+
     // URLPath starts with a / 
     return fmt::format("https://aur.archlinux.org{}", pkgJson["URLPath"].GetString());
 }
@@ -138,10 +142,9 @@ TaurPkg_t parsePkg(rapidjson::Value& pkgJson, bool returnGit = false)
 
 std::optional<TaurPkg_t> TaurBackend::fetch_pkg(std::string_view pkg, bool returnGit)
 {
-    std::string urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg.data());
+    const std::string& urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg.data());
 
-    cpr::Url      url  = cpr::Url(urlStr);
-    cpr::Response resp = cpr::Get(url);
+    const cpr::Response& resp = cpr::Get(cpr::Url(urlStr));
 
     if (resp.status_code != 200)
         return {};
@@ -158,7 +161,7 @@ std::optional<TaurPkg_t> TaurBackend::fetch_pkg(std::string_view pkg, bool retur
 std::vector<TaurPkg_t> TaurBackend::fetch_pkgs(std::vector<std::string> const& pkgs, bool returnGit)
 {
     if (pkgs.empty())
-        return std::vector<TaurPkg_t>();
+        return {};
 
     std::string urlStr = "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=" + pkgs[0];
 
@@ -167,11 +170,10 @@ std::vector<TaurPkg_t> TaurBackend::fetch_pkgs(std::vector<std::string> const& p
 
     log_println(DEBUG, "info url = {}", urlStr);
 
-    cpr::Url      url  = cpr::Url(urlStr);
-    cpr::Response resp = cpr::Get(url);
+    const cpr::Response& resp = cpr::Get(cpr::Url(urlStr));
 
     if (resp.status_code != 200)
-        return std::vector<TaurPkg_t>();
+        return {};
 
     rapidjson::Document json;
     json.Parse(resp.text.c_str());
@@ -296,11 +298,11 @@ bool TaurBackend::build_pkg(std::string_view pkg_name, std::string_view extracte
 }
 
 // I don't know but I feel this is shitty, atleast it works great
-bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, path out_path, std::vector<TaurPkg_t> const& localPkgs, bool useGit)
+bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, path& out_path, std::vector<TaurPkg_t> const& localPkgs, bool useGit)
 {
     log_println(DEBUG, "pkg.name = {}", pkg.name);
     log_println(DEBUG, "pkg.totaldepends = {}", pkg.totaldepends);
-    std::vector<std::string> aur_list = load_aur_list();
+    const std::vector<std::string>& aur_list = load_aur_list();
 
     for (size_t i = 0; i < pkg.totaldepends.size(); i++)
     {
@@ -312,11 +314,11 @@ bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, path out_path, std::v
         if (pkg_depend.empty())
             continue;
 
-        std::optional<TaurPkg_t> oDepend = this->fetch_pkg(pkg_depend, useGit);
+        const std::optional<TaurPkg_t>& oDepend = this->fetch_pkg(pkg_depend, useGit);
         if (!oDepend)
             continue;
 
-        TaurPkg_t depend = oDepend.value();
+        const TaurPkg_t& depend = oDepend.value();
 
         log_println(DEBUG, "depend = {} -- depend.totaldepends = {}", depend.name, depend.totaldepends);
 
@@ -368,7 +370,7 @@ bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, path out_path, std::v
                 continue;
             }
 
-            std::string filename = out_path / subDepend.aur_url.substr(subDepend.aur_url.rfind("/") + 1);
+            std::string filename = out_path / subDepend.aur_url.substr(subDepend.aur_url.rfind('/') + 1);
 
             if (useGit)
                 filename = filename.substr(0, filename.rfind(".git"));
@@ -410,7 +412,7 @@ bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, path out_path, std::v
 
         log_println(INFO, _("Downloading dependency {}"), depend.name);
 
-        std::string filename = out_path / depend.aur_url.substr(depend.aur_url.rfind("/") + 1);
+        std::string filename = out_path / depend.aur_url.substr(depend.aur_url.rfind('/') + 1);
 
         if (useGit)
             filename = filename.substr(0, filename.rfind(".git"));
@@ -442,9 +444,9 @@ bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, path out_path, std::v
     return true;
 }
 
-bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
+bool TaurBackend::update_all_aur_pkgs(path& cacheDir, bool useGit)
 {
-    std::vector<TaurPkg_t> localPkgs = this->get_all_local_pkgs(true);
+    const std::vector<TaurPkg_t>& localPkgs = this->get_all_local_pkgs(true);
 
     if (localPkgs.empty())
     {
@@ -459,7 +461,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
     for (const TaurPkg_t& pkg : localPkgs)
         pkgNames.push_back(pkg.name);
 
-    std::vector<TaurPkg_t> onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
+    const std::vector<TaurPkg_t>& onlinePkgs = this->fetch_pkgs(pkgNames, useGit);
 
     int updatedPkgs        = 0;
     int attemptedDownloads = 0;
@@ -475,10 +477,12 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
 
     for (size_t i = 0; i < onlinePkgs.size(); i++)
     {
-        TaurPkg_t& pkg                    = onlinePkgs[i];
-        auto       pkgIteratorInLocalPkgs = std::find_if(localPkgs.begin(), localPkgs.end(), [&pkg](const TaurPkg_t& element) { return element.name == pkg.name; });
-        size_t     pkgIndexInLocalPkgs = std::distance(localPkgs.begin(), pkgIteratorInLocalPkgs);
-        TaurPkg_t& localPkg            = localPkgs[pkgIndexInLocalPkgs];
+        const TaurPkg_t&  pkg                    = onlinePkgs[i];
+        const auto&       pkgIteratorInLocalPkgs = std::find_if(localPkgs.begin(), localPkgs.end(), 
+                                                          [&pkg](const TaurPkg_t& element) { return element.name == pkg.name; });
+
+        const size_t      pkgIndexInLocalPkgs    = std::distance(localPkgs.begin(), pkgIteratorInLocalPkgs);
+        const TaurPkg_t&  localPkg               = localPkgs[pkgIndexInLocalPkgs];
 
         if (hasEnding(pkg.name, "-git"))
         {
@@ -642,7 +646,7 @@ bool TaurBackend::update_all_aur_pkgs(path cacheDir, bool useGit)
         log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), pkgs_failed_to_build);
         // log_println(WARN, _("Some packages failed to download/upgrade, Please redo this command and log the
         // issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub."));
-        log_println(INFO, fg(color.cyan), _("Tip: try to run taur with \"-S {}\" (e.g \"taur -S {}\")"),
+        log_println(INFO, fg(color.cyan), _("Tip: try to run taur with \"-S {}\" (e.g \"taur -S {}\") and cleanbuild"),
                     pkgs_failed_to_build, pkgs_failed_to_build);
     }
 
@@ -739,30 +743,27 @@ std::vector<TaurPkg_t> TaurBackend::search_pac(std::string_view query)
 std::vector<TaurPkg_t> TaurBackend::search(std::string_view query, bool useGit, bool aurOnly, bool checkExactMatch)
 {
     if (query.empty())
-        return std::vector<TaurPkg_t>();
+        return {};
     // link to AUR API. Took search pattern from yay
-    cpr::Url url(("https://aur.archlinux.org/rpc?arg%5B%5D=" + cpr::util::urlEncode(query.data()) +
-                  "&by=" + config.getConfigValue("searchBy", "name-desc") + "&type=search&v=5"));
+    const cpr::Url& url = fmt::format("https://aur.archlinux.org/rpc?arg%5B%5D={}&by={}&type=search&v=5", cpr::util::urlEncode(query.data()), config.getConfigValue<std::string>("searchBy", "name-desc"));
     log_println(DEBUG, _("url search = {}"), url.str());
-    cpr::Response r = cpr::Get(url);
 
-    std::string_view raw_text_response = r.text;
+    std::string_view raw_text_response = cpr::Get(url).text;
 
     rapidjson::Document json_response;
     json_response.Parse(raw_text_response.data());
 
-    std::vector<TaurPkg_t> aurPkgs;
-    std::vector<TaurPkg_t> pacPkgs;
+    // clang-format off
+    const std::vector<TaurPkg_t>& aurPkgs = (json_response["resultcount"].GetInt() > 0) ? 
+                                            this->getPkgFromJson(json_response, useGit) : std::vector<TaurPkg_t>();
 
-    if (json_response["resultcount"].GetInt() > 0)
-        aurPkgs = this->getPkgFromJson(json_response, useGit);
+    const std::vector<TaurPkg_t>& pacPkgs = (!aurOnly) ? 
+                                            this->search_pac(query)                     : std::vector<TaurPkg_t>();
+
     if (std::string_view(json_response["type"].GetString(), json_response["type"].GetStringLength()) == "error")
         log_println(ERROR, "AUR Search error: {}", json_response["error"].GetString());
 
-    if (!aurOnly)
-        pacPkgs = this->search_pac(query);
-
-    size_t allPkgsSize = aurPkgs.size() + pacPkgs.size();
+    const size_t& allPkgsSize = aurPkgs.size() + pacPkgs.size();
 
     std::vector<TaurPkg_t> combined;
 

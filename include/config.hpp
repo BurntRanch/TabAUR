@@ -18,7 +18,7 @@
 using std::filesystem::path;
 
 // so we don't need to include util.hpp for getConfigValue()
-std::string expandVar(std::string& str);
+std::string expandVar(std::string str);
 
 struct _color_t
 {
@@ -66,19 +66,19 @@ public:
     // alpm transaction flags
     int flags;
 
-    Config(std::string_view configFile, std::string_view themeFile, std::string_view configDir);
+    Config(const std::string_view configFile, const std::string_view themeFile, const std::string_view configDir);
     ~Config();
 
     void initVars();
     void initColors();
 
-    void loadConfigFile(std::string_view filename);
-    void loadPacmanConfigFile(std::string filename);
-    void loadThemeFile(std::string_view filename);
+    void loadConfigFile(const std::string_view filename);
+    void loadPacmanConfigFile(const std::string_view filename);
+    void loadThemeFile(const std::string_view filename);
 
     // stupid c++ that wants template functions in header
     template <typename T>
-    T getConfigValue(const std::string& value, T fallback)
+    T getConfigValue(const std::string& value, T&& fallback)
     {
         std::optional<T> ret = this->tbl.at_path(value).value<T>();
         if constexpr (toml::is_string<T>)  // if we want to get a value that's a std::string
