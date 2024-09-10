@@ -80,10 +80,10 @@ struct Operation_t
 inline struct Operation_t      op;
 extern alpm_list_smart_deleter taur_targets;
 
-int  parsearg_op(int opt, int dryrun);
+int  parsearg_op(const int opt, const int dryrun);
 void invalid_opt();
-int  parsearg_global(int opt);
-int  parsearg_query(int opt);
-int  parsearg_sync(int opt);
-int  parsearg_remove(int opt);
+int  parsearg_global(const int opt);
+int  parsearg_query(const int opt);
+int  parsearg_sync(const int opt);
+int  parsearg_remove(const int opt);
 #endif

@@ -34,7 +34,7 @@ std::unique_ptr<Config>      config;
 std::unique_ptr<TaurBackend> backend;
 
 // this may be hard to read, but better than calling fmt::println multiple times
-void usage(int op)
+void usage(const int op)
 {
     if (op == OP_MAIN)
     {
@@ -91,7 +91,8 @@ void test_colors()
     std::string timestr      = std::ctime(&current_time);
     timestr.pop_back();
 
-    TaurPkg_t pkg = {
+    const TaurPkg_t pkg = 
+    {
         .name       = "TabAUR",
         .version    = VERSION,
         .desc       = "A customizable and lightweight AUR helper, designed to be simple but powerful.",
@@ -105,6 +106,7 @@ void test_colors()
 
     if (fmt::disable_colors)
         fmt::println("Colors are disabled");
+    
     log_println(DEBUG, _("Debug color: {}"), fmt::format(BOLD_COLOR(color.magenta), "(bold) magenta"));
     log_println(INFO, _("Info color: {}"), fmt::format(BOLD_COLOR(color.cyan), "(bold) cyan"));
     log_println(WARN, _("Warning color: {}"), fmt::format(BOLD_COLOR(color.yellow), "(bold) yellow"));
@@ -159,8 +161,8 @@ int installPkg(alpm_list_t* pkgNames)
     if (!pkgNames && !op.op_s_upgrade)
         return false;
 
-    bool useGit   = config->useGit;
-    path cacheDir = config->cacheDir;
+    const bool  useGit   = config->useGit;
+    const path& cacheDir = config->cacheDir;
 
     bool returnStatus = true;
     bool stat;
@@ -186,7 +188,7 @@ int installPkg(alpm_list_t* pkgNames)
     {
         for (size_t i = 0; i < pkgNamesVec.size(); i++)
         {
-            std::vector<TaurPkg_t> pkgs = backend->search(pkgNamesVec[i], useGit, config->aurOnly, false);
+            const std::vector<TaurPkg_t>& pkgs = backend->search(pkgNamesVec[i], useGit, config->aurOnly, false);
 
             if (pkgs.empty())
             {
@@ -209,7 +211,7 @@ int installPkg(alpm_list_t* pkgNames)
     // I swear there was a comment here..
     const std::vector<std::string_view>& AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
 
-    for (const auto& pkg : pkgNamesVec)
+    for (const std::string_view pkg : pkgNamesVec)
     {
         if (std::find(AURPkgs.begin(), AURPkgs.end(), pkg) == AURPkgs.end())
             pacmanPkgs.push_back(pkg.data());
@@ -221,9 +223,9 @@ int installPkg(alpm_list_t* pkgNames)
     if (!config->noconfirm && !AURPkgs.empty())
         pkgsToReview = askUserForList<std::string_view>(AURPkgs, PROMPT_LIST_REVIEWS);
 
-    for (auto& pkg_name : AURPkgs)
+    for (const std::string_view pkg_name : AURPkgs)
     {
-        const path& pkgDir = path(cacheDir) / pkg_name;
+        const path& pkgDir = cacheDir / pkg_name;
 
         stat = useGit ? backend->download_git(AUR_URL_GIT(pkg_name), pkgDir)
                       : backend->download_tar(AUR_URL_TAR(pkg_name), pkgDir);
@@ -237,7 +239,7 @@ int installPkg(alpm_list_t* pkgNames)
 
     for (const std::string_view pkg : pkgsToCleanBuild)
     {
-        const path& pkgDir = path(cacheDir) / pkg;
+        const path& pkgDir = cacheDir / pkg;
         if (!useGit)
         {
             log_println(INFO, _("Removing {}"), pkgDir.c_str());
@@ -255,7 +257,7 @@ int installPkg(alpm_list_t* pkgNames)
     // instead of creating another config variable
     for (const std::string_view pkg : pkgsToReview)
     {
-        const path& pkgDir = path(cacheDir) / pkg;
+        const path& pkgDir = cacheDir / pkg;
 
         std::vector<std::string> cmd;
         cmd.reserve(config->editor.size());
@@ -312,7 +314,7 @@ int installPkg(alpm_list_t* pkgNames)
 
         for (const TaurPkg_t& pkg : selectedPkgs)
         {
-            path pkgDir = path(cacheDir) / pkg.name;
+            path pkgDir = cacheDir / pkg.name;
 
             stat = backend->handle_aur_depends(pkg, cacheDir, backend->get_all_local_pkgs(true), useGit);
 
@@ -341,7 +343,7 @@ int installPkg(alpm_list_t* pkgNames)
     if (!pkgs_to_install.empty())
     {
         log_println(DEBUG, _("Installing {}"), fmt::join(pkgNamesVec, " "));
-        pkgs_to_install.erase(pkgs_to_install.length() - 1);
+        pkgs_to_install.pop_back();
         if (!pacman_exec("-U", split(pkgs_to_install, ' '), false))
         {
             log_println(ERROR, _("Failed to install {}"), fmt::join(pkgNamesVec, " "));
@@ -352,8 +354,8 @@ int installPkg(alpm_list_t* pkgNames)
     if (!pkgs_failed_to_build.empty())
     {
         pkgs_failed_to_build.erase(pkgs_failed_to_build.end() - 1);
-        log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), pkgs_failed_to_build);
-        log_println(INFO, fg(color.cyan), _("Tip: try to run taur with \"-S {}\" (e.g \"taur -S {}\")"),
+        log_println(WARN, fg(color.red),  _("Failed to upgrade: {}"), pkgs_failed_to_build);
+        log_println(INFO, fg(color.cyan), _("Tip: try to run taur with \"-S {}\" and cleanbuild every failed packages"),
                     pkgs_failed_to_build, pkgs_failed_to_build);
     }
     return returnStatus;
@@ -389,7 +391,7 @@ bool removePkg(alpm_list_t* pkgNames)
 
     alpm_list_smart_pointer ret(alpm_list_join(exactMatches, searchResults), alpm_list_free);
 
-    size_t ret_size = alpm_list_count(ret.get());
+    const size_t ret_size = alpm_list_count(ret.get());
 
     if (ret_size == 0)
     {
@@ -422,7 +424,7 @@ bool removePkg(alpm_list_t* pkgNames)
             if (pkg >= pkgs.end())
                 continue;
 
-            size_t pkgIndex = std::distance(pkgs.begin(), pkg);
+            const size_t pkgIndex = std::distance(pkgs.begin(), pkg);
 
             alpm_list_nth(ret.get(), pkgIndex);
 
@@ -445,7 +447,7 @@ bool removePkg(alpm_list_t* pkgNames)
     }
 
     // take control of the list and pass it to the smart pointer
-    alpm_list_smart_pointer finalList = make_list_smart_pointer(finalPackageListStart);
+    const alpm_list_smart_pointer& finalList = make_list_smart_pointer(finalPackageListStart);
 
     return backend->remove_pkgs(finalList);
 }
@@ -483,7 +485,9 @@ bool queryPkgs(alpm_list_t* pkgNames)
             pkgs_name.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t *>(result->data)));
             pkgs_ver.push_back(alpm_pkg_get_version(reinterpret_cast<alpm_pkg_t *>(result->data)));
         }
-    } else {
+    } 
+    else
+    {
         for (; pkgNames; pkgNames = pkgNames->next)
         {
             const char* strname = reinterpret_cast<const char *>(pkgNames->data);

@@ -51,20 +51,20 @@ public:
     TaurBackend(Config& cfg);
     // They are different because we found that fetching each AUR pkg is very time consuming, so we store the name and
     // look it up later.
-    std::vector<TaurPkg_t>   getPkgFromJson(rapidjson::Document& doc, bool useGit);
-    std::vector<TaurPkg_t>   search_pac(std::string_view query);
-    std::vector<TaurPkg_t>   search(std::string_view query, bool useGit, bool aurOnly, bool checkExactMatch = true);
+    std::vector<TaurPkg_t>   getPkgFromJson(const rapidjson::Document& doc, const bool useGit);
+    std::vector<TaurPkg_t>   search_pac(const std::string_view query);
+    std::vector<TaurPkg_t>   search(const std::string_view query, const bool useGit, const bool aurOnly, const bool checkExactMatch = true);
     bool                     download_tar(const std::string_view url, const path& out_path);
     bool                     download_git(const std::string_view url, const path& out_path);
     bool                     download_pkg(const std::string_view url, const path out_path);
-    std::optional<TaurPkg_t> fetch_pkg(std::string_view pkg, bool returnGit);
-    std::vector<TaurPkg_t>   fetch_pkgs(std::vector<std::string> const& pkgs, bool returnGit);
-    bool                     remove_pkgs(alpm_list_smart_pointer& pkgs);
-    bool                     remove_pkg(alpm_pkg_t* pkgs, bool ownTransaction = true);
-    bool                     handle_aur_depends(const TaurPkg_t& pkg, path& out_path, std::vector<TaurPkg_t> const& localPkgs, bool useGit);
-    bool                     build_pkg(std::string_view pkg_name, std::string_view extracted_path, bool alreadyprepared);
-    bool                     update_all_aur_pkgs(path& cacheDir, bool useGit);
-    std::vector<TaurPkg_t>   get_all_local_pkgs(bool aurOnly);
+    std::optional<TaurPkg_t> fetch_pkg(const std::string_view pkg, const bool returnGit);
+    std::vector<TaurPkg_t>   fetch_pkgs(std::vector<std::string> const& pkgs, const bool returnGit);
+    bool                     remove_pkgs(const alpm_list_smart_pointer& pkgs);
+    bool                     remove_pkg(alpm_pkg_t* pkgs, const bool ownTransaction = true);
+    bool                     handle_aur_depends(const TaurPkg_t& pkg, const path& out_path, std::vector<TaurPkg_t> const& localPkgs, const bool useGit);
+    bool                     build_pkg(const std::string_view pkg_name, const std::string_view extracted_path, const bool alreadyprepared);
+    bool                     update_all_aur_pkgs(const path& cacheDir, const bool useGit);
+    std::vector<TaurPkg_t>   get_all_local_pkgs(const bool aurOnly);
 };
 
 inline std::string built_pkg, pkgs_to_install, pkgs_failed_to_build;

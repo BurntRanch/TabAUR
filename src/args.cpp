@@ -30,7 +30,7 @@
 
 alpm_list_smart_deleter taur_targets(nullptr, free_list_and_internals);
 
-void invalid_opt(int used, std::string_view opt1, std::string_view opt2)
+void invalid_opt(const int used, const std::string_view opt1, const std::string_view opt2)
 {
     if (used)
         log_println(ERROR, _("invalid option: '{}' and '{}' may not be used together"), opt1, opt2);
@@ -41,7 +41,7 @@ void invalid_opt(int used, std::string_view opt1, std::string_view opt2)
  * @param dryrun If nonzero, application state is NOT changed
  * @return 0 if opt was handled, 1 if it was not handled
  */
-int parsearg_op(int opt, int dryrun)
+int parsearg_op(const int opt, const int dryrun)
 {
     switch (opt)
     {
@@ -93,7 +93,7 @@ int parsearg_op(int opt, int dryrun)
  * @param opt Keycode returned by getopt_long
  * @return 0 on success, 1 on unkown option, 2 on invalid argument
  */
-int parsearg_global(int opt)
+int parsearg_global(const int opt)
 {
     switch (opt)
     {
@@ -163,7 +163,7 @@ int parsearg_query(int opt)
     return 0;
 }
 
-int parsearg_sync(int opt)
+int parsearg_sync(const int opt)
 {
     switch (opt)
     {
@@ -192,7 +192,7 @@ int parsearg_sync(int opt)
     return 0;
 }
 
-int parsearg_remove(int opt)
+int parsearg_remove(const int opt)
 {
     switch (opt)
     {

@@ -122,14 +122,14 @@ static void optdeplist_display(alpm_pkg_t* pkg, unsigned short cols = getcols())
 }
 
 // https://stackoverflow.com/questions/874134/find-out-if-std::string-ends-with-another-std::string-in-c#874160
-bool hasEnding(std::string_view fullString, std::string_view ending)
+bool hasEnding(const std::string_view fullString, const std::string_view ending)
 {
     if (ending.length() > fullString.length())
         return false;
     return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
 }
 
-bool hasStart(std::string_view fullString, std::string_view start)
+bool hasStart(const std::string_view fullString, const std::string_view start)
 {
     if (start.length() > fullString.length())
         return false;
@@ -137,7 +137,7 @@ bool hasStart(std::string_view fullString, std::string_view start)
 }
 
 // clang-format off
-bool isInvalid(char c)
+bool isInvalid(const unsigned char c)
 { return !isprint(c); }
 
 void sanitizeStr(std::string& str)
@@ -166,7 +166,7 @@ bool is_package_from_syncdb(const char* name, alpm_list_t* syncdbs)
 }
 
 // soft means it won't return false (or even try) if the list is empty
-bool commitTransactionAndRelease(bool soft)
+bool commitTransactionAndRelease(const bool soft)
 {
     alpm_handle_t* handle = config->handle;
 
@@ -203,7 +203,7 @@ bool commitTransactionAndRelease(bool soft)
     bool prepareStatus = alpm_trans_prepare(handle, &data) == 0;
     if (!prepareStatus)
     {
-        alpm_errno_t err = alpm_errno(handle);
+        const alpm_errno_t err = alpm_errno(handle);
         log_println(ERROR, _("Failed to prepare transaction ({})."), alpm_strerror(err));
         /* TODO: we can use the errno and (data) to list off more precise information about the error. */
         alpm_pkg_t* pkg = nullptr;
@@ -212,7 +212,7 @@ bool commitTransactionAndRelease(bool soft)
             case ALPM_ERR_PKG_INVALID_ARCH:
                 for (alpm_list_t* i = data; i; i = i->next)
                 {
-                    std::string_view pkgName = (char*)(i->data);
+                    const std::string_view pkgName = (char*)(i->data);
                     log_println(ERROR, "This package ({}) is built on an invalid architecture.", pkgName);
                     free(i->data);
                 }
@@ -267,14 +267,16 @@ bool commitTransactionAndRelease(bool soft)
                     alpm_conflict_free(conflict);
                 }
                 break;
-            default: break;
+            
+            default:
+                break;
         }
     }
 
-    bool commitStatus = alpm_trans_commit(handle, &data) == 0;
+    const bool commitStatus = alpm_trans_commit(handle, &data) == 0;
     if (!commitStatus)
     {
-        alpm_errno_t err = alpm_errno(handle);
+        const alpm_errno_t err = alpm_errno(handle);
         log_println(ERROR, _("Failed to commit transaction ({})."), alpm_strerror(err));
         /* similarly. */
         switch (err)
@@ -306,7 +308,7 @@ bool commitTransactionAndRelease(bool soft)
             case ALPM_ERR_PKG_INVALID_SIG:
                 for (alpm_list_t* i = data; i; i = i->next)
                 {
-                    std::string_view name = (char*)i->data;
+                    const std::string_view name = reinterpret_cast<char *>(i->data);
                     log_println(ERROR, "Package {} is corrupt or invalid!", name);
                     free(i->data);
                 }
@@ -315,7 +317,7 @@ bool commitTransactionAndRelease(bool soft)
         }
     }
 
-    bool releaseStatus = alpm_trans_release(handle) == 0;
+    const bool releaseStatus = alpm_trans_release(handle) == 0;
     if (!releaseStatus)
         log_println(ERROR, _("Failed to release transaction ({})."), alpm_strerror(alpm_errno(handle)));
 
@@ -376,18 +378,18 @@ fmt::rgb hexStringToColor(std::string_view hexstr)
     int intValue;
     ss >> intValue;
 
-    int red   = (intValue >> 16) & 0xFF;
-    int green = (intValue >> 8) & 0xFF;
-    int blue  = intValue & 0xFF;
+    const int red   = (intValue >> 16) & 0xFF;
+    const int green = (intValue >> 8) & 0xFF;
+    const int blue  = intValue & 0xFF;
 
     return fmt::rgb(red, green, blue);
 }
 
 // http://stackoverflow.com/questions/478898/ddg#478960
-std::string shell_exec(std::string_view cmd)
+std::string shell_exec(const std::string_view cmd)
 {
-    std::array<char, 128>                    buffer;
-    std::string                              result;
+    std::array<char, 1024> buffer;
+    std::string            result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.data(), "r"), pclose);
 
     if (!pipe)
@@ -397,13 +399,13 @@ std::string shell_exec(std::string_view cmd)
         result += buffer.data();
 
     // why there is a '\n' at the end??
-    if (!result.empty() && result[result.length() - 1] == '\n')
-        result.erase(result.length() - 1);
+    if (!result.empty() && result.back() == '\n')
+        result.pop_back();
     return result;
 }
 
 // https://stackoverflow.com/questions/4654636/how-to-determine-if-a-std::string-is-a-number-with-c#4654718
-bool is_numerical(std::string_view s, bool allowSpace)
+bool is_numerical(const std::string_view s, const bool allowSpace)
 {
     if (allowSpace)
         return !s.empty() && std::find_if(s.begin(), s.end(),
@@ -413,7 +415,7 @@ bool is_numerical(std::string_view s, bool allowSpace)
                std::find_if(s.begin(), s.end(), [](unsigned char c) { return (!std::isdigit(c)); }) == s.end();
 }
 
-bool taur_read_exec(std::vector<const char*> cmd, std::string& output, bool exitOnFailure)
+bool taur_read_exec(std::vector<const char*> cmd, std::string& output, const bool exitOnFailure)
 {
     int pipeout[2];
 
@@ -479,11 +481,11 @@ bool taur_read_exec(std::vector<const char*> cmd, std::string& output, bool exit
  * @param exitOnFailure Whether to call exit(1) on command failure.
  * @return true if the command successed, else false
  */
-bool taur_exec(std::vector<std::string> cmd_str, bool exitOnFailure)
+bool taur_exec(const std::vector<std::string> cmd_str, const bool exitOnFailure)
 {
     std::vector<const char*> cmd;
-    for (std::string& str : cmd_str)
-        cmd.push_back(str.c_str());
+    for (const std::string_view str : cmd_str)
+        cmd.push_back(str.data());
 
     int pid = fork();
 
@@ -524,9 +526,9 @@ bool taur_exec(std::vector<std::string> cmd_str, bool exitOnFailure)
  * @param exitOnFailure Whether to call exit(1) on command failure.
  * @return true if the command successed, else false
  */
-bool makepkg_exec(std::vector<std::string> const& args, bool exitOnFailure)
+bool makepkg_exec(std::vector<std::string> const& args, const bool exitOnFailure)
 {
-    std::vector<std::string> cmd = { config->makepkgBin };
+    std::vector<std::string> cmd{ config->makepkgBin };
 
     if (config->noconfirm)
         cmd.push_back("--noconfirm");
@@ -551,7 +553,7 @@ bool makepkg_exec(std::vector<std::string> const& args, bool exitOnFailure)
  * @param root If pacman should be executed as root (Default true)
  * @return true if the command successed, else false
  */
-bool pacman_exec(std::string_view op, std::vector<std::string> const& args, bool exitOnFailure, bool root)
+bool pacman_exec(const std::string_view op, std::vector<std::string> const& args, const bool exitOnFailure, const bool root)
 {
     std::vector<std::string> cmd;
 
@@ -594,7 +596,7 @@ void free_list_and_internals(alpm_list_t* list)
  * @param db_name The database name
  * @return database's color in bold
  */
-fmt::text_style getColorFromDBName(std::string_view db_name)
+fmt::text_style getColorFromDBName(const std::string_view db_name)
 {
     switch (fnv1a16::hash(db_name))
     {
@@ -638,6 +640,7 @@ void printPkgInfo(const TaurPkg_t& pkg, const std::string_view db_name)
         fmt::println(BOLD_COLOR(color.installed), "[Installed]");
     else
         fmt::print("\n");
+
     fmt::println("    {}", pkg.desc);
 }
 
@@ -680,7 +683,7 @@ void getFileValue(u_short& iterIndex, const std::string& line, std::string& str,
 }
 
 // faster than `makepkg --packagelist`
-std::string makepkg_list(std::string_view pkg_name, std::string_view path)
+std::string makepkg_list(const std::string_view pkg_name, const std::string_view path)
 {
     std::ifstream pkgbuild_f(fmt::format("{}/PKGBUILD", path), std::ios::in);
 
@@ -794,7 +797,7 @@ bool util_db_search(alpm_db_t* db, alpm_list_t* needles, alpm_list_t** ret)
 
 std::vector<std::string> load_aur_list()
 {
-    path          file_path = config->cacheDir / "packages.aur";
+    const path&   file_path = config->cacheDir / "packages.aur";
     std::ifstream infile(file_path);
     if (!infile.good())
         die(_("Failed to open {}"), file_path.c_str());
@@ -808,9 +811,9 @@ std::vector<std::string> load_aur_list()
     return aur_list;
 }
 
-bool download_aur_cache(path file_path)
+bool download_aur_cache(const path& file_path)
 {
-    cpr::Response r = cpr::Get(cpr::Url{ AUR_URL "/packages.gz" });
+    const cpr::Response& r = cpr::Get(cpr::Url{ AUR_URL "/packages.gz" });
 
     if (r.status_code == 200)
     {
@@ -835,9 +838,9 @@ bool download_aur_cache(path file_path)
 // This function will automatically try again after downloading the file, if not already present.
 // Do not call this with true unless you do not want this behavior.
 // It is, by default, false.
-bool update_aur_cache(bool recursiveCall)
+bool update_aur_cache(const bool recursiveCall)
 {
-    path file_path = config->cacheDir / "packages.aur";
+    const path& file_path = config->cacheDir / "packages.aur";
 
     struct stat file_stat;
     if (stat(file_path.c_str(), &file_stat) != 0)
@@ -874,7 +877,7 @@ bool update_aur_cache(bool recursiveCall)
  * @param useGit Whether the fetched pkg should use a .git url
  * @return Optional TaurPkg_t, will not return if interrupted.
  */
-std::optional<std::vector<TaurPkg_t>> askUserForPkg(const std::vector<TaurPkg_t>& pkgs, TaurBackend& backend, bool useGit)
+std::optional<std::vector<TaurPkg_t>> askUserForPkg(const std::vector<TaurPkg_t>& pkgs, TaurBackend& backend, const bool useGit)
 {
     if (pkgs.size() == 1)
     {
@@ -991,7 +994,7 @@ std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view>& 
     return out;
 }
 
-std::string getTitleFromVotes(float votes)
+std::string getTitleFromVotes(const float votes)
 {
     if (votes < 2)
         return _("Untrustable");
@@ -1036,7 +1039,7 @@ std::string getHomeCacheDir()
  */
 std::string getHomeConfigDir()
 {
-    char* dir = getenv("XDG_CONFIG_HOME");
+    const char* dir = getenv("XDG_CONFIG_HOME");
     if (dir != NULL && dir[0] != '\0' && std::filesystem::exists(dir))
     {
         std::string str_dir(dir);
@@ -1044,7 +1047,7 @@ std::string getHomeConfigDir()
     }
     else
     {
-        char* home = getenv("HOME");
+        const char* home = getenv("HOME");
         if (home == nullptr)
             die(_("Failed to find $HOME, set it to your home directory!"));
 
@@ -1070,7 +1073,7 @@ std::string getConfigDir()
 std::string getCacheDir()
 { return getHomeCacheDir() + "/TabAUR"; }
 
-std::vector<std::string> split(std::string_view text, char delim)
+std::vector<std::string> split(const std::string_view text, const char delim)
 {
     std::string              line;
     std::vector<std::string> vec;

@@ -99,7 +99,7 @@ void Config::initVars()
         this->editor.push_back(str);
     }
 
-    char* no_color = getenv("NO_COLOR");
+    const char* no_color = getenv("NO_COLOR");
     if (no_color != NULL && no_color[0] != '\0')
     {
         fmt::disable_colors = true;
@@ -112,7 +112,7 @@ void Config::initVars()
  *  using the variables under the [pacman] table in "config.toml"
  *  @param the directory of the config file
  */
-void Config::loadConfigFile(std::string_view filename)
+void Config::loadConfigFile(const std::string_view filename)
 {
     try
     {
@@ -139,7 +139,7 @@ void Config::loadConfigFile(std::string_view filename)
 /** parse the theme file (aka "theme.toml")
  *  @param filename The directory of the theme file
  */
-void Config::loadThemeFile(std::string_view filename)
+void Config::loadThemeFile(const std::string_view filename)
 {
     try
     {
