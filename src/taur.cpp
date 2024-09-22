@@ -746,19 +746,19 @@ std::vector<TaurPkg_t> TaurBackend::search(const std::string_view query, const b
 
     // link to AUR API. Took search pattern from yay
     const cpr::Url& url = fmt::format("https://aur.archlinux.org/rpc?arg%5B%5D={}&by={}&type=search&v=5", cpr::util::urlEncode(query.data()), config.getConfigValue<std::string>("searchBy", "name-desc"));
-    log_println(DEBUG, _("url search = {}"), url.str());
+    log_println(DEBUG, "url search = {}", url.str());
 
-    const std::string_view raw_text_response = cpr::Get(url).text;
+    const cpr::Response r = cpr::Get(url);
+    const std::string_view raw_text_response = r.text;
 
     rapidjson::Document json_response;
     json_response.Parse(raw_text_response.data());
 
     // clang-format off
-    const std::vector<TaurPkg_t>& aurPkgs = (json_response["resultcount"].GetInt() > 0) ? 
+    const std::vector<TaurPkg_t>& aurPkgs = (json_response["resultcount"].GetInt64() > 0) ? 
                                             this->getPkgFromJson(json_response, useGit) : std::vector<TaurPkg_t>();
 
-    const std::vector<TaurPkg_t>& pacPkgs = (!aurOnly) ? 
-                                            this->search_pac(query)                     : std::vector<TaurPkg_t>();
+    const std::vector<TaurPkg_t>& pacPkgs = (!aurOnly) ? this->search_pac(query)        : std::vector<TaurPkg_t>();
 
     if (std::string_view(json_response["type"].GetString(), json_response["type"].GetStringLength()) == "error")
         log_println(ERROR, "AUR Search error: {}", json_response["error"].GetString());
