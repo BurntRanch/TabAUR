@@ -15,7 +15,7 @@ bool TaurBackend::download_git(const std::string_view url, const path& out_path)
 {
     if (std::filesystem::exists(path(out_path) / ".git"))
     {
-        return taur_exec({ config.git.c_str(), "-C", out_path, "pull", "--autostash", "--rebase", "--ff-only", "--force" });
+        return taur_exec({ config.git.c_str(), "-C", out_path, "pull", "--autostash", "--rebase", "--force" });
     }
     else
     {
