@@ -1,7 +1,8 @@
 [![tabaur](https://img.shields.io/aur/version/tabaur?color=1793d1&label=tabaur&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/tabaur/)
 [![tabaur](https://img.shields.io/aur/version/tabaur-git?color=1793d1&label=tabaur-git&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/tabaur-git/)
 [![tabaur](https://img.shields.io/aur/version/tabaur-bin?color=1793d1&label=tabaur-bin&logo=arch-linux&style=for-the-badge)](https://aur.archlinux.org/packages/tabaur-bin/)
-[![customize](https://img.shields.io/badge/customize-your_colors-blue?color=5544ff&style=for-the-badge)](https://github.com/BurntRanch/TabAUR/tree/main/predefined-themes)\
+[![customize](https://img.shields.io/badge/customize-your_colors-blue?color=5544ff&style=for-the-badge)](https://github.com/BurntRanch/TabAUR/tree/main/predefined-themes)[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FBurntRanch%2FTabAUR.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FBurntRanch%2FTabAUR?ref=badge_shield)
+\
 [![forthebadge](https://forthebadge.com/images/badges/works-on-my-machine.svg)](https://forthebadge.com)
 
 An AUR Helper with support for downloading AUR packages with either tarballs or git.\
@@ -61,3 +62,7 @@ If you want to make a PR that fixes/adds functionality, even fix some comments t
 ## TODO
 
 - Complete translations for ar_SA and (up to toni) it_IT
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FBurntRanch%2FTabAUR.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FBurntRanch%2FTabAUR?ref=badge_large)
