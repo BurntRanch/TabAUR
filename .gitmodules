@@ -1,4 +1,12 @@
-[submodule "cpr"]
-	path = cpr
-	url = https://github.com/libcpr/cpr.git
-	ignore = dirty
+[submodule "fmt"]
+	path = fmt
+	url = https://github.com/fmtlib/fmt
+[submodule "external/cpr"]
+	path = external/cpr
+	url = https://github.com/libcpr/cpr
+[submodule "external/fmt"]
+	path = external/fmt
+	url = https://github.com/fmtlib/fmt
+[submodule "external/toml++"]
+	path = external/toml++
+	url = https://github.com/marzer/tomlplusplus
