@@ -16,10 +16,11 @@ bool TaurBackend::download_git(const std::string_view url, const path& out_path)
 {
     if (std::filesystem::exists(path(out_path) / ".git"))
     {
-        if (!taur_exec({ config.git.c_str(), "-C", out_path, "pull", "--rebase", "--autostash", "--force" })) {
+        if (!taur_exec({ config.git.c_str(), "-C", out_path, "pull", "--rebase", "--autostash", "--force" }))
+        {
             // reset and run again
-            return  taur_exec({ config.git.c_str(), "-C", out_path, "reset", "--hard", "HEAD" }) &&
-                    download_git(url, out_path);
+            return taur_exec({ config.git.c_str(), "-C", out_path, "reset", "--hard", "HEAD" }) &&
+                   download_git(url, out_path);
         }
         return true;
     }
@@ -34,7 +35,7 @@ bool TaurBackend::download_git(const std::string_view url, const path& out_path)
 bool TaurBackend::download_tar(const std::string_view url, const path& out_path)
 {
     const std::string& out_path_str = out_path.string();
-    std::ofstream out(out_path_str.substr(0, out_path_str.length() - "tar.gz"_len));
+    std::ofstream      out(out_path_str.substr(0, out_path_str.length() - "tar.gz"_len));
     if (!out.is_open())
         return false;
 
@@ -74,7 +75,7 @@ static std::string getUrl(const rapidjson::Value& pkgJson, const bool returnGit 
     if (returnGit)
         return fmt::format("https://aur.archlinux.org/{}.git", pkgJson["Name"].GetString());
 
-    // URLPath starts with a / 
+    // URLPath starts with a /
     return fmt::format("https://aur.archlinux.org{}", pkgJson["URLPath"].GetString());
 }
 
@@ -146,8 +147,8 @@ static TaurPkg_t parsePkg(const rapidjson::Value& pkgJson, const bool returnGit 
 
 std::optional<TaurPkg_t> TaurBackend::fetch_pkg(const std::string_view pkg, const bool returnGit)
 {
-    const std::string& urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg.data());
-    const cpr::Response& resp = cpr::Get(cpr::Url(urlStr));
+    const std::string&   urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg.data());
+    const cpr::Response& resp   = cpr::Get(cpr::Url(urlStr));
 
     if (resp.status_code != 200)
         return {};
@@ -166,7 +167,7 @@ std::vector<TaurPkg_t> TaurBackend::fetch_pkgs(std::vector<std::string> const& p
     if (pkgs.empty())
         return {};
 
-    std::string urlStr{"https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=" + pkgs[0]};
+    std::string urlStr{ "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=" + pkgs[0] };
     urlStr.reserve(pkgs.size());
 
     for (size_t i = 1; i < pkgs.size(); ++i)
@@ -191,11 +192,11 @@ std::vector<TaurPkg_t> TaurBackend::fetch_pkgs(std::vector<std::string> const& p
 }
 
 /** Removes a single packages using libalpm.
-  * @param pkgs an alpm package to remove.
-  * @param ownTransaction a bool that dictates whether this function owns the transaction, this is used for remove_pkgs,
-  * if not, it will not initialize it and not release it.
-  * @return success.
-*/
+ * @param pkgs an alpm package to remove.
+ * @param ownTransaction a bool that dictates whether this function owns the transaction, this is used for remove_pkgs,
+ * if not, it will not initialize it and not release it.
+ * @return success.
+ */
 bool TaurBackend::remove_pkg(alpm_pkg_t* pkg, const bool ownTransaction)
 {
     if (!pkg)
@@ -222,9 +223,9 @@ bool TaurBackend::remove_pkg(alpm_pkg_t* pkg, const bool ownTransaction)
 }
 
 /** Removes a list of packages using libalpm.
-  * Will automatically call remove_pkg instead, if the size of pkgs is equal to 1.
-  * @param pkgs alpm list of alpm_pkg_t pointers to remove.
-  * @return success.
+ * Will automatically call remove_pkg instead, if the size of pkgs is equal to 1.
+ * @param pkgs alpm list of alpm_pkg_t pointers to remove.
+ * @return success.
  */
 bool TaurBackend::remove_pkgs(const alpm_list_smart_pointer& pkgs)
 {
@@ -270,7 +271,8 @@ bool TaurBackend::remove_pkgs(const alpm_list_smart_pointer& pkgs)
     return true;
 }
 
-bool TaurBackend::build_pkg(const std::string_view pkg_name, const std::string_view extracted_path, const bool alreadyprepared)
+bool TaurBackend::build_pkg(const std::string_view pkg_name, const std::string_view extracted_path,
+                            const bool alreadyprepared)
 {
     std::filesystem::current_path(extracted_path);
 
@@ -302,7 +304,8 @@ bool TaurBackend::build_pkg(const std::string_view pkg_name, const std::string_v
 }
 
 // I don't know but I feel this is shitty, atleast it works great
-bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, const path& out_path, std::vector<TaurPkg_t> const& localPkgs, const bool useGit)
+bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, const path& out_path,
+                                     std::vector<TaurPkg_t> const& localPkgs, const bool useGit)
 {
     log_println(DEBUG, "pkg.name = {}", pkg.name);
     log_println(DEBUG, "pkg.totaldepends = {}", pkg.totaldepends);
@@ -458,7 +461,7 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
         return true;
     }
 
-    std::string line;
+    std::string              line;
     std::vector<std::string> pkgNames;
     pkgNames.reserve(localPkgs.size());
 
@@ -481,16 +484,16 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
 
     for (size_t i = 0; i < onlinePkgs.size(); ++i)
     {
-        const TaurPkg_t&  pkg                    = onlinePkgs[i];
-        const auto&       pkgIteratorInLocalPkgs = std::find_if(localPkgs.begin(), localPkgs.end(), 
-                                                          [&pkg](const TaurPkg_t& element) { return element.name == pkg.name; });
+        const TaurPkg_t& pkg                    = onlinePkgs[i];
+        const auto&      pkgIteratorInLocalPkgs = std::find_if(
+            localPkgs.begin(), localPkgs.end(), [&pkg](const TaurPkg_t& element) { return element.name == pkg.name; });
 
-        const size_t      pkgIndexInLocalPkgs    = std::distance(localPkgs.begin(), pkgIteratorInLocalPkgs);
-        const TaurPkg_t&  localPkg               = localPkgs[pkgIndexInLocalPkgs];
+        const size_t     pkgIndexInLocalPkgs = std::distance(localPkgs.begin(), pkgIteratorInLocalPkgs);
+        const TaurPkg_t& localPkg            = localPkgs[pkgIndexInLocalPkgs];
 
         if (hasEnding(pkg.name, "-git"))
         {
-            potentialUpgradeTargets.push_back({pkg, localPkg});
+            potentialUpgradeTargets.push_back({ pkg, localPkg });
             log_println(INFO, "- {} (from {} to {}, (dev package, may change despite AUR version))", localPkg.name,
                         localPkg.version, pkg.version);
             continue;
@@ -498,7 +501,7 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
 
         if ((localPkg.version != pkg.version) && alpm_pkg_vercmp(pkg.version.c_str(), localPkg.version.c_str()) == 1)
         {
-            potentialUpgradeTargets.push_back({pkg, localPkg});
+            potentialUpgradeTargets.push_back({ pkg, localPkg });
             log_println(INFO, "- {} (from {} to {})", localPkg.name, localPkg.version, pkg.version);
             continue;
         }
@@ -562,13 +565,12 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
             std::filesystem::current_path(pkgDir);
             if (makepkg_exec({ "--verifysource", "-fA" }))
                 taur_exec({ config.git.c_str(), "-C", pkgDir, "reset", "--hard", "HEAD" }) &&
-
-            makepkg_exec({ "--nobuild", "-dfA" });
+                    makepkg_exec({ "--nobuild", "-dfA" });
         }
 
-        u_short iter_index = 0;
+        u_short       iter_index = 0;
         std::ifstream pkgbuild(pkgDir.string() + "/PKGBUILD", std::ios::in);
-        std::string versionInfo, pkgrel, epoch;
+        std::string   versionInfo, pkgrel, epoch;
         while (std::getline(pkgbuild, line) && iter_index < 3)
         {
             if (hasStart(line, "pkgver="))
@@ -652,7 +654,8 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
         log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), fmt::join(pkgs_failed_to_build, " "));
         // log_println(WARN, _("Some packages failed to download/upgrade, Please redo this command and log the
         // issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub."));
-        log_println(INFO, fg(color.cyan), _("Tip: try to run \"taur -S {}\" and cleanbuild"), fmt::join(pkgs_failed_to_build, " "));
+        log_println(INFO, fg(color.cyan), _("Tip: try to run \"taur -S {}\" and cleanbuild"),
+                    fmt::join(pkgs_failed_to_build, " "));
     }
 
     return true;
@@ -664,9 +667,9 @@ std::vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(const bool aurOnly)
 {
     std::vector<alpm_pkg_t*> pkgs;
 
-    alpm_list_t *syncdbs = config.repos;
+    alpm_list_t* syncdbs = config.repos;
 
-    for (alpm_list_t *pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = pkg->next)
+    for (alpm_list_t* pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = pkg->next)
         pkgs.push_back(reinterpret_cast<alpm_pkg_t*>(pkg->data));
 
     if (aurOnly)
@@ -718,7 +721,8 @@ std::vector<TaurPkg_t> TaurBackend::search_pac(const std::string_view query)
             {
                 alpm_list_t* packages_get = packages.get();
                 (void)packages.release();
-                packages = make_list_smart_pointer(alpm_list_add(packages_get, reinterpret_cast<alpm_pkg_t*>(retClone->data)));
+                packages =
+                    make_list_smart_pointer(alpm_list_add(packages_get, reinterpret_cast<alpm_pkg_t*>(retClone->data)));
             }
         }
     }
@@ -743,16 +747,19 @@ std::vector<TaurPkg_t> TaurBackend::search_pac(const std::string_view query)
 
 // Returns an optional that is empty if an error occurs
 // status will be set to -1 in the case of an error as well.
-std::vector<TaurPkg_t> TaurBackend::search(const std::string_view query, const bool useGit, const bool aurOnly, const bool checkExactMatch)
+std::vector<TaurPkg_t> TaurBackend::search(const std::string_view query, const bool useGit, const bool aurOnly,
+                                           const bool checkExactMatch)
 {
     if (query.empty())
         return {};
 
     // link to AUR API. Took search pattern from yay
-    const cpr::Url& url = fmt::format("https://aur.archlinux.org/rpc?arg%5B%5D={}&by={}&type=search&v=5", cpr::util::urlEncode(query.data()), config.getConfigValue<std::string>("searchBy", "name-desc"));
+    const cpr::Url& url =
+        fmt::format("https://aur.archlinux.org/rpc?arg%5B%5D={}&by={}&type=search&v=5",
+                    cpr::util::urlEncode(query.data()), config.getConfigValue<std::string>("searchBy", "name-desc"));
     log_println(DEBUG, "url search = {}", url.str());
 
-    const cpr::Response r = cpr::Get(url);
+    const cpr::Response    r                 = cpr::Get(url);
     const std::string_view raw_text_response = r.text;
 
     rapidjson::Document json_response;

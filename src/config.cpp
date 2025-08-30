@@ -75,7 +75,8 @@ Config::Config(const std::string_view configFile, const std::string_view themeFi
  */
 void Config::initVars()
 {
-    this->cacheDir      = path(this->getConfigValue<std::string>("general.cacheDir", std::string(getHomeCacheDir()) + "/TabAUR"));
+    this->cacheDir =
+        path(this->getConfigValue<std::string>("general.cacheDir", std::string(getHomeCacheDir()) + "/TabAUR"));
     this->pmConfig      = this->getConfigValue<std::string>("pacman.ConfigFile", "/etc/pacman.conf");
     this->makepkgConf   = this->getConfigValue<std::string>("pacman.MakepkgConf", "/etc/makepkg.conf");
     this->makepkgBin    = this->getConfigValue<std::string>("bins.makepkg", "makepkg");

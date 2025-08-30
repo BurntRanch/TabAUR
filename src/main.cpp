@@ -88,11 +88,10 @@ void usage(const int op)
 void test_colors()
 {
     const std::time_t& current_time = std::time(nullptr);
-    std::string timestr      = std::ctime(&current_time);
+    std::string        timestr      = std::ctime(&current_time);
     timestr.pop_back();
 
-    const TaurPkg_t pkg = 
-    {
+    const TaurPkg_t pkg = {
         .name       = "TabAUR",
         .version    = VERSION,
         .desc       = "A customizable and lightweight AUR helper, designed to be simple but powerful.",
@@ -106,7 +105,7 @@ void test_colors()
 
     if (fmt::disable_colors)
         fmt::println("Colors are disabled");
-    
+
     log_println(DEBUG, _("Debug color: {}"), fmt::format(BOLD_COLOR(color.magenta), "(bold) magenta"));
     log_println(INFO, _("Info color: {}"), fmt::format(BOLD_COLOR(color.cyan), "(bold) cyan"));
     log_println(WARN, _("Warning color: {}"), fmt::format(BOLD_COLOR(color.yellow), "(bold) yellow"));
@@ -173,7 +172,7 @@ int installPkg(alpm_list_t* pkgNames)
 
     // move them into a vector for askUserForList
     for (; pkgNames; pkgNames = pkgNames->next)
-        pkgNamesVec.push_back(reinterpret_cast<const char *>(pkgNames->data));
+        pkgNamesVec.push_back(reinterpret_cast<const char*>(pkgNames->data));
 
     if (pkgNamesVec.empty())
     {
@@ -209,7 +208,8 @@ int installPkg(alpm_list_t* pkgNames)
         log_println(ERROR, _("Failed to get information about {}"), (config->cacheDir / "packages.aur").string());
 
     // I swear there was a comment here..
-    const std::vector<std::string_view>& AURPkgs = filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
+    const std::vector<std::string_view>& AURPkgs =
+        filterAURPkgsNames(pkgNamesVec, alpm_get_syncdbs(config->handle), true);
 
     for (const std::string_view pkg : pkgNamesVec)
     {
@@ -354,7 +354,7 @@ int installPkg(alpm_list_t* pkgNames)
     if (!pkgs_failed_to_build.empty())
     {
         pkgs_failed_to_build.erase(pkgs_failed_to_build.end() - 1);
-        log_println(WARN, fg(color.red),  _("Failed to upgrade: {}"), pkgs_failed_to_build);
+        log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), pkgs_failed_to_build);
         log_println(INFO, fg(color.cyan), _("Tip: try to run taur with \"-S {}\" and cleanbuild every failed packages"),
                     pkgs_failed_to_build, pkgs_failed_to_build);
     }
@@ -373,7 +373,7 @@ bool removePkg(alpm_list_t* pkgNames)
 
     for (alpm_list_t* i = pkgNames; i; i = i->next)
     {
-        alpm_pkg_t* result = alpm_db_get_pkg(localdb, reinterpret_cast<const char *>(i->data));
+        alpm_pkg_t* result = alpm_db_get_pkg(localdb, reinterpret_cast<const char*>(i->data));
         if (result != NULL)
             exactMatches = alpm_list_add(exactMatches, result);
         else
@@ -400,7 +400,7 @@ bool removePkg(alpm_list_t* pkgNames)
     }
     else if (ret_size == 1)
     {
-        return backend->remove_pkg(reinterpret_cast<alpm_pkg_t *>(ret->data));
+        return backend->remove_pkg(reinterpret_cast<alpm_pkg_t*>(ret->data));
     }
 
     std::vector<std::string_view> pkgs;
@@ -409,9 +409,10 @@ bool removePkg(alpm_list_t* pkgNames)
     // fmt::println("Choose packages to remove, (Seperate by spaces, type * to remove all):");
 
     for (size_t i = 0; i < ret_size; i++)
-        pkgs.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t *>(alpm_list_nth(ret.get(), i)->data)));
+        pkgs.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t*>(alpm_list_nth(ret.get(), i)->data)));
 
-    const std::vector<std::string_view>& includedPkgs = askUserForList<std::string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
+    const std::vector<std::string_view>& includedPkgs =
+        askUserForList<std::string_view>(pkgs, PROMPT_LIST_REMOVE_PKGS, true);
 
     alpm_list_t* finalPackageList      = nullptr;
     alpm_list_t* finalPackageListStart = nullptr;
@@ -460,9 +461,9 @@ bool queryPkgs(alpm_list_t* pkgNames)
     // we seperate pkgs that needs to be searched, like they'll include a description, to the ones that we just wanna
     // query out pkgs will be used for -Qs, for then using it on printPkgInfo() pkgs_name and pkgs_ver will be used for
     // bare operations (only -Q)
-    std::vector<const char *> pkgs_name, pkgs_ver;
-    std::vector<alpm_pkg_t *> pkgs;
-    alpm_db_t*                localdb = alpm_get_localdb(config->handle);
+    std::vector<const char*> pkgs_name, pkgs_ver;
+    std::vector<alpm_pkg_t*> pkgs;
+    alpm_db_t*               localdb = alpm_get_localdb(config->handle);
 
     // just -Q, no options other than --quiet and global ones
     if (!pkgNames)
@@ -470,9 +471,9 @@ bool queryPkgs(alpm_list_t* pkgNames)
         alpm_list_t* pkg;
         for (pkg = alpm_db_get_pkgcache(localdb); pkg; pkg = alpm_list_next(pkg))
         {
-            pkgs.push_back(reinterpret_cast<alpm_pkg_t *>(pkg->data));
-            pkgs_name.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t *>(pkg->data)));
-            pkgs_ver.push_back(alpm_pkg_get_version(reinterpret_cast<alpm_pkg_t *>(pkg->data)));
+            pkgs.push_back(reinterpret_cast<alpm_pkg_t*>(pkg->data));
+            pkgs_name.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t*>(pkg->data)));
+            pkgs_ver.push_back(alpm_pkg_get_version(reinterpret_cast<alpm_pkg_t*>(pkg->data)));
         }
     }
     else if (op.op_q_search)
@@ -482,16 +483,16 @@ bool queryPkgs(alpm_list_t* pkgNames)
 
         for (; result; result = result->next)
         {
-            pkgs.push_back(reinterpret_cast<alpm_pkg_t *>(result->data));
-            pkgs_name.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t *>(result->data)));
-            pkgs_ver.push_back(alpm_pkg_get_version(reinterpret_cast<alpm_pkg_t *>(result->data)));
+            pkgs.push_back(reinterpret_cast<alpm_pkg_t*>(result->data));
+            pkgs_name.push_back(alpm_pkg_get_name(reinterpret_cast<alpm_pkg_t*>(result->data)));
+            pkgs_ver.push_back(alpm_pkg_get_version(reinterpret_cast<alpm_pkg_t*>(result->data)));
         }
-    } 
+    }
     else
     {
         for (; pkgNames; pkgNames = pkgNames->next)
         {
-            const char* strname = reinterpret_cast<const char *>(pkgNames->data);
+            const char* strname = reinterpret_cast<const char*>(pkgNames->data);
             alpm_pkg_t* pkg     = alpm_db_get_pkg(localdb, strname);
 
             if (pkg == nullptr)
@@ -541,10 +542,13 @@ bool queryPkgs(alpm_list_t* pkgNames)
             if (!pkgs_name[i])
                 continue;
 
-            if (!op.op_q_info) {
+            if (!op.op_q_info)
+            {
                 fmt::print(BOLD, "{} ", pkgs_name[i]);
                 fmt::println(BOLD_COLOR(color.green), "{}", pkgs_ver[i]);
-            } else {
+            }
+            else
+            {
                 printLocalFullPkgInfo(pkgs[i]);
             }
         }
@@ -567,20 +571,20 @@ bool upgradePkgs(alpm_list_t* pkgNames)
     for (; pkgNames; pkgNames = pkgNames->next)
     {
         alpm_pkg_t* pkg;
-        alpm_pkg_load(config->handle, reinterpret_cast<const char *>(pkgNames->data), 1,
+        alpm_pkg_load(config->handle, reinterpret_cast<const char*>(pkgNames->data), 1,
                       alpm_option_get_local_file_siglevel(config->handle), &pkg);
 
         if (!pkg)
         {
-            log_println(ERROR, _("Failed to load package {}! ({})"), reinterpret_cast<const char *>(pkgNames->data),
+            log_println(ERROR, _("Failed to load package {}! ({})"), reinterpret_cast<const char*>(pkgNames->data),
                         alpm_strerror(alpm_errno(config->handle)));
             return false;  // Yes, I am ignoring the transaction we just created.
         }
 
         if (alpm_add_pkg(config->handle, pkg))
         {
-            log_println(ERROR, _("Failed to add package {} to transaction! ({})"), reinterpret_cast<const char *>(pkgNames->data),
-                        alpm_strerror(alpm_errno(config->handle)));
+            log_println(ERROR, _("Failed to add package {} to transaction! ({})"),
+                        reinterpret_cast<const char*>(pkgNames->data), alpm_strerror(alpm_errno(config->handle)));
             return false;
         }
     }
@@ -795,8 +799,8 @@ int main(int argc, char* argv[])
     localize();
 
     const std::string& configDir = getConfigDir();
-    std::string configfile {configDir + "/config.toml"};
-    std::string themefile  {configDir + "/theme.toml"};
+    std::string        configfile{ configDir + "/config.toml" };
+    std::string        themefile{ configDir + "/theme.toml" };
     parse_config_path(argc, argv, configfile, themefile);
 
     config = std::make_unique<Config>(configfile, themefile, configDir);

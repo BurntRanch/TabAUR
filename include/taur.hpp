@@ -53,7 +53,8 @@ public:
     // look it up later.
     std::vector<TaurPkg_t>   getPkgFromJson(const rapidjson::Document& doc, const bool useGit);
     std::vector<TaurPkg_t>   search_pac(const std::string_view query);
-    std::vector<TaurPkg_t>   search(const std::string_view query, const bool useGit, const bool aurOnly, const bool checkExactMatch = true);
+    std::vector<TaurPkg_t>   search(const std::string_view query, const bool useGit, const bool aurOnly,
+                                    const bool checkExactMatch = true);
     bool                     download_tar(const std::string_view url, const path& out_path);
     bool                     download_git(const std::string_view url, const path& out_path);
     bool                     download_pkg(const std::string_view url, const path out_path);
@@ -61,13 +62,14 @@ public:
     std::vector<TaurPkg_t>   fetch_pkgs(std::vector<std::string> const& pkgs, const bool returnGit);
     bool                     remove_pkgs(const alpm_list_smart_pointer& pkgs);
     bool                     remove_pkg(alpm_pkg_t* pkgs, const bool ownTransaction = true);
-    bool                     handle_aur_depends(const TaurPkg_t& pkg, const path& out_path, std::vector<TaurPkg_t> const& localPkgs, const bool useGit);
-    bool                     build_pkg(const std::string_view pkg_name, const std::string_view extracted_path, const bool alreadyprepared);
-    bool                     update_all_aur_pkgs(const path& cacheDir, const bool useGit);
-    std::vector<TaurPkg_t>   get_all_local_pkgs(const bool aurOnly);
+    bool handle_aur_depends(const TaurPkg_t& pkg, const path& out_path, std::vector<TaurPkg_t> const& localPkgs,
+                            const bool useGit);
+    bool build_pkg(const std::string_view pkg_name, const std::string_view extracted_path, const bool alreadyprepared);
+    bool update_all_aur_pkgs(const path& cacheDir, const bool useGit);
+    std::vector<TaurPkg_t> get_all_local_pkgs(const bool aurOnly);
 };
 
-inline std::string built_pkg, pkgs_to_install;
+inline std::string              built_pkg, pkgs_to_install;
 inline std::vector<std::string> pkgs_failed_to_build;
 
 #endif

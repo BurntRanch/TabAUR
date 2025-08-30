@@ -3,8 +3,8 @@
 BasedOnStyle: Google
 
 # Align assignments and similar statements
-AlignConsecutiveAssignments: true
-AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveDeclarations: Consecutive
 
 # Align the * in declarations
 DerivePointerAlignment: false
@@ -19,9 +19,11 @@ TabWidth: 4
 UseTab: Never
 
 # Bracing styles
+BreakBeforeBraces: Custom
 BraceWrapping:
+  AfterCaseLabel: true
   AfterClass: true
-  AfterControlStatement: true
+  AfterControlStatement: Always
   AfterEnum: true
   AfterFunction: true
   AfterNamespace: true
@@ -30,6 +32,7 @@ BraceWrapping:
   BeforeCatch: true
   BeforeElse: true
   IndentBraces: false
+  SplitEmptyFunction: false
 
 # Control spaces around various constructs
 #SpacesInParens: Custom
@@ -44,6 +47,10 @@ SpaceAfterCStyleCast: false
 SpaceBeforeAssignmentOperators: true
 SpaceInEmptyParentheses: false
 SpacesInSquareBrackets: false
+IndentAccessModifiers: false
+AccessModifierOffset: -4
+IndentCaseBlocks: false
+IndentCaseLabels: true
 
 # Control formatting of C++11 features
 Cpp11BracedListStyle: false
@@ -55,11 +62,9 @@ NamespaceIndentation: None
 ReflowComments: true
 
 # Additional settings to match Source SDK 2013 style
-AllowShortIfStatementsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: All
-BreakBeforeBraces: Allman
-IndentCaseLabels: true
 
 AlignConsecutiveShortCaseStatements:
   Enabled: true

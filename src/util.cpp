@@ -18,12 +18,13 @@
  */
 
 #include <alpm.h>
+
 #include <algorithm>
 #pragma GCC diagnostic ignored "-Wignored-attributes"
 
 #include "config.hpp"
-#include "switch_fnv1a.hpp"
 #include "pacman.hpp"
+#include "switch_fnv1a.hpp"
 #include "taur.hpp"
 #include "util.hpp"
 
@@ -267,9 +268,8 @@ bool commitTransactionAndRelease(const bool soft)
                     alpm_conflict_free(conflict);
                 }
                 break;
-            
-            default:
-                break;
+
+            default: break;
         }
     }
 
@@ -308,7 +308,7 @@ bool commitTransactionAndRelease(const bool soft)
             case ALPM_ERR_PKG_INVALID_SIG:
                 for (alpm_list_t* i = data; i; i = i->next)
                 {
-                    const std::string_view name = reinterpret_cast<char *>(i->data);
+                    const std::string_view name = reinterpret_cast<char*>(i->data);
                     log_println(ERROR, "Package {} is corrupt or invalid!", name);
                     free(i->data);
                 }
@@ -388,8 +388,8 @@ fmt::rgb hexStringToColor(std::string_view hexstr)
 // http://stackoverflow.com/questions/478898/ddg#478960
 std::string shell_exec(const std::string_view cmd)
 {
-    std::array<char, 1024> buffer;
-    std::string            result;
+    std::array<char, 1024>                   buffer;
+    std::string                              result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.data(), "r"), pclose);
 
     if (!pipe)
@@ -553,7 +553,8 @@ bool makepkg_exec(std::vector<std::string> const& args, const bool exitOnFailure
  * @param root If pacman should be executed as root (Default true)
  * @return true if the command successed, else false
  */
-bool pacman_exec(const std::string_view op, std::vector<std::string> const& args, const bool exitOnFailure, const bool root)
+bool pacman_exec(const std::string_view op, std::vector<std::string> const& args, const bool exitOnFailure,
+                 const bool root)
 {
     std::vector<std::string> cmd;
 
@@ -732,7 +733,7 @@ std::string makepkg_list(const std::string_view pkg_name, const std::string_view
         shell_exec("grep 'PKGEXT=' " + config->makepkgConf + " | cut -d= -f2 | sed -e \"s/'//g\" -e 's/\"//g'");*/
 
     std::ifstream makepkgConf(config->makepkgConf, std::ios::in);
-    std::string arch, pkgext;
+    std::string   arch, pkgext;
     iterIndex = 0;
 
     while (std::getline(makepkgConf, line) && iterIndex < 2)
@@ -877,7 +878,8 @@ bool update_aur_cache(const bool recursiveCall)
  * @param useGit Whether the fetched pkg should use a .git url
  * @return Optional TaurPkg_t, will not return if interrupted.
  */
-std::optional<std::vector<TaurPkg_t>> askUserForPkg(const std::vector<TaurPkg_t>& pkgs, TaurBackend& backend, const bool useGit)
+std::optional<std::vector<TaurPkg_t>> askUserForPkg(const std::vector<TaurPkg_t>& pkgs, TaurBackend& backend,
+                                                    const bool useGit)
 {
     if (pkgs.size() == 1)
     {
@@ -971,7 +973,8 @@ std::vector<alpm_pkg_t*> filterAURPkgs(std::vector<alpm_pkg_t*>& pkgs, alpm_list
  * @param inverse a bool that, if true, will return only AUR packages instead of the other way around.
  * @return an optional unique_ptr to a result.
  */
-std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view>& pkgs, alpm_list_t* syncdbs, bool inverse)
+std::vector<std::string_view> filterAURPkgsNames(std::vector<std::string_view>& pkgs, alpm_list_t* syncdbs,
+                                                 bool inverse)
 {
     std::vector<std::string_view> out;
     out.reserve(pkgs.size());
