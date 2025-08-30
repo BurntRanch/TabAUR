@@ -3,6 +3,7 @@
 #include "taur.hpp"
 
 #include <algorithm>
+#include <array>
 #include <filesystem>
 #include <iterator>
 
@@ -15,7 +16,12 @@ bool TaurBackend::download_git(const std::string_view url, const path& out_path)
 {
     if (std::filesystem::exists(path(out_path) / ".git"))
     {
-        return taur_exec({ config.git.c_str(), "-C", out_path, "pull", "--autostash", "--rebase", "--force" });
+        if (!taur_exec({ config.git.c_str(), "-C", out_path, "pull", "--rebase", "--autostash", "--force" })) {
+            // reset and run again
+            return  taur_exec({ config.git.c_str(), "-C", out_path, "reset", "--hard", "HEAD" }) &&
+                    download_git(url, out_path);
+        }
+        return true;
     }
     else
     {
@@ -76,18 +82,18 @@ static TaurPkg_t parsePkg(const rapidjson::Value& pkgJson, const bool returnGit 
 {
     std::vector<std::string> makedepends, depends, totaldepends, licenses;
 
-    // yes, it will get depends and makedepends even one doesn't have it
+    // yes, it will get depends and makedepends even if one doesn't have it
     if (pkgJson.HasMember("Depends") && pkgJson["Depends"].IsArray())
     {
         const rapidjson::Value& dependsArray = pkgJson["Depends"].GetArray();
 
         depends.reserve(dependsArray.Size());
 
-        for (size_t i = 0; i < dependsArray.Size(); i++)
+        for (size_t i = 0; i < dependsArray.Size(); ++i)
             depends.push_back(dependsArray[i].GetString());
 
         totaldepends.insert(totaldepends.end(), depends.begin(), depends.end());
-        // for (size_t i = 0; i < makeDependsArray.Size(); i++) {
+        // for (size_t i = 0; i < makeDependsArray.Size(); ++i) {
         //     // make sure it isn't in the depends list
         //     if (std::find(totaldepends.begin(), totaldepends.end(), makeDependsArray[i].GetString()) !=
         //     totaldepends.end())
@@ -99,7 +105,6 @@ static TaurPkg_t parsePkg(const rapidjson::Value& pkgJson, const bool returnGit 
     if (pkgJson.HasMember("MakeDepends") && pkgJson["MakeDepends"].IsArray())
     {
         const rapidjson::Value& makeDependsArray = pkgJson["MakeDepends"].GetArray();
-
         makedepends.reserve(makeDependsArray.Size());
 
         for (size_t i = 0; i < makeDependsArray.Size(); ++i)
@@ -111,7 +116,6 @@ static TaurPkg_t parsePkg(const rapidjson::Value& pkgJson, const bool returnGit 
     if (pkgJson.HasMember("License") && pkgJson["License"].IsArray())
     {
         const rapidjson::Value& licensesArray = pkgJson["License"].GetArray();
-
         licenses.reserve(licensesArray.Size());
 
         for (size_t i = 0; i < licensesArray.Size(); ++i)
@@ -143,7 +147,6 @@ static TaurPkg_t parsePkg(const rapidjson::Value& pkgJson, const bool returnGit 
 std::optional<TaurPkg_t> TaurBackend::fetch_pkg(const std::string_view pkg, const bool returnGit)
 {
     const std::string& urlStr = "https://aur.archlinux.org/rpc/v5/info/" + cpr::util::urlEncode(pkg.data());
-
     const cpr::Response& resp = cpr::Get(cpr::Url(urlStr));
 
     if (resp.status_code != 200)
@@ -163,10 +166,10 @@ std::vector<TaurPkg_t> TaurBackend::fetch_pkgs(std::vector<std::string> const& p
     if (pkgs.empty())
         return {};
 
-    std::string urlStr = "https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=" + pkgs[0];
+    std::string urlStr{"https://aur.archlinux.org/rpc/v5/info?arg%5B%5D=" + pkgs[0]};
     urlStr.reserve(pkgs.size());
 
-    for (size_t i = 1; i < pkgs.size(); i++)
+    for (size_t i = 1; i < pkgs.size(); ++i)
         urlStr += ("&arg%5B%5D=" + pkgs[i]);
 
     log_println(DEBUG, "info url = {}", urlStr);
@@ -181,7 +184,7 @@ std::vector<TaurPkg_t> TaurBackend::fetch_pkgs(std::vector<std::string> const& p
 
     std::vector<TaurPkg_t> out;
     out.reserve(json["resultcount"].GetInt());
-    for (int i = 0; i < json["resultcount"].GetInt(); i++)
+    for (int i = 0; i < json["resultcount"].GetInt(); ++i)
         out.push_back(parsePkg(json["results"][i], returnGit));
 
     return out;
@@ -245,12 +248,12 @@ bool TaurBackend::remove_pkgs(const alpm_list_smart_pointer& pkgs)
 
     else if (pkgs_length == 1)
     {
-        return this->remove_pkg((alpm_pkg_t*)(pkgs->data), false) && commitTransactionAndRelease();
+        return this->remove_pkg(reinterpret_cast<alpm_pkg_t*>(pkgs->data), false) && commitTransactionAndRelease();
     }
 
     for (alpm_list_t* pkgsGet = pkgs.get(); pkgsGet; pkgsGet = pkgsGet->next)
     {
-        bool success = this->remove_pkg((alpm_pkg_t*)(pkgsGet->data), false);
+        bool success = this->remove_pkg(reinterpret_cast<alpm_pkg_t*>(pkgsGet->data), false);
         if (!success)
         {
             alpm_trans_release(this->config.handle);
@@ -305,7 +308,7 @@ bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, const path& out_path,
     log_println(DEBUG, "pkg.totaldepends = {}", pkg.totaldepends);
     const std::vector<std::string>& aur_list = load_aur_list();
 
-    for (size_t i = 0; i < pkg.totaldepends.size(); i++)
+    for (size_t i = 0; i < pkg.totaldepends.size(); ++i)
     {
         std::string_view pkg_depend;
 
@@ -324,7 +327,7 @@ bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, const path& out_path,
         log_println(DEBUG, "depend = {} -- depend.totaldepends = {}", depend.name, depend.totaldepends);
 
         bool alreadyExists = false;
-        for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
+        for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); ++j)
         {
             if (depend.name == localPkgs[j].name)
             {
@@ -339,7 +342,7 @@ bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, const path& out_path,
             continue;
         }
 
-        for (size_t i = 0; i < depend.totaldepends.size(); i++)
+        for (size_t i = 0; i < depend.totaldepends.size(); ++i)
         {
             std::string_view sub_pkg_depend;
 
@@ -356,7 +359,7 @@ bool TaurBackend::handle_aur_depends(const TaurPkg_t& pkg, const path& out_path,
             const TaurPkg_t& subDepend = oSubDepend.value();
 
             alreadyExists = false;
-            for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); j++)
+            for (size_t j = 0; (j < localPkgs.size() && !alreadyExists); ++j)
             {
                 if (subDepend.name == localPkgs[j].name)
                 {
@@ -474,9 +477,9 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
 
     log_println(INFO, "Here's a list of packages that may be upgraded:");
 
-    std::vector<std::tuple<TaurPkg_t, TaurPkg_t>> potentialUpgradeTargets;
+    std::vector<std::array<TaurPkg_t, 2>> potentialUpgradeTargets;
 
-    for (size_t i = 0; i < onlinePkgs.size(); i++)
+    for (size_t i = 0; i < onlinePkgs.size(); ++i)
     {
         const TaurPkg_t&  pkg                    = onlinePkgs[i];
         const auto&       pkgIteratorInLocalPkgs = std::find_if(localPkgs.begin(), localPkgs.end(), 
@@ -487,7 +490,7 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
 
         if (hasEnding(pkg.name, "-git"))
         {
-            potentialUpgradeTargets.push_back(std::make_tuple(pkg, localPkg));
+            potentialUpgradeTargets.push_back({pkg, localPkg});
             log_println(INFO, "- {} (from {} to {}, (dev package, may change despite AUR version))", localPkg.name,
                         localPkg.version, pkg.version);
             continue;
@@ -495,7 +498,7 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
 
         if ((localPkg.version != pkg.version) && alpm_pkg_vercmp(pkg.version.c_str(), localPkg.version.c_str()) == 1)
         {
-            potentialUpgradeTargets.push_back(std::make_tuple(pkg, localPkg));
+            potentialUpgradeTargets.push_back({pkg, localPkg});
             log_println(INFO, "- {} (from {} to {})", localPkg.name, localPkg.version, pkg.version);
             continue;
         }
@@ -519,8 +522,8 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
         //     }
         // }
 
-        const TaurPkg_t& potentialUpgradeTargetTo   = std::get<0>(potentialUpgrade);
-        const TaurPkg_t& potentialUpgradeTargetFrom = std::get<1>(potentialUpgrade);
+        const TaurPkg_t& potentialUpgradeTargetTo   = potentialUpgrade[0];
+        const TaurPkg_t& potentialUpgradeTargetFrom = potentialUpgrade[1];
 
         log_println(DEBUG, "potentialUpgradeTarget.name = {}", potentialUpgradeTargetTo.name);
         log_println(DEBUG, "potentialUpgradeTarget.totaldepends = {}", potentialUpgradeTargetTo.totaldepends);
@@ -557,7 +560,9 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
         {
             alrprepared = true;
             std::filesystem::current_path(pkgDir);
-            makepkg_exec({ "--verifysource", "-fA" });
+            if (makepkg_exec({ "--verifysource", "-fA" }))
+                taur_exec({ config.git.c_str(), "-C", pkgDir, "reset", "--hard", "HEAD" }) &&
+
             makepkg_exec({ "--nobuild", "-dfA" });
         }
 
@@ -605,7 +610,7 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
         }
 
         log_println(INFO, _("Upgrading package {} from version {} to version {}!"), potentialUpgradeTargetFrom.name,
-                    potentialUpgradeTargetTo.version, potentialUpgradeTargetTo.version);
+                    potentialUpgradeTargetFrom.version, potentialUpgradeTargetTo.version);
         attemptedDownloads++;
 
         this->handle_aur_depends(potentialUpgradeTargetTo, pkgDir, this->get_all_local_pkgs(true), useGit);
@@ -622,7 +627,7 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
         }
         else
         {
-            pkgs_failed_to_build += potentialUpgradeTargetTo.name + ' ';
+            pkgs_failed_to_build.push_back(potentialUpgradeTargetTo.name);
             log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
         }
     }
@@ -644,11 +649,10 @@ bool TaurBackend::update_all_aur_pkgs(const path& cacheDir, const bool useGit)
     if (attemptedDownloads > updatedPkgs)
     {
         pkgs_failed_to_build.erase(pkgs_failed_to_build.end() - 1);
-        log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), pkgs_failed_to_build);
+        log_println(WARN, fg(color.red), _("Failed to upgrade: {}"), fmt::join(pkgs_failed_to_build, " "));
         // log_println(WARN, _("Some packages failed to download/upgrade, Please redo this command and log the
         // issue.\nIf it is an issue with TabAUR, feel free to open an issue in GitHub."));
-        log_println(INFO, fg(color.cyan), _("Tip: try to run taur with \"-S {}\" (e.g \"taur -S {}\") and cleanbuild"),
-                    pkgs_failed_to_build, pkgs_failed_to_build);
+        log_println(INFO, fg(color.cyan), _("Tip: try to run \"taur -S {}\" and cleanbuild"), fmt::join(pkgs_failed_to_build, " "));
     }
 
     return true;
@@ -660,10 +664,10 @@ std::vector<TaurPkg_t> TaurBackend::get_all_local_pkgs(const bool aurOnly)
 {
     std::vector<alpm_pkg_t*> pkgs;
 
-    alpm_list_t *pkg, *syncdbs = config.repos;
+    alpm_list_t *syncdbs = config.repos;
 
-    for (pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = pkg->next)
-        pkgs.push_back((alpm_pkg_t*)(pkg->data));
+    for (alpm_list_t *pkg = alpm_db_get_pkgcache(alpm_get_localdb(config.handle)); pkg; pkg = pkg->next)
+        pkgs.push_back(reinterpret_cast<alpm_pkg_t*>(pkg->data));
 
     if (aurOnly)
         pkgs = filterAURPkgs(pkgs, syncdbs, true);
@@ -690,7 +694,7 @@ std::vector<TaurPkg_t> TaurBackend::getPkgFromJson(const rapidjson::Document& do
 
     std::vector<TaurPkg_t> out(resultcount);
 
-    for (int i = 0; i < resultcount; i++)
+    for (int i = 0; i < resultcount; ++i)
         out[i] = parsePkg(doc["results"][i], useGit);
 
     return out;
@@ -714,7 +718,7 @@ std::vector<TaurPkg_t> TaurBackend::search_pac(const std::string_view query)
             {
                 alpm_list_t* packages_get = packages.get();
                 (void)packages.release();
-                packages = make_list_smart_pointer(alpm_list_add(packages_get, (alpm_pkg_t*)(retClone->data)));
+                packages = make_list_smart_pointer(alpm_list_add(packages_get, reinterpret_cast<alpm_pkg_t*>(retClone->data)));
             }
         }
     }
@@ -723,7 +727,7 @@ std::vector<TaurPkg_t> TaurBackend::search_pac(const std::string_view query)
 
     for (alpm_list_t* packages_get = packages.get(); packages_get; packages_get = packages_get->next)
     {
-        alpm_pkg_t* pkg = (alpm_pkg_t*)(packages_get->data);
+        alpm_pkg_t* pkg = reinterpret_cast<alpm_pkg_t*>(packages_get->data);
 
         out.push_back({ .name          = alpm_pkg_get_name(pkg),
                         .version       = alpm_pkg_get_version(pkg),
@@ -777,7 +781,7 @@ std::vector<TaurPkg_t> TaurBackend::search(const std::string_view query, const b
     if (!checkExactMatch)  // caller doesn't want us to check for an exact match.
         return combined;
 
-    for (size_t i = 0; i < combined.size(); i++)
+    for (size_t i = 0; i < combined.size(); ++i)
         if (combined[i].name == query)
             return { combined[i] };  // return the exact match only.
 

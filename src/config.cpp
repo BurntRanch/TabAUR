@@ -60,7 +60,7 @@ Config::Config(const std::string_view configFile, const std::string_view themeFi
         // ye i'm sorry if it's too wide
         log_println(
             NONE, fg(color.blue),
-            _("I see you're a new user, Welcome!\n"
+            _("I see you're a new user (maybe), Welcome!\n"
               "Even though the AUR is very convenient, it could contain packages that are unmoderated and could be "
               "unsafe.\n"
               "You should always read the sources, popularity, and votes to judge by yourself whether the package is "
@@ -130,7 +130,7 @@ void Config::loadConfigFile(const std::string_view filename)
     this->handle = alpm_initialize(this->getConfigValue<std::string>("pacman.RootDir", "/").c_str(),
                                    this->getConfigValue<std::string>("pacman.DBPath", "/var/lib/pacman").c_str(), &err);
 
-    if (!(this->handle))
+    if (!this->handle)
         die(_("Failed to get an alpm handle! Error: {}"), alpm_strerror(err));
 
     this->loadPacmanConfigFile(this->getConfigValue<std::string>("pacman.ConfigFile", "/etc/pacman.conf"));

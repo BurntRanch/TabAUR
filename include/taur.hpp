@@ -67,6 +67,7 @@ public:
     std::vector<TaurPkg_t>   get_all_local_pkgs(const bool aurOnly);
 };
 
-inline std::string built_pkg, pkgs_to_install, pkgs_failed_to_build;
+inline std::string built_pkg, pkgs_to_install;
+inline std::vector<std::string> pkgs_failed_to_build;
 
 #endif

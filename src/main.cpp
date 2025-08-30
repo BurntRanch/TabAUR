@@ -331,7 +331,7 @@ int installPkg(alpm_list_t* pkgNames)
             {
                 log_println(ERROR, _("Building '{}' has failed."), pkg.name);
                 returnStatus = false;
-                pkgs_failed_to_build += pkg.name + ' ';
+                pkgs_failed_to_build.push_back(pkg.name);
                 log_println(DEBUG, "pkgs_failed_to_build = {}", pkgs_failed_to_build);
                 continue;
             }
@@ -398,9 +398,10 @@ bool removePkg(alpm_list_t* pkgNames)
         log_println(ERROR, _("No packages found!"));
         return false;
     }
-
-    if (ret_size == 1)
+    else if (ret_size == 1)
+    {
         return backend->remove_pkg(reinterpret_cast<alpm_pkg_t *>(ret->data));
+    }
 
     std::vector<std::string_view> pkgs;
     pkgs.reserve(ret_size);
@@ -591,9 +592,9 @@ bool upgradePkgs(alpm_list_t* pkgNames)
  */
 /* Inspired by the monotone function localize_monotone. */
 // taken from pacman
-#if defined(ENABLE_NLS)
 static void localize(void)
 {
+#if defined(ENABLE_NLS)
     static int init = 0;
     if (!init)
     {
@@ -602,8 +603,8 @@ static void localize(void)
         textdomain("taur");
         init = 1;
     }
-}
 #endif
+}
 
 // clang-format off
 // parseargs() but only for parsing the user config path trough args
@@ -681,18 +682,18 @@ int parseargs(int argc, char* argv[])
         {"search",     no_argument,       0, OP_SEARCH},
         {"info",       no_argument,       0, OP_INFO},
         {"cleanbuild", no_argument,       0, OP_CLEANBUILD},
-        {"cachedir",   required_argument, 0, OP_CACHEDIR},
-        {"colors",     required_argument, 0, OP_COLORS},
-        {"config",     required_argument, 0, OP_CONFIG},
-        {"theme",      required_argument, 0, OP_THEME},
         {"aur-only",   no_argument,       0, OP_AURONLY},
-        {"sudo",       required_argument, 0, OP_SUDO},
-        {"use-git",    required_argument, 0, OP_USEGIT},
         {"quiet",      no_argument,       0, OP_QUIET},
         {"debug",      no_argument,       0, OP_DEBUG},
         {"noconfirm",  no_argument,       0, OP_NOCONFIRM},
         {"nosave",     no_argument,       0, OP_NOSAVE},
         {"recursive",  no_argument,       0, OP_RECURSIVE},
+        {"cachedir",   required_argument, 0, OP_CACHEDIR},
+        {"colors",     required_argument, 0, OP_COLORS},
+        {"config",     required_argument, 0, OP_CONFIG},
+        {"theme",      required_argument, 0, OP_THEME},
+        {"sudo",       required_argument, 0, OP_SUDO},
+        {"use-git",    required_argument, 0, OP_USEGIT},
         {0,0,0,0}
     };
 
@@ -791,14 +792,11 @@ int parseargs(int argc, char* argv[])
 // main
 int main(int argc, char* argv[])
 {
-    const std::string& configDir = getConfigDir();
-
-#if defined(ENABLE_NLS)
     localize();
-#endif
 
-    std::string configfile = (configDir + "/config.toml");
-    std::string themefile  = (configDir + "/theme.toml");
+    const std::string& configDir = getConfigDir();
+    std::string configfile {configDir + "/config.toml"};
+    std::string themefile  {configDir + "/theme.toml"};
     parse_config_path(argc, argv, configfile, themefile);
 
     config = std::make_unique<Config>(configfile, themefile, configDir);
